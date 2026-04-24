@@ -1,0 +1,47 @@
+services:
+  prod-backend:
+    image: ver/v-ecommerce-backend:${PROD_TAG:-1.0.0}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    container_name: v-ecommerce-backend
+    ports:
+      - "8296:8296"
+    environment:
+      ECOMMERCE_CONFIG_FILE: config.prod
+      ECOMMERCE_PORT: 8296
+    networks:
+      - shared-network
+    volumes:
+      - ./config.prod.yaml:/app/config.prod.yaml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8296/healthz || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  dev-backend:
+    image: ver/v-ecommerce-backend:${DEV_TAG:-dev}
+    container_name: v-ecommerce-backend-dev
+    restart: unless-stopped
+    ports:
+      - "8396:8396"
+    environment:
+      ECOMMERCE_CONFIG_FILE: config.dev
+      ECOMMERCE_PORT: 8396
+    networks:
+      - shared-network
+    volumes:
+      - ./config.dev.yaml:/app/config.dev.yaml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8396/healthz || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+networks:
+  shared-network:
+    external: true

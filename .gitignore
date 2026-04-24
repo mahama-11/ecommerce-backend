@@ -1,0 +1,12 @@
+bin/
+dist/
+coverage/
+data/
+.env
+.DS_Store
+.idea
+
+artifacts
+
+ecommerce-service-linux
+config.local.yaml

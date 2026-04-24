@@ -1,0 +1,183 @@
+host: 0.0.0.0
+port: 8296
+gin_mode: release
+log_level: info
+use_mock: false
+
+app:
+  frontend_base_url: "https://www.agent-ecommerce.example.com"
+  product_name: "Agent Ecommerce"
+  product_code: "ecommerce"
+  default_language: "zh"
+  image_runtime:
+    global_negative_prompt: "blurry, noise, jpeg artifacts, watermark, text overlay, extra limbs, missing limbs, deformed anatomy, disfigured, bad proportions, duplicate objects, floating objects with no shadow, unrealistic lighting inconsistency, oversaturated colors, artificial plastic texture, lowres, draft quality, sketch, illustration style"
+    scene_prompt_policies:
+      ai_posture:
+        tool_slug: ai-posture
+        display_name: 姿势裂变
+        system_prompt: |
+          你是一个专业的AI电商模特姿势裂变系统。
+          任务目标：基于单张模特图生成多张不同姿势或镜头角度的结果图，仅改变姿势、肢体动作、视角和轻微表情，不得改变模特身份、服装款式、颜色、印花、背景、光线与商业拍摄质感。
+          输出要求：姿势之间必须有明显差异，动作符合人体工学，结果适合电商详情页与套图使用。
+        default_negative_prompt: "face inconsistency, garment detail drift, unnatural joint angles, duplicated poses, background changes"
+      changing_bg:
+        tool_slug: changing-bg
+        display_name: 换背景
+        system_prompt: |
+          你是一个专业的AI电商换背景与合成系统。
+          任务目标：精确保留原图中的模特主体和服装细节，只替换背景与环境氛围，确保透视、光线、接触阴影、色温和商业摄影感自然统一。
+          输出要求：主体边缘干净，背景真实可商用，整体像一次真实拍摄而不是生硬拼贴。
+        default_negative_prompt: "dirty cutout edges, halo, no ground shadow, mismatched lighting, unrealistic perspective"
+      ai_product:
+        tool_slug: ai-product
+        display_name: 商品场景合成
+        system_prompt: |
+          你是一个专业的AI电商商品场景合成系统。
+          任务目标：将商品自然放置到适合销售的场景中，完整保留商品外观、颜色、材质、LOGO 与细节，不得改动商品本身。
+          输出要求：场景透视、反光、阴影、比例和景深合理，结果达到电商主图或详情图可发布质量。
+        default_negative_prompt: "floating product, wrong scale, perspective mismatch, product color shift, missing branding"
+      image_fission:
+        tool_slug: image-fission
+        display_name: 场景裂变
+        system_prompt: |
+          你是一个专业的AI电商场景裂变系统。
+          任务目标：基于单张参考图生成多张风格一致但构图、道具、光线氛围有明显差异的场景图，保持商品主体与核心卖点稳定。
+          输出要求：各结果必须属于同一产品风格体系，但不能只是简单滤镜变化。
+        default_negative_prompt: "near-identical outputs, product drift, cluttered composition, inconsistent lighting, low commercial quality"
+      product_refine:
+        tool_slug: product-refine
+        display_name: 商品精修
+        system_prompt: |
+          你是一个专业的AI电商商品精修系统。
+          任务目标：对商品图进行商业级精修，去除瑕疵、校正颜色、增强材质与边缘质量，同时准确还原实物，不得夸大商品。
+          输出要求：背景干净规范，品牌文字与细节清晰，适合平台主图和详情页发布。
+        default_negative_prompt: "oversaturation, fake gloss, altered proportions, halo edges, unreadable text, retouch smears"
+      changing_model:
+        tool_slug: changing-model
+        display_name: 真人换模特
+        system_prompt: |
+          你是一个专业的AI电商真人换模特系统。
+          任务目标：在保持服装细节、版型、纹理、印花和拍摄质感的前提下，替换模特的人种、气质或人群定位。
+          输出要求：新模特自然可信，服装不能变形漂移，适合跨市场电商主图。
+        default_negative_prompt: "distorted garment pattern, misaligned seams, unnatural face, duplicated limbs, cartoon skin texture"
+      changing_mannequin:
+        tool_slug: changing-mannequin
+        display_name: 人台换模特
+        system_prompt: |
+          你是一个专业的AI电商人台换模特系统。
+          任务目标：把人台或假模特上的服装转成真人模特穿着效果，准确还原服装结构、垂感、肩线、领口和长度比例。
+          输出要求：真人姿态自然，布料具有真实穿着状态，适合标准电商服装展示。
+        default_negative_prompt: "mannequin ghosting, stiff body, fabric plastic look, wrong collar position, anatomy errors"
+      ai_dressing:
+        tool_slug: ai-dressing
+        display_name: AI穿衣
+        system_prompt: |
+          你是一个专业的AI电商虚拟试穿系统。
+          任务目标：将服装图准确转化为上身试穿效果，重点还原肩线、腰线、下摆垂感、面料纹理、印花与版型，不得随意改动服装设计。
+          输出要求：试穿结果真实可信，服装与人体贴合自然，适合服装详情页和主图展示。
+        default_negative_prompt: "distorted pattern, wrong garment size, misaligned collar, missing design details, plastic fabric texture"
+      ai_wearable:
+        tool_slug: ai-wearable
+        display_name: 穿戴商品
+        system_prompt: |
+          你是一个专业的AI电商配饰与可穿戴商品上身展示系统。
+          任务目标：将手表、项链、耳环、眼镜、帽子、包袋等商品自然展示在模特对应部位，保持商品比例、材质、品牌细节和真实佩戴方式。
+          输出要求：商品位置正确，人体交互自然，适合高转化特写图和生活方式图。
+        default_negative_prompt: "floating accessory, wrong scale, hidden branding, unnatural hand pose, overexposed reflections"
+      product_replacement:
+        tool_slug: product-replacement
+        display_name: 商品替换
+        system_prompt: |
+          你是一个专业的AI电商场景商品替换系统。
+          任务目标：在保留原场景构图、背景、光线、道具和氛围的前提下，将场景中的原商品替换为新的商品，并完整保留新商品细节。
+          输出要求：新商品与场景无缝融合，位置、角度、比例与光线自然一致。
+        default_negative_prompt: "changed background props, wrong placement angle, product color shift, floating object, visible composite seam"
+      scene_image:
+        tool_slug: scene-image
+        display_name: 场景素材生成
+        system_prompt: |
+          你是一个专业的AI电商场景背景素材生成系统。
+          任务目标：生成可供后续商品合成使用的高质量背景场景素材，必须预留清晰的商品摆放区域，并保持商业摄影级灯光与道具逻辑。
+          输出要求：画面中不应出现主商品主体，场景干净、可复用、适合商品后续贴合。
+        default_negative_prompt: "cluttered placement area, accidental product appearance, mixed lighting, illogical props, low commercial quality"
+      handheld_goods:
+        tool_slug: handheld-goods
+        display_name: 手持商品
+        system_prompt: |
+          你是一个专业的AI电商手持商品展示系统。
+          任务目标：让人物手部自然持握、使用或互动指定商品，重点体现商品真实尺寸感、使用场景和品牌细节，不遮挡核心卖点。
+          输出要求：手部解剖自然，持握方式符合真实使用习惯，适合详情页卖点图。
+        default_negative_prompt: "six fingers, fused fingers, wrong grip, hidden logo, unnatural skin texture, incorrect product scale"
+      clothing_image_suite:
+        tool_slug: clothing-image-suite
+        display_name: 服装套图
+        system_prompt: |
+          你是一个专业的AI电商服装套图生成系统。
+          任务目标：围绕单件服装生成完整的上架套图思路，覆盖主图、模特图、细节图、生活方式图和尺寸表达，保持服装细节、色调与品牌风格统一。
+          输出要求：各输出具备统一视觉语言，适合后续扩展为整套详情页内容。
+        default_negative_prompt: "inconsistent outfit details, mismatched color grading, missing key shot types, low publish quality"
+      product_image_suite:
+        tool_slug: product-image-suite
+        display_name: 商品套图
+        system_prompt: |
+          你是一个专业的AI电商商品套图生成系统。
+          任务目标：围绕单件非服装商品生成完整的上架套图思路，覆盖白底主图、多角度图、卖点图、场景图、尺寸图和使用图，保持商品规格和品牌信息准确一致。
+          输出要求：各输出在视觉与信息表达上统一，适合后续扩展为整套商品详情页内容。
+        default_negative_prompt: "missing product views, feature misrepresentation, inconsistent scene quality, unreadable details, platform non-compliance"
+
+database:
+  driver: postgres
+  host: postgres
+  port: 5432
+  user: ecommerce
+  password: change-me
+  dbname: ecommerce
+  sslmode: require
+  max_open_conns: 40
+  max_idle_conns: 10
+  table_prefix: ecommerce_
+  auto_migrate_enabled: false
+  allow_startup_migrate_in_non_dev: false
+
+redis:
+  enabled: true
+  host: redis
+  port: 6379
+  password: change-me
+  db: 2
+  pool_size: 20
+  min_idle_conns: 5
+  max_retries: 3
+  dial_timeout: 5s
+  read_timeout: 3s
+  write_timeout: 3s
+
+security:
+  jwt_secret: change-me
+  encryption_key: change-me
+  service_secret_key: change-me
+
+platform:
+  base_url: https://platform.internal
+  timeout: 5s
+  service_name: v-ecommerce-backend
+  internal_service_secret: change-me
+  jwt_secret: change-me
+
+monitoring:
+  metrics:
+    enabled: true
+    port: 9096
+    path: "/metrics"
+    namespace: "ecommerce"
+    subsystem: "service"
+    push_interval: "30s"
+    histogram_buckets: [0.1, 0.5, 1, 2, 5, 10]
+  tracing:
+    enabled: true
+    service_name: "ecommerce-service"
+    service_version: "1.0.0"
+    environment: "production"
+    jaeger_endpoint: "http://jaeger:14268/api/traces"
+    sample_rate: 0.2
+    log_spans: false

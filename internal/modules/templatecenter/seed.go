@@ -22,35 +22,48 @@ type generatedSeedLocale struct {
 }
 
 type generatedSeedExample struct {
-	Type    string `json:"type"`
-	Title   string `json:"title"`
-	Preview string `json:"preview"`
+	ID              string `json:"id"`
+	Type            string `json:"type"`
+	ExampleType     string `json:"exampleType"`
+	Title           string `json:"title"`
+	Description     string `json:"description"`
+	AssetRef        string `json:"assetRef"`
+	SourceRef       string `json:"sourceRef"`
+	StorageKey      string `json:"storageKey"`
+	AssetID         string `json:"assetId"`
+	MimeType        string `json:"mimeType"`
+	Checksum        string `json:"checksum"`
+	InputAssetURL   string `json:"inputAssetUrl"`
+	OutputAssetURL  string `json:"outputAssetUrl"`
+	Preview         string `json:"preview"`
+	PreviewAssetURL string `json:"previewAssetUrl"`
+	VideoPosterURL  string `json:"videoPosterUrl"`
 }
 
 type generatedSeedDefinition struct {
-	ID              string                 `json:"id"`
-	ExternalCode    string                 `json:"externalCode"`
-	Slug            string                 `json:"slug"`
-	Modality        string                 `json:"modality"`
-	ExecutorType    string                 `json:"executorType"`
-	Series          string                 `json:"series"`
-	CapabilityType  string                 `json:"capabilityType"`
-	InteractionMode string                 `json:"interactionMode"`
-	Featured        bool                   `json:"featured"`
-	RecommendScore  int                    `json:"recommendScore"`
-	SourceAssetRef  string                 `json:"sourceAssetRef"`
-	PlatformTags    []string               `json:"platformTags"`
-	IndustryTags    []string               `json:"industryTags"`
-	ScenarioTags    []string               `json:"scenarioTags"`
-	ExecutionSchema map[string]any         `json:"executionSchema"`
-	ToolBinding     map[string]any         `json:"toolBinding"`
-	InputSchema     map[string]any         `json:"inputSchema"`
-	OutputSchema    map[string]any         `json:"outputSchema"`
-	PromptLayers    map[string]any         `json:"promptLayers"`
-	DefaultVariables map[string]any        `json:"defaultVariables"`
-	Examples        []generatedSeedExample `json:"examples"`
-	LocaleZH        generatedSeedLocale    `json:"localeZH"`
-	LocaleEN        generatedSeedLocale    `json:"localeEN"`
+	ID               string                 `json:"id"`
+	ExternalCode     string                 `json:"externalCode"`
+	Slug             string                 `json:"slug"`
+	Modality         string                 `json:"modality"`
+	ExecutorType     string                 `json:"executorType"`
+	Series           string                 `json:"series"`
+	CapabilityType   string                 `json:"capabilityType"`
+	InteractionMode  string                 `json:"interactionMode"`
+	Featured         bool                   `json:"featured"`
+	RecommendScore   int                    `json:"recommendScore"`
+	SourceAssetRef   string                 `json:"sourceAssetRef"`
+	PlatformTags     []string               `json:"platformTags"`
+	IndustryTags     []string               `json:"industryTags"`
+	ScenarioTags     []string               `json:"scenarioTags"`
+	ExecutionSchema  map[string]any         `json:"executionSchema"`
+	ToolBinding      map[string]any         `json:"toolBinding"`
+	InputSchema      map[string]any         `json:"inputSchema"`
+	OutputSchema     map[string]any         `json:"outputSchema"`
+	PromptLayers     map[string]any         `json:"promptLayers"`
+	DefaultVariables map[string]any         `json:"defaultVariables"`
+	Examples         []generatedSeedExample `json:"examples"`
+	LocaleZH         generatedSeedLocale    `json:"localeZH"`
+	LocaleEN         generatedSeedLocale    `json:"localeEN"`
 }
 
 func seedCatalogs() []repository.SeedCatalog {
@@ -158,11 +171,21 @@ func buildSeedCatalog(now time.Time, def generatedSeedDefinition) repository.See
 	examples := make([]models.TemplateCatalogExample, 0, len(def.Examples))
 	for idx, item := range def.Examples {
 		examples = append(examples, models.TemplateCatalogExample{
-			ID:                fmt.Sprintf("%s_ex_%d", def.ID, idx+1),
+			ID:                firstNonEmpty(item.ID, fmt.Sprintf("%s_ex_%d", def.ID, idx+1)),
 			TemplateVersionID: versionID,
-			ExampleType:       item.Type,
+			ExampleType:       firstNonEmpty(item.ExampleType, item.Type),
 			Title:             item.Title,
-			PreviewAssetURL:   item.Preview,
+			Description:       item.Description,
+			AssetRef:          item.AssetRef,
+			SourceRef:         item.SourceRef,
+			StorageKey:        item.StorageKey,
+			AssetID:           item.AssetID,
+			MimeType:          item.MimeType,
+			Checksum:          item.Checksum,
+			InputAssetURL:     item.InputAssetURL,
+			OutputAssetURL:    item.OutputAssetURL,
+			PreviewAssetURL:   firstNonEmpty(item.PreviewAssetURL, item.Preview),
+			VideoPosterURL:    item.VideoPosterURL,
 			SortOrder:         idx,
 			CreatedAt:         now,
 			UpdatedAt:         now,
@@ -190,5 +213,14 @@ func firstPreview(items []generatedSeedExample) string {
 	if len(items) == 0 {
 		return ""
 	}
-	return items[0].Preview
+	return firstNonEmpty(items[0].PreviewAssetURL, items[0].Preview)
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if value != "" {
+			return value
+		}
+	}
+	return ""
 }

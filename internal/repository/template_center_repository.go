@@ -117,6 +117,12 @@ type CatalogExampleDTO struct {
 	ExampleType     string `json:"exampleType"`
 	Title           string `json:"title,omitempty"`
 	Description     string `json:"description,omitempty"`
+	AssetRef        string `json:"assetRef,omitempty"`
+	SourceRef       string `json:"sourceRef,omitempty"`
+	StorageKey      string `json:"storageKey,omitempty"`
+	AssetID         string `json:"assetId,omitempty"`
+	MimeType        string `json:"mimeType,omitempty"`
+	Checksum        string `json:"checksum,omitempty"`
 	InputAssetURL   string `json:"inputAssetUrl,omitempty"`
 	OutputAssetURL  string `json:"outputAssetUrl,omitempty"`
 	PreviewAssetURL string `json:"previewAssetUrl,omitempty"`
@@ -161,6 +167,12 @@ type SeedCatalog struct {
 	Version  models.TemplateCatalogVersion
 	Schema   models.TemplateCatalogSchema
 	Examples []models.TemplateCatalogExample
+}
+
+type SeedBuiltinSummary struct {
+	CatalogCount int64
+	VersionCount int64
+	ExampleCount int64
 }
 
 func (r *TemplateCenterRepository) SeedIfEmpty(items []SeedCatalog) error {
@@ -253,9 +265,23 @@ func (r *TemplateCenterRepository) SeedIfEmpty(items []SeedCatalog) error {
 			}).Create(&item.Catalog).Error; err != nil {
 				return err
 			}
-			var managedSource string
-			if err := tx.Model(&models.TemplateCatalog{}).Where("id = ?", item.Catalog.ID).Pluck("managed_source", &managedSource).Error; err != nil {
+			var existingCatalog models.TemplateCatalog
+			if err := tx.Select("id", "managed_source", "scope", "owner_team", "created_by").
+				Where("id = ?", item.Catalog.ID).
+				First(&existingCatalog).Error; err != nil {
 				return err
+			}
+			managedSource := existingCatalog.ManagedSource
+			if managedSource == "ops_manual" &&
+				existingCatalog.Scope == "official" &&
+				existingCatalog.OwnerTeam == "agent-ecommerce" &&
+				existingCatalog.CreatedBy == "system" {
+				if err := tx.Model(&models.TemplateCatalog{}).
+					Where("id = ?", item.Catalog.ID).
+					Update("managed_source", "seed_builtin").Error; err != nil {
+					return err
+				}
+				managedSource = "seed_builtin"
 			}
 			if managedSource != "seed_builtin" {
 				// Never mutate operator-created official templates even if IDs collide with built-in seeds.
@@ -308,6 +334,29 @@ func (r *TemplateCenterRepository) SeedIfEmpty(items []SeedCatalog) error {
 		}
 		return nil
 	})
+}
+
+func (r *TemplateCenterRepository) SeedBuiltinSummary() (*SeedBuiltinSummary, error) {
+	summary := &SeedBuiltinSummary{}
+	if err := r.db.Model(&models.TemplateCatalog{}).
+		Where("scope = ? AND managed_source = ?", "official", "seed_builtin").
+		Count(&summary.CatalogCount).Error; err != nil {
+		return nil, err
+	}
+	if err := r.db.Model(&models.TemplateCatalogVersion{}).
+		Joins("JOIN ecommerce_template_catalogs c ON c.id = ecommerce_template_catalog_versions.template_catalog_id").
+		Where("c.scope = ? AND c.managed_source = ?", "official", "seed_builtin").
+		Count(&summary.VersionCount).Error; err != nil {
+		return nil, err
+	}
+	if err := r.db.Model(&models.TemplateCatalogExample{}).
+		Joins("JOIN ecommerce_template_catalog_versions v ON v.id = ecommerce_template_catalog_examples.template_version_id").
+		Joins("JOIN ecommerce_template_catalogs c ON c.id = v.template_catalog_id").
+		Where("c.scope = ? AND c.managed_source = ?", "official", "seed_builtin").
+		Count(&summary.ExampleCount).Error; err != nil {
+		return nil, err
+	}
+	return summary, nil
 }
 
 func (r *TemplateCenterRepository) ListCatalog(scope Scope, filter TemplateCatalogFilter) ([]CatalogListItem, error) {
@@ -847,6 +896,12 @@ func toExamples(items []models.TemplateCatalogExample) []CatalogExampleDTO {
 			ExampleType:     item.ExampleType,
 			Title:           item.Title,
 			Description:     item.Description,
+			AssetRef:        item.AssetRef,
+			SourceRef:       item.SourceRef,
+			StorageKey:      item.StorageKey,
+			AssetID:         item.AssetID,
+			MimeType:        item.MimeType,
+			Checksum:        item.Checksum,
 			InputAssetURL:   item.InputAssetURL,
 			OutputAssetURL:  item.OutputAssetURL,
 			PreviewAssetURL: item.PreviewAssetURL,

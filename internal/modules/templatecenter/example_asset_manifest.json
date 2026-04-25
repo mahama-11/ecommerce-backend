@@ -1,0 +1,3811 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-model/M1-T01/example-1",
+      "assetRef": "infra/examples/Model/ModelSwap/欧美白人女模特.png",
+      "storageFileName": "changing-model/m1-t01-example-1.png",
+      "title": "欧美白人女模特",
+      "description": "Matched from infra/examples/Model/ModelSwap",
+      "tags": [
+        "template-example",
+        "changing-model",
+        "M1-T01"
+      ],
+      "metadata": {
+        "templateCode": "M1-T01",
+        "templateName": "欧美白人女模特",
+        "toolSlug": "changing-model",
+        "exampleId": "m1_t01_example_1",
+        "assetRef": "infra/examples/Model/ModelSwap/欧美白人女模特.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-model/M1-T02/example-1",
+      "assetRef": "infra/examples/Model/ModelSwap/亚洲女模特（东亚）.png",
+      "storageFileName": "changing-model/m1-t02-example-1.png",
+      "title": "亚洲女模特（东亚）",
+      "description": "Matched from infra/examples/Model/ModelSwap",
+      "tags": [
+        "template-example",
+        "changing-model",
+        "M1-T02"
+      ],
+      "metadata": {
+        "templateCode": "M1-T02",
+        "templateName": "亚洲女模特（东亚）",
+        "toolSlug": "changing-model",
+        "exampleId": "m1_t02_example_1",
+        "assetRef": "infra/examples/Model/ModelSwap/亚洲女模特（东亚）.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-model/M1-T03/example-1",
+      "assetRef": "infra/examples/Model/ModelSwap/非裔欧美女模特.png",
+      "storageFileName": "changing-model/m1-t03-example-1.png",
+      "title": "非裔欧美女模特",
+      "description": "Matched from infra/examples/Model/ModelSwap",
+      "tags": [
+        "template-example",
+        "changing-model",
+        "M1-T03"
+      ],
+      "metadata": {
+        "templateCode": "M1-T03",
+        "templateName": "非裔欧美女模特",
+        "toolSlug": "changing-model",
+        "exampleId": "m1_t03_example_1",
+        "assetRef": "infra/examples/Model/ModelSwap/非裔欧美女模特.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-model/M1-T04/example-1",
+      "assetRef": "infra/examples/Model/ModelSwap/拉丁裔女模特.png",
+      "storageFileName": "changing-model/m1-t04-example-1.png",
+      "title": "拉丁裔女模特",
+      "description": "Matched from infra/examples/Model/ModelSwap",
+      "tags": [
+        "template-example",
+        "changing-model",
+        "M1-T04"
+      ],
+      "metadata": {
+        "templateCode": "M1-T04",
+        "templateName": "拉丁裔女模特",
+        "toolSlug": "changing-model",
+        "exampleId": "m1_t04_example_1",
+        "assetRef": "infra/examples/Model/ModelSwap/拉丁裔女模特.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-model/M1-T05/example-1",
+      "assetRef": "infra/examples/Model/ModelSwap/中东市场女模特.png",
+      "storageFileName": "changing-model/m1-t05-example-1.png",
+      "title": "中东市场女模特",
+      "description": "Matched from infra/examples/Model/ModelSwap",
+      "tags": [
+        "template-example",
+        "changing-model",
+        "M1-T05"
+      ],
+      "metadata": {
+        "templateCode": "M1-T05",
+        "templateName": "中东市场女模特",
+        "toolSlug": "changing-model",
+        "exampleId": "m1_t05_example_1",
+        "assetRef": "infra/examples/Model/ModelSwap/中东市场女模特.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-model/M1-T06/example-1",
+      "assetRef": "infra/examples/Model/ModelSwap/欧美男模特.png",
+      "storageFileName": "changing-model/m1-t06-example-1.png",
+      "title": "欧美男模特",
+      "description": "Matched from infra/examples/Model/ModelSwap",
+      "tags": [
+        "template-example",
+        "changing-model",
+        "M1-T06"
+      ],
+      "metadata": {
+        "templateCode": "M1-T06",
+        "templateName": "欧美男模特",
+        "toolSlug": "changing-model",
+        "exampleId": "m1_t06_example_1",
+        "assetRef": "infra/examples/Model/ModelSwap/欧美男模特.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-model/M1-T07/example-1",
+      "assetRef": "infra/examples/Model/ModelSwap/大码女模特（Plus Size）.png",
+      "storageFileName": "changing-model/m1-t07-example-1.png",
+      "title": "大码女模特（Plus Size）",
+      "description": "Matched from infra/examples/Model/ModelSwap",
+      "tags": [
+        "template-example",
+        "changing-model",
+        "M1-T07"
+      ],
+      "metadata": {
+        "templateCode": "M1-T07",
+        "templateName": "大码女模特（Plus Size）",
+        "toolSlug": "changing-model",
+        "exampleId": "m1_t07_example_1",
+        "assetRef": "infra/examples/Model/ModelSwap/大码女模特（Plus Size）.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-model/M1-T08/example-1",
+      "assetRef": "infra/examples/Model/ModelSwap/高级感气质女模特.png",
+      "storageFileName": "changing-model/m1-t08-example-1.png",
+      "title": "高级感气质女模特",
+      "description": "Matched from infra/examples/Model/ModelSwap",
+      "tags": [
+        "template-example",
+        "changing-model",
+        "M1-T08"
+      ],
+      "metadata": {
+        "templateCode": "M1-T08",
+        "templateName": "高级感气质女模特",
+        "toolSlug": "changing-model",
+        "exampleId": "m1_t08_example_1",
+        "assetRef": "infra/examples/Model/ModelSwap/高级感气质女模特.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-model/M1-T09/example-1",
+      "assetRef": "infra/examples/Model/ModelSwap/青春活力少女.png",
+      "storageFileName": "changing-model/m1-t09-example-1.png",
+      "title": "青春活力少女",
+      "description": "Matched from infra/examples/Model/ModelSwap",
+      "tags": [
+        "template-example",
+        "changing-model",
+        "M1-T09"
+      ],
+      "metadata": {
+        "templateCode": "M1-T09",
+        "templateName": "青春活力少女",
+        "toolSlug": "changing-model",
+        "exampleId": "m1_t09_example_1",
+        "assetRef": "infra/examples/Model/ModelSwap/青春活力少女.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-model/M1-T10/example-1",
+      "assetRef": "infra/examples/Model/ModelSwap/成熟优雅女性.png",
+      "storageFileName": "changing-model/m1-t10-example-1.png",
+      "title": "成熟优雅女性",
+      "description": "Matched from infra/examples/Model/ModelSwap",
+      "tags": [
+        "template-example",
+        "changing-model",
+        "M1-T10"
+      ],
+      "metadata": {
+        "templateCode": "M1-T10",
+        "templateName": "成熟优雅女性",
+        "toolSlug": "changing-model",
+        "exampleId": "m1_t10_example_1",
+        "assetRef": "infra/examples/Model/ModelSwap/成熟优雅女性.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-model/M1-T11/example-1",
+      "assetRef": "infra/examples/Model/ModelSwap/老年模特（银发市场）.png",
+      "storageFileName": "changing-model/m1-t11-example-1.png",
+      "title": "老年模特（银发市场）",
+      "description": "Matched from infra/examples/Model/ModelSwap",
+      "tags": [
+        "template-example",
+        "changing-model",
+        "M1-T11"
+      ],
+      "metadata": {
+        "templateCode": "M1-T11",
+        "templateName": "老年模特（银发市场）",
+        "toolSlug": "changing-model",
+        "exampleId": "m1_t11_example_1",
+        "assetRef": "infra/examples/Model/ModelSwap/老年模特（银发市场）.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-model/M1-T12/example-1",
+      "assetRef": "infra/examples/Model/ModelSwap/儿童_亲子模特.png",
+      "storageFileName": "changing-model/m1-t12-example-1.png",
+      "title": "儿童_亲子模特",
+      "description": "Matched from infra/examples/Model/ModelSwap",
+      "tags": [
+        "template-example",
+        "changing-model",
+        "M1-T12"
+      ],
+      "metadata": {
+        "templateCode": "M1-T12",
+        "templateName": "儿童/亲子模特",
+        "toolSlug": "changing-model",
+        "exampleId": "m1_t12_example_1",
+        "assetRef": "infra/examples/Model/ModelSwap/儿童_亲子模特.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-mannequin/M2-T01/example-1",
+      "assetRef": "infra/examples/Model/Mannequin/纯白棚拍站姿.png",
+      "storageFileName": "changing-mannequin/m2-t01-example-1.png",
+      "title": "纯白棚拍站姿",
+      "description": "Matched from infra/examples/Model/Mannequin",
+      "tags": [
+        "template-example",
+        "changing-mannequin",
+        "M2-T01"
+      ],
+      "metadata": {
+        "templateCode": "M2-T01",
+        "templateName": "纯白棚拍站姿",
+        "toolSlug": "changing-mannequin",
+        "exampleId": "m2_t01_example_1",
+        "assetRef": "infra/examples/Model/Mannequin/纯白棚拍站姿.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-mannequin/M2-T02/example-1",
+      "assetRef": "infra/examples/Model/Mannequin/浅灰渐变棚拍.png",
+      "storageFileName": "changing-mannequin/m2-t02-example-1.png",
+      "title": "浅灰渐变棚拍",
+      "description": "Matched from infra/examples/Model/Mannequin",
+      "tags": [
+        "template-example",
+        "changing-mannequin",
+        "M2-T02"
+      ],
+      "metadata": {
+        "templateCode": "M2-T02",
+        "templateName": "浅灰渐变棚拍",
+        "toolSlug": "changing-mannequin",
+        "exampleId": "m2_t02_example_1",
+        "assetRef": "infra/examples/Model/Mannequin/浅灰渐变棚拍.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-mannequin/M2-T03/example-1",
+      "assetRef": "infra/examples/Model/Mannequin/北欧简约家居.png",
+      "storageFileName": "changing-mannequin/m2-t03-example-1.png",
+      "title": "北欧简约家居",
+      "description": "Matched from infra/examples/Model/Mannequin",
+      "tags": [
+        "template-example",
+        "changing-mannequin",
+        "M2-T03"
+      ],
+      "metadata": {
+        "templateCode": "M2-T03",
+        "templateName": "北欧简约家居",
+        "toolSlug": "changing-mannequin",
+        "exampleId": "m2_t03_example_1",
+        "assetRef": "infra/examples/Model/Mannequin/北欧简约家居.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-mannequin/M2-T04/example-1",
+      "assetRef": "infra/examples/Model/Mannequin/都市街拍风.png",
+      "storageFileName": "changing-mannequin/m2-t04-example-1.png",
+      "title": "都市街拍风",
+      "description": "Matched from infra/examples/Model/Mannequin",
+      "tags": [
+        "template-example",
+        "changing-mannequin",
+        "M2-T04"
+      ],
+      "metadata": {
+        "templateCode": "M2-T04",
+        "templateName": "都市街拍风",
+        "toolSlug": "changing-mannequin",
+        "exampleId": "m2_t04_example_1",
+        "assetRef": "infra/examples/Model/Mannequin/都市街拍风.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-mannequin/M2-T05/example-1",
+      "assetRef": "infra/examples/Model/Mannequin/咖啡馆生活场景.png",
+      "storageFileName": "changing-mannequin/m2-t05-example-1.png",
+      "title": "咖啡馆生活场景",
+      "description": "Matched from infra/examples/Model/Mannequin",
+      "tags": [
+        "template-example",
+        "changing-mannequin",
+        "M2-T05"
+      ],
+      "metadata": {
+        "templateCode": "M2-T05",
+        "templateName": "咖啡馆生活场景",
+        "toolSlug": "changing-mannequin",
+        "exampleId": "m2_t05_example_1",
+        "assetRef": "infra/examples/Model/Mannequin/咖啡馆生活场景.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-mannequin/M2-T06/example-1",
+      "assetRef": "infra/examples/Model/Mannequin/高端杂志大片风.png",
+      "storageFileName": "changing-mannequin/m2-t06-example-1.png",
+      "title": "高端杂志大片风",
+      "description": "Matched from infra/examples/Model/Mannequin",
+      "tags": [
+        "template-example",
+        "changing-mannequin",
+        "M2-T06"
+      ],
+      "metadata": {
+        "templateCode": "M2-T06",
+        "templateName": "高端杂志大片风",
+        "toolSlug": "changing-mannequin",
+        "exampleId": "m2_t06_example_1",
+        "assetRef": "infra/examples/Model/Mannequin/高端杂志大片风.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-mannequin/M2-T07/example-1",
+      "assetRef": "infra/examples/Model/Mannequin/户外自然光场景.png",
+      "storageFileName": "changing-mannequin/m2-t07-example-1.png",
+      "title": "户外自然光场景",
+      "description": "Matched from infra/examples/Model/Mannequin",
+      "tags": [
+        "template-example",
+        "changing-mannequin",
+        "M2-T07"
+      ],
+      "metadata": {
+        "templateCode": "M2-T07",
+        "templateName": "户外自然光场景",
+        "toolSlug": "changing-mannequin",
+        "exampleId": "m2_t07_example_1",
+        "assetRef": "infra/examples/Model/Mannequin/户外自然光场景.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-mannequin/M2-T08/example-1",
+      "assetRef": "infra/examples/Model/Mannequin/白色背景背面展示.png",
+      "storageFileName": "changing-mannequin/m2-t08-example-1.png",
+      "title": "白色背景背面展示",
+      "description": "Matched from infra/examples/Model/Mannequin",
+      "tags": [
+        "template-example",
+        "changing-mannequin",
+        "M2-T08"
+      ],
+      "metadata": {
+        "templateCode": "M2-T08",
+        "templateName": "白色背景背面展示",
+        "toolSlug": "changing-mannequin",
+        "exampleId": "m2_t08_example_1",
+        "assetRef": "infra/examples/Model/Mannequin/白色背景背面展示.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-mannequin/M2-T09/example-1",
+      "assetRef": "infra/examples/Model/Mannequin/正背面双图标准套.png",
+      "storageFileName": "changing-mannequin/m2-t09-example-1.png",
+      "title": "正背面双图标准套",
+      "description": "Matched from infra/examples/Model/Mannequin",
+      "tags": [
+        "template-example",
+        "changing-mannequin",
+        "M2-T09"
+      ],
+      "metadata": {
+        "templateCode": "M2-T09",
+        "templateName": "正背面双图标准套",
+        "toolSlug": "changing-mannequin",
+        "exampleId": "m2_t09_example_1",
+        "assetRef": "infra/examples/Model/Mannequin/正背面双图标准套.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-mannequin/M2-T10/example-1",
+      "assetRef": "infra/examples/Model/Mannequin/高端零售橱窗风.png",
+      "storageFileName": "changing-mannequin/m2-t10-example-1.png",
+      "title": "高端零售橱窗风",
+      "description": "Matched from infra/examples/Model/Mannequin",
+      "tags": [
+        "template-example",
+        "changing-mannequin",
+        "M2-T10"
+      ],
+      "metadata": {
+        "templateCode": "M2-T10",
+        "templateName": "高端零售橱窗风",
+        "toolSlug": "changing-mannequin",
+        "exampleId": "m2_t10_example_1",
+        "assetRef": "infra/examples/Model/Mannequin/高端零售橱窗风.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-bg/M3-T01/example-1",
+      "assetRef": "infra/examples/Model/BackgroundReplace/纯白无缝背景.png",
+      "storageFileName": "changing-bg/m3-t01-example-1.png",
+      "title": "纯白无缝背景",
+      "description": "Matched from infra/examples/Model/BackgroundReplace",
+      "tags": [
+        "template-example",
+        "changing-bg",
+        "M3-T01"
+      ],
+      "metadata": {
+        "templateCode": "M3-T01",
+        "templateName": "纯白无缝背景",
+        "toolSlug": "changing-bg",
+        "exampleId": "m3_t01_example_1",
+        "assetRef": "infra/examples/Model/BackgroundReplace/纯白无缝背景.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-bg/M3-T02/example-1",
+      "assetRef": "infra/examples/Model/BackgroundReplace/浅灰渐变棚拍.png",
+      "storageFileName": "changing-bg/m3-t02-example-1.png",
+      "title": "浅灰渐变棚拍",
+      "description": "Matched from infra/examples/Model/BackgroundReplace",
+      "tags": [
+        "template-example",
+        "changing-bg",
+        "M3-T02"
+      ],
+      "metadata": {
+        "templateCode": "M3-T02",
+        "templateName": "浅灰渐变棚拍",
+        "toolSlug": "changing-bg",
+        "exampleId": "m3_t02_example_1",
+        "assetRef": "infra/examples/Model/BackgroundReplace/浅灰渐变棚拍.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-bg/M3-T03/example-1",
+      "assetRef": "infra/examples/Model/BackgroundReplace/奶油米白简约.png",
+      "storageFileName": "changing-bg/m3-t03-example-1.png",
+      "title": "奶油米白简约",
+      "description": "Matched from infra/examples/Model/BackgroundReplace",
+      "tags": [
+        "template-example",
+        "changing-bg",
+        "M3-T03"
+      ],
+      "metadata": {
+        "templateCode": "M3-T03",
+        "templateName": "奶油米白简约",
+        "toolSlug": "changing-bg",
+        "exampleId": "m3_t03_example_1",
+        "assetRef": "infra/examples/Model/BackgroundReplace/奶油米白简约.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-bg/M3-T04/example-1",
+      "assetRef": "infra/examples/Model/BackgroundReplace/北欧木质室内.png",
+      "storageFileName": "changing-bg/m3-t04-example-1.png",
+      "title": "北欧木质室内",
+      "description": "Matched from infra/examples/Model/BackgroundReplace",
+      "tags": [
+        "template-example",
+        "changing-bg",
+        "M3-T04"
+      ],
+      "metadata": {
+        "templateCode": "M3-T04",
+        "templateName": "北欧木质室内",
+        "toolSlug": "changing-bg",
+        "exampleId": "m3_t04_example_1",
+        "assetRef": "infra/examples/Model/BackgroundReplace/北欧木质室内.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-bg/M3-T05/example-1",
+      "assetRef": "infra/examples/Model/BackgroundReplace/欧式奢华室内.png",
+      "storageFileName": "changing-bg/m3-t05-example-1.png",
+      "title": "欧式奢华室内",
+      "description": "Matched from infra/examples/Model/BackgroundReplace",
+      "tags": [
+        "template-example",
+        "changing-bg",
+        "M3-T05"
+      ],
+      "metadata": {
+        "templateCode": "M3-T05",
+        "templateName": "欧式奢华室内",
+        "toolSlug": "changing-bg",
+        "exampleId": "m3_t05_example_1",
+        "assetRef": "infra/examples/Model/BackgroundReplace/欧式奢华室内.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-bg/M3-T06/example-1",
+      "assetRef": "infra/examples/Model/BackgroundReplace/现代简约公寓.png",
+      "storageFileName": "changing-bg/m3-t06-example-1.png",
+      "title": "现代简约公寓",
+      "description": "Matched from infra/examples/Model/BackgroundReplace",
+      "tags": [
+        "template-example",
+        "changing-bg",
+        "M3-T06"
+      ],
+      "metadata": {
+        "templateCode": "M3-T06",
+        "templateName": "现代简约公寓",
+        "toolSlug": "changing-bg",
+        "exampleId": "m3_t06_example_1",
+        "assetRef": "infra/examples/Model/BackgroundReplace/现代简约公寓.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-bg/M3-T07/example-1",
+      "assetRef": "infra/examples/Model/BackgroundReplace/户外阳光草地.png",
+      "storageFileName": "changing-bg/m3-t07-example-1.png",
+      "title": "户外阳光草地",
+      "description": "Matched from infra/examples/Model/BackgroundReplace",
+      "tags": [
+        "template-example",
+        "changing-bg",
+        "M3-T07"
+      ],
+      "metadata": {
+        "templateCode": "M3-T07",
+        "templateName": "户外阳光草地",
+        "toolSlug": "changing-bg",
+        "exampleId": "m3_t07_example_1",
+        "assetRef": "infra/examples/Model/BackgroundReplace/户外阳光草地.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-bg/M3-T08/example-1",
+      "assetRef": "infra/examples/Model/BackgroundReplace/都市街头巷弄.png",
+      "storageFileName": "changing-bg/m3-t08-example-1.png",
+      "title": "都市街头巷弄",
+      "description": "Matched from infra/examples/Model/BackgroundReplace",
+      "tags": [
+        "template-example",
+        "changing-bg",
+        "M3-T08"
+      ],
+      "metadata": {
+        "templateCode": "M3-T08",
+        "templateName": "都市街头巷弄",
+        "toolSlug": "changing-bg",
+        "exampleId": "m3_t08_example_1",
+        "assetRef": "infra/examples/Model/BackgroundReplace/都市街头巷弄.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-bg/M3-T09/example-1",
+      "assetRef": "infra/examples/Model/BackgroundReplace/海滩度假场景.png",
+      "storageFileName": "changing-bg/m3-t09-example-1.png",
+      "title": "海滩度假场景",
+      "description": "Matched from infra/examples/Model/BackgroundReplace",
+      "tags": [
+        "template-example",
+        "changing-bg",
+        "M3-T09"
+      ],
+      "metadata": {
+        "templateCode": "M3-T09",
+        "templateName": "海滩度假场景",
+        "toolSlug": "changing-bg",
+        "exampleId": "m3_t09_example_1",
+        "assetRef": "infra/examples/Model/BackgroundReplace/海滩度假场景.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-bg/M3-T10/example-1",
+      "assetRef": "infra/examples/Model/BackgroundReplace/日本和风街道.png",
+      "storageFileName": "changing-bg/m3-t10-example-1.png",
+      "title": "日本和风街道",
+      "description": "Matched from infra/examples/Model/BackgroundReplace",
+      "tags": [
+        "template-example",
+        "changing-bg",
+        "M3-T10"
+      ],
+      "metadata": {
+        "templateCode": "M3-T10",
+        "templateName": "日本和风街道",
+        "toolSlug": "changing-bg",
+        "exampleId": "m3_t10_example_1",
+        "assetRef": "infra/examples/Model/BackgroundReplace/日本和风街道.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-bg/M3-T11/example-1",
+      "assetRef": "infra/examples/Model/BackgroundReplace/圣诞节日主题.png",
+      "storageFileName": "changing-bg/m3-t11-example-1.png",
+      "title": "圣诞节日主题",
+      "description": "Matched from infra/examples/Model/BackgroundReplace",
+      "tags": [
+        "template-example",
+        "changing-bg",
+        "M3-T11"
+      ],
+      "metadata": {
+        "templateCode": "M3-T11",
+        "templateName": "圣诞节日主题",
+        "toolSlug": "changing-bg",
+        "exampleId": "m3_t11_example_1",
+        "assetRef": "infra/examples/Model/BackgroundReplace/圣诞节日主题.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-bg/M3-T12/example-1",
+      "assetRef": "infra/examples/Model/BackgroundReplace/秋日森林户外.png",
+      "storageFileName": "changing-bg/m3-t12-example-1.png",
+      "title": "秋日森林户外",
+      "description": "Matched from infra/examples/Model/BackgroundReplace",
+      "tags": [
+        "template-example",
+        "changing-bg",
+        "M3-T12"
+      ],
+      "metadata": {
+        "templateCode": "M3-T12",
+        "templateName": "秋日森林户外",
+        "toolSlug": "changing-bg",
+        "exampleId": "m3_t12_example_1",
+        "assetRef": "infra/examples/Model/BackgroundReplace/秋日森林户外.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-bg/M3-T13/example-1",
+      "assetRef": "infra/examples/Model/BackgroundReplace/工作室艺术背景.png",
+      "storageFileName": "changing-bg/m3-t13-example-1.png",
+      "title": "工作室艺术背景",
+      "description": "Matched from infra/examples/Model/BackgroundReplace",
+      "tags": [
+        "template-example",
+        "changing-bg",
+        "M3-T13"
+      ],
+      "metadata": {
+        "templateCode": "M3-T13",
+        "templateName": "工作室艺术背景",
+        "toolSlug": "changing-bg",
+        "exampleId": "m3_t13_example_1",
+        "assetRef": "infra/examples/Model/BackgroundReplace/工作室艺术背景.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-bg/M3-T14/example-1",
+      "assetRef": "infra/examples/Model/BackgroundReplace/黑色高端背景.png",
+      "storageFileName": "changing-bg/m3-t14-example-1.png",
+      "title": "黑色高端背景",
+      "description": "Matched from infra/examples/Model/BackgroundReplace",
+      "tags": [
+        "template-example",
+        "changing-bg",
+        "M3-T14"
+      ],
+      "metadata": {
+        "templateCode": "M3-T14",
+        "templateName": "黑色高端背景",
+        "toolSlug": "changing-bg",
+        "exampleId": "m3_t14_example_1",
+        "assetRef": "infra/examples/Model/BackgroundReplace/黑色高端背景.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/changing-bg/M3-T15/example-1",
+      "assetRef": "infra/examples/Model/BackgroundReplace/粉色少女甜美背景.png",
+      "storageFileName": "changing-bg/m3-t15-example-1.png",
+      "title": "粉色少女甜美背景",
+      "description": "Matched from infra/examples/Model/BackgroundReplace",
+      "tags": [
+        "template-example",
+        "changing-bg",
+        "M3-T15"
+      ],
+      "metadata": {
+        "templateCode": "M3-T15",
+        "templateName": "粉色少女甜美背景",
+        "toolSlug": "changing-bg",
+        "exampleId": "m3_t15_example_1",
+        "assetRef": "infra/examples/Model/BackgroundReplace/粉色少女甜美背景.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-dressing/M4-T01/example-1",
+      "assetRef": "infra/examples/Model/VirtualTryOn/连衣裙穿搭效果.png",
+      "storageFileName": "ai-dressing/m4-t01-example-1.png",
+      "title": "连衣裙穿搭效果",
+      "description": "Matched from infra/examples/Model/VirtualTryOn",
+      "tags": [
+        "template-example",
+        "ai-dressing",
+        "M4-T01"
+      ],
+      "metadata": {
+        "templateCode": "M4-T01",
+        "templateName": "连衣裙穿搭效果",
+        "toolSlug": "ai-dressing",
+        "exampleId": "m4_t01_example_1",
+        "assetRef": "infra/examples/Model/VirtualTryOn/连衣裙穿搭效果.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-dressing/M4-T02/example-1",
+      "assetRef": "infra/examples/Model/VirtualTryOn/衬衫_上衣穿搭.png",
+      "storageFileName": "ai-dressing/m4-t02-example-1.png",
+      "title": "衬衫_上衣穿搭",
+      "description": "Matched from infra/examples/Model/VirtualTryOn",
+      "tags": [
+        "template-example",
+        "ai-dressing",
+        "M4-T02"
+      ],
+      "metadata": {
+        "templateCode": "M4-T02",
+        "templateName": "衬衫/上衣穿搭",
+        "toolSlug": "ai-dressing",
+        "exampleId": "m4_t02_example_1",
+        "assetRef": "infra/examples/Model/VirtualTryOn/衬衫_上衣穿搭.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-dressing/M4-T03/example-1",
+      "assetRef": "infra/examples/Model/VirtualTryOn/外套叠穿效果.png",
+      "storageFileName": "ai-dressing/m4-t03-example-1.png",
+      "title": "外套叠穿效果",
+      "description": "Matched from infra/examples/Model/VirtualTryOn",
+      "tags": [
+        "template-example",
+        "ai-dressing",
+        "M4-T03"
+      ],
+      "metadata": {
+        "templateCode": "M4-T03",
+        "templateName": "外套叠穿效果",
+        "toolSlug": "ai-dressing",
+        "exampleId": "m4_t03_example_1",
+        "assetRef": "infra/examples/Model/VirtualTryOn/外套叠穿效果.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-dressing/M4-T04/example-1",
+      "assetRef": "infra/examples/Model/VirtualTryOn/裤装穿搭效果.png",
+      "storageFileName": "ai-dressing/m4-t04-example-1.png",
+      "title": "裤装穿搭效果",
+      "description": "Matched from infra/examples/Model/VirtualTryOn",
+      "tags": [
+        "template-example",
+        "ai-dressing",
+        "M4-T04"
+      ],
+      "metadata": {
+        "templateCode": "M4-T04",
+        "templateName": "裤装穿搭效果",
+        "toolSlug": "ai-dressing",
+        "exampleId": "m4_t04_example_1",
+        "assetRef": "infra/examples/Model/VirtualTryOn/裤装穿搭效果.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-dressing/M4-T05/example-1",
+      "assetRef": "infra/examples/Model/VirtualTryOn/运动装备穿搭.png",
+      "storageFileName": "ai-dressing/m4-t05-example-1.png",
+      "title": "运动装备穿搭",
+      "description": "Matched from infra/examples/Model/VirtualTryOn",
+      "tags": [
+        "template-example",
+        "ai-dressing",
+        "M4-T05"
+      ],
+      "metadata": {
+        "templateCode": "M4-T05",
+        "templateName": "运动装备穿搭",
+        "toolSlug": "ai-dressing",
+        "exampleId": "m4_t05_example_1",
+        "assetRef": "infra/examples/Model/VirtualTryOn/运动装备穿搭.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-dressing/M4-T06/example-1",
+      "assetRef": "infra/examples/Model/VirtualTryOn/内衣_泳装穿搭.png",
+      "storageFileName": "ai-dressing/m4-t06-example-1.png",
+      "title": "内衣_泳装穿搭",
+      "description": "Matched from infra/examples/Model/VirtualTryOn",
+      "tags": [
+        "template-example",
+        "ai-dressing",
+        "M4-T06"
+      ],
+      "metadata": {
+        "templateCode": "M4-T06",
+        "templateName": "内衣/泳装穿搭",
+        "toolSlug": "ai-dressing",
+        "exampleId": "m4_t06_example_1",
+        "assetRef": "infra/examples/Model/VirtualTryOn/内衣_泳装穿搭.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-dressing/M4-T07/example-1",
+      "assetRef": "infra/examples/Model/VirtualTryOn/民族风_特色服装.png",
+      "storageFileName": "ai-dressing/m4-t07-example-1.png",
+      "title": "民族风_特色服装",
+      "description": "Matched from infra/examples/Model/VirtualTryOn",
+      "tags": [
+        "template-example",
+        "ai-dressing",
+        "M4-T07"
+      ],
+      "metadata": {
+        "templateCode": "M4-T07",
+        "templateName": "民族风/特色服装",
+        "toolSlug": "ai-dressing",
+        "exampleId": "m4_t07_example_1",
+        "assetRef": "infra/examples/Model/VirtualTryOn/民族风_特色服装.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-dressing/M4-T08/example-1",
+      "assetRef": "infra/examples/Model/VirtualTryOn/正装职场穿搭.png",
+      "storageFileName": "ai-dressing/m4-t08-example-1.png",
+      "title": "正装职场穿搭",
+      "description": "Matched from infra/examples/Model/VirtualTryOn",
+      "tags": [
+        "template-example",
+        "ai-dressing",
+        "M4-T08"
+      ],
+      "metadata": {
+        "templateCode": "M4-T08",
+        "templateName": "正装职场穿搭",
+        "toolSlug": "ai-dressing",
+        "exampleId": "m4_t08_example_1",
+        "assetRef": "infra/examples/Model/VirtualTryOn/正装职场穿搭.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-dressing/M4-T09/example-1",
+      "assetRef": "infra/examples/Model/VirtualTryOn/多色系同款对比.png",
+      "storageFileName": "ai-dressing/m4-t09-example-1.png",
+      "title": "多色系同款对比",
+      "description": "Matched from infra/examples/Model/VirtualTryOn",
+      "tags": [
+        "template-example",
+        "ai-dressing",
+        "M4-T09"
+      ],
+      "metadata": {
+        "templateCode": "M4-T09",
+        "templateName": "多色系同款对比",
+        "toolSlug": "ai-dressing",
+        "exampleId": "m4_t09_example_1",
+        "assetRef": "infra/examples/Model/VirtualTryOn/多色系同款对比.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-dressing/M4-T10/example-1",
+      "assetRef": "infra/examples/Model/VirtualTryOn/Flat-lay平铺转穿着.png",
+      "storageFileName": "ai-dressing/m4-t10-example-1.png",
+      "title": "Flat-lay平铺转穿着",
+      "description": "Matched from infra/examples/Model/VirtualTryOn",
+      "tags": [
+        "template-example",
+        "ai-dressing",
+        "M4-T10"
+      ],
+      "metadata": {
+        "templateCode": "M4-T10",
+        "templateName": "Flat-lay平铺转穿着",
+        "toolSlug": "ai-dressing",
+        "exampleId": "m4_t10_example_1",
+        "assetRef": "infra/examples/Model/VirtualTryOn/Flat-lay平铺转穿着.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-wearable/M5-T01/example-1",
+      "assetRef": "infra/examples/Model/AccessoriesOnModel/手表腕部展示.png",
+      "storageFileName": "ai-wearable/m5-t01-example-1.png",
+      "title": "手表腕部展示",
+      "description": "Matched from infra/examples/Model/AccessoriesOnModel",
+      "tags": [
+        "template-example",
+        "ai-wearable",
+        "M5-T01"
+      ],
+      "metadata": {
+        "templateCode": "M5-T01",
+        "templateName": "手表腕部展示",
+        "toolSlug": "ai-wearable",
+        "exampleId": "m5_t01_example_1",
+        "assetRef": "infra/examples/Model/AccessoriesOnModel/手表腕部展示.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-wearable/M5-T02/example-1",
+      "assetRef": "infra/examples/Model/AccessoriesOnModel/手表男士腕部.png",
+      "storageFileName": "ai-wearable/m5-t02-example-1.png",
+      "title": "手表男士腕部",
+      "description": "Matched from infra/examples/Model/AccessoriesOnModel",
+      "tags": [
+        "template-example",
+        "ai-wearable",
+        "M5-T02"
+      ],
+      "metadata": {
+        "templateCode": "M5-T02",
+        "templateName": "手表男士腕部",
+        "toolSlug": "ai-wearable",
+        "exampleId": "m5_t02_example_1",
+        "assetRef": "infra/examples/Model/AccessoriesOnModel/手表男士腕部.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-wearable/M5-T03/example-1",
+      "assetRef": "infra/examples/Model/AccessoriesOnModel/项链颈部展示.png",
+      "storageFileName": "ai-wearable/m5-t03-example-1.png",
+      "title": "项链颈部展示",
+      "description": "Matched from infra/examples/Model/AccessoriesOnModel",
+      "tags": [
+        "template-example",
+        "ai-wearable",
+        "M5-T03"
+      ],
+      "metadata": {
+        "templateCode": "M5-T03",
+        "templateName": "项链颈部展示",
+        "toolSlug": "ai-wearable",
+        "exampleId": "m5_t03_example_1",
+        "assetRef": "infra/examples/Model/AccessoriesOnModel/项链颈部展示.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-wearable/M5-T04/example-1",
+      "assetRef": "infra/examples/Model/AccessoriesOnModel/耳环特写展示.png",
+      "storageFileName": "ai-wearable/m5-t04-example-1.png",
+      "title": "耳环特写展示",
+      "description": "Matched from infra/examples/Model/AccessoriesOnModel",
+      "tags": [
+        "template-example",
+        "ai-wearable",
+        "M5-T04"
+      ],
+      "metadata": {
+        "templateCode": "M5-T04",
+        "templateName": "耳环特写展示",
+        "toolSlug": "ai-wearable",
+        "exampleId": "m5_t04_example_1",
+        "assetRef": "infra/examples/Model/AccessoriesOnModel/耳环特写展示.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-wearable/M5-T05/example-1",
+      "assetRef": "infra/examples/Model/AccessoriesOnModel/戒指手部特写.png",
+      "storageFileName": "ai-wearable/m5-t05-example-1.png",
+      "title": "戒指手部特写",
+      "description": "Matched from infra/examples/Model/AccessoriesOnModel",
+      "tags": [
+        "template-example",
+        "ai-wearable",
+        "M5-T05"
+      ],
+      "metadata": {
+        "templateCode": "M5-T05",
+        "templateName": "戒指手部特写",
+        "toolSlug": "ai-wearable",
+        "exampleId": "m5_t05_example_1",
+        "assetRef": "infra/examples/Model/AccessoriesOnModel/戒指手部特写.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-wearable/M5-T06/example-1",
+      "assetRef": "infra/examples/Model/AccessoriesOnModel/手链手镯展示.png",
+      "storageFileName": "ai-wearable/m5-t06-example-1.png",
+      "title": "手链手镯展示",
+      "description": "Matched from infra/examples/Model/AccessoriesOnModel",
+      "tags": [
+        "template-example",
+        "ai-wearable",
+        "M5-T06"
+      ],
+      "metadata": {
+        "templateCode": "M5-T06",
+        "templateName": "手链手镯展示",
+        "toolSlug": "ai-wearable",
+        "exampleId": "m5_t06_example_1",
+        "assetRef": "infra/examples/Model/AccessoriesOnModel/手链手镯展示.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-wearable/M5-T07/example-1",
+      "assetRef": "infra/examples/Model/AccessoriesOnModel/太阳镜上脸展示.png",
+      "storageFileName": "ai-wearable/m5-t07-example-1.png",
+      "title": "太阳镜上脸展示",
+      "description": "Matched from infra/examples/Model/AccessoriesOnModel",
+      "tags": [
+        "template-example",
+        "ai-wearable",
+        "M5-T07"
+      ],
+      "metadata": {
+        "templateCode": "M5-T07",
+        "templateName": "太阳镜上脸展示",
+        "toolSlug": "ai-wearable",
+        "exampleId": "m5_t07_example_1",
+        "assetRef": "infra/examples/Model/AccessoriesOnModel/太阳镜上脸展示.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-wearable/M5-T08/example-1",
+      "assetRef": "infra/examples/Model/AccessoriesOnModel/帽子上头展示.png",
+      "storageFileName": "ai-wearable/m5-t08-example-1.png",
+      "title": "帽子上头展示",
+      "description": "Matched from infra/examples/Model/AccessoriesOnModel",
+      "tags": [
+        "template-example",
+        "ai-wearable",
+        "M5-T08"
+      ],
+      "metadata": {
+        "templateCode": "M5-T08",
+        "templateName": "帽子上头展示",
+        "toolSlug": "ai-wearable",
+        "exampleId": "m5_t08_example_1",
+        "assetRef": "infra/examples/Model/AccessoriesOnModel/帽子上头展示.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-wearable/M5-T09/example-1",
+      "assetRef": "infra/examples/Model/AccessoriesOnModel/包袋肩背展示.png",
+      "storageFileName": "ai-wearable/m5-t09-example-1.png",
+      "title": "包袋肩背展示",
+      "description": "Matched from infra/examples/Model/AccessoriesOnModel",
+      "tags": [
+        "template-example",
+        "ai-wearable",
+        "M5-T09"
+      ],
+      "metadata": {
+        "templateCode": "M5-T09",
+        "templateName": "包袋肩背展示",
+        "toolSlug": "ai-wearable",
+        "exampleId": "m5_t09_example_1",
+        "assetRef": "infra/examples/Model/AccessoriesOnModel/包袋肩背展示.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-wearable/M5-T10/example-1",
+      "assetRef": "infra/examples/Model/AccessoriesOnModel/包袋腋下夹持.png",
+      "storageFileName": "ai-wearable/m5-t10-example-1.png",
+      "title": "包袋腋下夹持",
+      "description": "Matched from infra/examples/Model/AccessoriesOnModel",
+      "tags": [
+        "template-example",
+        "ai-wearable",
+        "M5-T10"
+      ],
+      "metadata": {
+        "templateCode": "M5-T10",
+        "templateName": "包袋腋下夹持",
+        "toolSlug": "ai-wearable",
+        "exampleId": "m5_t10_example_1",
+        "assetRef": "infra/examples/Model/AccessoriesOnModel/包袋腋下夹持.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-wearable/M5-T11/example-1",
+      "assetRef": "infra/examples/模特图系列/穿戴商品/模特图系列-穿戴商品-美容仪使用展示.png",
+      "storageFileName": "ai-wearable/m5-t11-example-1.png",
+      "title": "模特图系列-穿戴商品-美容仪使用展示",
+      "description": "Matched from infra/examples/模特图系列/穿戴商品",
+      "tags": [
+        "template-example",
+        "ai-wearable",
+        "M5-T11"
+      ],
+      "metadata": {
+        "templateCode": "M5-T11",
+        "templateName": "美容仪使用展示",
+        "toolSlug": "ai-wearable",
+        "exampleId": "m5_t11_example_1",
+        "assetRef": "infra/examples/模特图系列/穿戴商品/模特图系列-穿戴商品-美容仪使用展示.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-wearable/M5-T12/example-1",
+      "assetRef": "infra/examples/模特图系列/穿戴商品/模特图系列-穿戴商品-全身配饰搭配图.png",
+      "storageFileName": "ai-wearable/m5-t12-example-1.png",
+      "title": "模特图系列-穿戴商品-全身配饰搭配图",
+      "description": "Matched from infra/examples/模特图系列/穿戴商品",
+      "tags": [
+        "template-example",
+        "ai-wearable",
+        "M5-T12"
+      ],
+      "metadata": {
+        "templateCode": "M5-T12",
+        "templateName": "全身配饰搭配图",
+        "toolSlug": "ai-wearable",
+        "exampleId": "m5_t12_example_1",
+        "assetRef": "infra/examples/模特图系列/穿戴商品/模特图系列-穿戴商品-全身配饰搭配图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-posture/M6-T01/example-1",
+      "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-正面标准站姿.png",
+      "storageFileName": "ai-posture/m6-t01-example-1.png",
+      "title": "模特图系列-姿势裂变-正面标准站姿",
+      "description": "Matched from infra/examples/模特图系列/姿势裂变",
+      "tags": [
+        "template-example",
+        "ai-posture",
+        "M6-T01"
+      ],
+      "metadata": {
+        "templateCode": "M6-T01",
+        "templateName": "正面标准站姿",
+        "toolSlug": "ai-posture",
+        "exampleId": "m6_t01_example_1",
+        "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-正面标准站姿.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-posture/M6-T02/example-1",
+      "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-3_4侧身站姿.png",
+      "storageFileName": "ai-posture/m6-t02-example-1.png",
+      "title": "模特图系列-姿势裂变-3_4侧身站姿",
+      "description": "Matched from infra/examples/模特图系列/姿势裂变",
+      "tags": [
+        "template-example",
+        "ai-posture",
+        "M6-T02"
+      ],
+      "metadata": {
+        "templateCode": "M6-T02",
+        "templateName": "3/4侧身站姿",
+        "toolSlug": "ai-posture",
+        "exampleId": "m6_t02_example_1",
+        "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-3_4侧身站姿.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-posture/M6-T03/example-1",
+      "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-背面全展示.png",
+      "storageFileName": "ai-posture/m6-t03-example-1.png",
+      "title": "模特图系列-姿势裂变-背面全展示",
+      "description": "Matched from infra/examples/模特图系列/姿势裂变",
+      "tags": [
+        "template-example",
+        "ai-posture",
+        "M6-T03"
+      ],
+      "metadata": {
+        "templateCode": "M6-T03",
+        "templateName": "背面全展示",
+        "toolSlug": "ai-posture",
+        "exampleId": "m6_t03_example_1",
+        "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-背面全展示.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-posture/M6-T04/example-1",
+      "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-行走动态姿势.png",
+      "storageFileName": "ai-posture/m6-t04-example-1.png",
+      "title": "模特图系列-姿势裂变-行走动态姿势",
+      "description": "Matched from infra/examples/模特图系列/姿势裂变",
+      "tags": [
+        "template-example",
+        "ai-posture",
+        "M6-T04"
+      ],
+      "metadata": {
+        "templateCode": "M6-T04",
+        "templateName": "行走动态姿势",
+        "toolSlug": "ai-posture",
+        "exampleId": "m6_t04_example_1",
+        "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-行走动态姿势.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-posture/M6-T05/example-1",
+      "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-双手叉腰自信姿.png",
+      "storageFileName": "ai-posture/m6-t05-example-1.png",
+      "title": "模特图系列-姿势裂变-双手叉腰自信姿",
+      "description": "Matched from infra/examples/模特图系列/姿势裂变",
+      "tags": [
+        "template-example",
+        "ai-posture",
+        "M6-T05"
+      ],
+      "metadata": {
+        "templateCode": "M6-T05",
+        "templateName": "双手叉腰自信姿",
+        "toolSlug": "ai-posture",
+        "exampleId": "m6_t05_example_1",
+        "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-双手叉腰自信姿.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-posture/M6-T06/example-1",
+      "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-轻托下颌思考姿.png",
+      "storageFileName": "ai-posture/m6-t06-example-1.png",
+      "title": "模特图系列-姿势裂变-轻托下颌思考姿",
+      "description": "Matched from infra/examples/模特图系列/姿势裂变",
+      "tags": [
+        "template-example",
+        "ai-posture",
+        "M6-T06"
+      ],
+      "metadata": {
+        "templateCode": "M6-T06",
+        "templateName": "轻托下颌思考姿",
+        "toolSlug": "ai-posture",
+        "exampleId": "m6_t06_example_1",
+        "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-轻托下颌思考姿.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-posture/M6-T07/example-1",
+      "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-坐姿展示（椅_台阶）.png",
+      "storageFileName": "ai-posture/m6-t07-example-1.png",
+      "title": "模特图系列-姿势裂变-坐姿展示（椅_台阶）",
+      "description": "Matched from infra/examples/模特图系列/姿势裂变",
+      "tags": [
+        "template-example",
+        "ai-posture",
+        "M6-T07"
+      ],
+      "metadata": {
+        "templateCode": "M6-T07",
+        "templateName": "坐姿展示（椅/台阶）",
+        "toolSlug": "ai-posture",
+        "exampleId": "m6_t07_example_1",
+        "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-坐姿展示（椅_台阶）.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-posture/M6-T08/example-1",
+      "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-倚靠墙面姿势.png",
+      "storageFileName": "ai-posture/m6-t08-example-1.png",
+      "title": "模特图系列-姿势裂变-倚靠墙面姿势",
+      "description": "Matched from infra/examples/模特图系列/姿势裂变",
+      "tags": [
+        "template-example",
+        "ai-posture",
+        "M6-T08"
+      ],
+      "metadata": {
+        "templateCode": "M6-T08",
+        "templateName": "倚靠墙面姿势",
+        "toolSlug": "ai-posture",
+        "exampleId": "m6_t08_example_1",
+        "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-倚靠墙面姿势.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-posture/M6-T09/example-1",
+      "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-领口_上半身特写.png",
+      "storageFileName": "ai-posture/m6-t09-example-1.png",
+      "title": "模特图系列-姿势裂变-领口_上半身特写",
+      "description": "Matched from infra/examples/模特图系列/姿势裂变",
+      "tags": [
+        "template-example",
+        "ai-posture",
+        "M6-T09"
+      ],
+      "metadata": {
+        "templateCode": "M6-T09",
+        "templateName": "领口/上半身特写",
+        "toolSlug": "ai-posture",
+        "exampleId": "m6_t09_example_1",
+        "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-领口_上半身特写.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-posture/M6-T10/example-1",
+      "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-下半身裤装_裙摆特写.png",
+      "storageFileName": "ai-posture/m6-t10-example-1.png",
+      "title": "模特图系列-姿势裂变-下半身裤装_裙摆特写",
+      "description": "Matched from infra/examples/模特图系列/姿势裂变",
+      "tags": [
+        "template-example",
+        "ai-posture",
+        "M6-T10"
+      ],
+      "metadata": {
+        "templateCode": "M6-T10",
+        "templateName": "下半身裤装/裙摆特写",
+        "toolSlug": "ai-posture",
+        "exampleId": "m6_t10_example_1",
+        "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-下半身裤装_裙摆特写.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-posture/M6-T11/example-1",
+      "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-回眸肩侧角度.png",
+      "storageFileName": "ai-posture/m6-t11-example-1.png",
+      "title": "模特图系列-姿势裂变-回眸肩侧角度",
+      "description": "Matched from infra/examples/模特图系列/姿势裂变",
+      "tags": [
+        "template-example",
+        "ai-posture",
+        "M6-T11"
+      ],
+      "metadata": {
+        "templateCode": "M6-T11",
+        "templateName": "回眸肩侧角度",
+        "toolSlug": "ai-posture",
+        "exampleId": "m6_t11_example_1",
+        "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-回眸肩侧角度.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-posture/M6-T12/example-1",
+      "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-跳跃_活力动态.png",
+      "storageFileName": "ai-posture/m6-t12-example-1.png",
+      "title": "模特图系列-姿势裂变-跳跃_活力动态",
+      "description": "Matched from infra/examples/模特图系列/姿势裂变",
+      "tags": [
+        "template-example",
+        "ai-posture",
+        "M6-T12"
+      ],
+      "metadata": {
+        "templateCode": "M6-T12",
+        "templateName": "跳跃/活力动态",
+        "toolSlug": "ai-posture",
+        "exampleId": "m6_t12_example_1",
+        "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-跳跃_活力动态.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-product/P1-T01/example-1",
+      "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-极简白色大理石桌面.png",
+      "storageFileName": "ai-product/p1-t01-example-1.png",
+      "title": "商品图系列-商品场景合成-极简白色大理石桌面",
+      "description": "Matched from infra/examples/商品图系列/商品场景合成",
+      "tags": [
+        "template-example",
+        "ai-product",
+        "P1-T01"
+      ],
+      "metadata": {
+        "templateCode": "P1-T01",
+        "templateName": "极简白色大理石桌面",
+        "toolSlug": "ai-product",
+        "exampleId": "p1_t01_example_1",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-极简白色大理石桌面.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-product/P1-T02/example-1",
+      "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-暖调原木桌面.png",
+      "storageFileName": "ai-product/p1-t02-example-1.png",
+      "title": "商品图系列-商品场景合成-暖调原木桌面",
+      "description": "Matched from infra/examples/商品图系列/商品场景合成",
+      "tags": [
+        "template-example",
+        "ai-product",
+        "P1-T02"
+      ],
+      "metadata": {
+        "templateCode": "P1-T02",
+        "templateName": "暖调原木桌面",
+        "toolSlug": "ai-product",
+        "exampleId": "p1_t02_example_1",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-暖调原木桌面.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-product/P1-T03/example-1",
+      "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-深色深邃木质桌面.png",
+      "storageFileName": "ai-product/p1-t03-example-1.png",
+      "title": "商品图系列-商品场景合成-深色深邃木质桌面",
+      "description": "Matched from infra/examples/商品图系列/商品场景合成",
+      "tags": [
+        "template-example",
+        "ai-product",
+        "P1-T03"
+      ],
+      "metadata": {
+        "templateCode": "P1-T03",
+        "templateName": "深色深邃木质桌面",
+        "toolSlug": "ai-product",
+        "exampleId": "p1_t03_example_1",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-深色深邃木质桌面.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-product/P1-T04/example-1",
+      "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-浴室卫浴大理石台面.png",
+      "storageFileName": "ai-product/p1-t04-example-1.png",
+      "title": "商品图系列-商品场景合成-浴室卫浴大理石台面",
+      "description": "Matched from infra/examples/商品图系列/商品场景合成",
+      "tags": [
+        "template-example",
+        "ai-product",
+        "P1-T04"
+      ],
+      "metadata": {
+        "templateCode": "P1-T04",
+        "templateName": "浴室卫浴大理石台面",
+        "toolSlug": "ai-product",
+        "exampleId": "p1_t04_example_1",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-浴室卫浴大理石台面.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-product/P1-T05/example-1",
+      "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-户外野餐草地.png",
+      "storageFileName": "ai-product/p1-t05-example-1.png",
+      "title": "商品图系列-商品场景合成-户外野餐草地",
+      "description": "Matched from infra/examples/商品图系列/商品场景合成",
+      "tags": [
+        "template-example",
+        "ai-product",
+        "P1-T05"
+      ],
+      "metadata": {
+        "templateCode": "P1-T05",
+        "templateName": "户外野餐草地",
+        "toolSlug": "ai-product",
+        "exampleId": "p1_t05_example_1",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-户外野餐草地.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-product/P1-T06/example-1",
+      "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-科技感深色背景.png",
+      "storageFileName": "ai-product/p1-t06-example-1.png",
+      "title": "商品图系列-商品场景合成-科技感深色背景",
+      "description": "Matched from infra/examples/商品图系列/商品场景合成",
+      "tags": [
+        "template-example",
+        "ai-product",
+        "P1-T06"
+      ],
+      "metadata": {
+        "templateCode": "P1-T06",
+        "templateName": "科技感深色背景",
+        "toolSlug": "ai-product",
+        "exampleId": "p1_t06_example_1",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-科技感深色背景.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-product/P1-T07/example-1",
+      "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-奢华礼品包装场景.png",
+      "storageFileName": "ai-product/p1-t07-example-1.png",
+      "title": "商品图系列-商品场景合成-奢华礼品包装场景",
+      "description": "Matched from infra/examples/商品图系列/商品场景合成",
+      "tags": [
+        "template-example",
+        "ai-product",
+        "P1-T07"
+      ],
+      "metadata": {
+        "templateCode": "P1-T07",
+        "templateName": "奢华礼品包装场景",
+        "toolSlug": "ai-product",
+        "exampleId": "p1_t07_example_1",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-奢华礼品包装场景.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-product/P1-T08/example-1",
+      "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-厨房料理操作台.png",
+      "storageFileName": "ai-product/p1-t08-example-1.png",
+      "title": "商品图系列-商品场景合成-厨房料理操作台",
+      "description": "Matched from infra/examples/商品图系列/商品场景合成",
+      "tags": [
+        "template-example",
+        "ai-product",
+        "P1-T08"
+      ],
+      "metadata": {
+        "templateCode": "P1-T08",
+        "templateName": "厨房料理操作台",
+        "toolSlug": "ai-product",
+        "exampleId": "p1_t08_example_1",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-厨房料理操作台.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-product/P1-T09/example-1",
+      "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-书桌办公文具场景.png",
+      "storageFileName": "ai-product/p1-t09-example-1.png",
+      "title": "商品图系列-商品场景合成-书桌办公文具场景",
+      "description": "Matched from infra/examples/商品图系列/商品场景合成",
+      "tags": [
+        "template-example",
+        "ai-product",
+        "P1-T09"
+      ],
+      "metadata": {
+        "templateCode": "P1-T09",
+        "templateName": "书桌办公文具场景",
+        "toolSlug": "ai-product",
+        "exampleId": "p1_t09_example_1",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-书桌办公文具场景.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-product/P1-T10/example-1",
+      "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-咖啡馆吧台场景.png",
+      "storageFileName": "ai-product/p1-t10-example-1.png",
+      "title": "商品图系列-商品场景合成-咖啡馆吧台场景",
+      "description": "Matched from infra/examples/商品图系列/商品场景合成",
+      "tags": [
+        "template-example",
+        "ai-product",
+        "P1-T10"
+      ],
+      "metadata": {
+        "templateCode": "P1-T10",
+        "templateName": "咖啡馆吧台场景",
+        "toolSlug": "ai-product",
+        "exampleId": "p1_t10_example_1",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-咖啡馆吧台场景.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-product/P1-T11/example-1",
+      "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-水中漂浮效果.png",
+      "storageFileName": "ai-product/p1-t11-example-1.png",
+      "title": "商品图系列-商品场景合成-水中漂浮效果",
+      "description": "Matched from infra/examples/商品图系列/商品场景合成",
+      "tags": [
+        "template-example",
+        "ai-product",
+        "P1-T11"
+      ],
+      "metadata": {
+        "templateCode": "P1-T11",
+        "templateName": "水中漂浮效果",
+        "toolSlug": "ai-product",
+        "exampleId": "p1_t11_example_1",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-水中漂浮效果.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-product/P1-T12/example-1",
+      "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-冰雪冰镇场景.png",
+      "storageFileName": "ai-product/p1-t12-example-1.png",
+      "title": "商品图系列-商品场景合成-冰雪冰镇场景",
+      "description": "Matched from infra/examples/商品图系列/商品场景合成",
+      "tags": [
+        "template-example",
+        "ai-product",
+        "P1-T12"
+      ],
+      "metadata": {
+        "templateCode": "P1-T12",
+        "templateName": "冰雪冰镇场景",
+        "toolSlug": "ai-product",
+        "exampleId": "p1_t12_example_1",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-冰雪冰镇场景.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-product/P1-T13/example-1",
+      "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-花卉植物装饰场景.png",
+      "storageFileName": "ai-product/p1-t13-example-1.png",
+      "title": "商品图系列-商品场景合成-花卉植物装饰场景",
+      "description": "Matched from infra/examples/商品图系列/商品场景合成",
+      "tags": [
+        "template-example",
+        "ai-product",
+        "P1-T13"
+      ],
+      "metadata": {
+        "templateCode": "P1-T13",
+        "templateName": "花卉植物装饰场景",
+        "toolSlug": "ai-product",
+        "exampleId": "p1_t13_example_1",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-花卉植物装饰场景.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-product/P1-T14/example-1",
+      "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-节日圣诞场景.png",
+      "storageFileName": "ai-product/p1-t14-example-1.png",
+      "title": "商品图系列-商品场景合成-节日圣诞场景",
+      "description": "Matched from infra/examples/商品图系列/商品场景合成",
+      "tags": [
+        "template-example",
+        "ai-product",
+        "P1-T14"
+      ],
+      "metadata": {
+        "templateCode": "P1-T14",
+        "templateName": "节日圣诞场景",
+        "toolSlug": "ai-product",
+        "exampleId": "p1_t14_example_1",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-节日圣诞场景.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-product/P1-T15/example-1",
+      "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-樱花春日场景.png",
+      "storageFileName": "ai-product/p1-t15-example-1.png",
+      "title": "商品图系列-商品场景合成-樱花春日场景",
+      "description": "Matched from infra/examples/商品图系列/商品场景合成",
+      "tags": [
+        "template-example",
+        "ai-product",
+        "P1-T15"
+      ],
+      "metadata": {
+        "templateCode": "P1-T15",
+        "templateName": "樱花春日场景",
+        "toolSlug": "ai-product",
+        "exampleId": "p1_t15_example_1",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-樱花春日场景.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-product/P1-T16/example-1",
+      "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-健身运动场景.png",
+      "storageFileName": "ai-product/p1-t16-example-1.png",
+      "title": "商品图系列-商品场景合成-健身运动场景",
+      "description": "Matched from infra/examples/商品图系列/商品场景合成",
+      "tags": [
+        "template-example",
+        "ai-product",
+        "P1-T16"
+      ],
+      "metadata": {
+        "templateCode": "P1-T16",
+        "templateName": "健身运动场景",
+        "toolSlug": "ai-product",
+        "exampleId": "p1_t16_example_1",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-健身运动场景.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-product/P1-T17/example-1",
+      "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-旅行行李出行场景.png",
+      "storageFileName": "ai-product/p1-t17-example-1.png",
+      "title": "商品图系列-商品场景合成-旅行行李出行场景",
+      "description": "Matched from infra/examples/商品图系列/商品场景合成",
+      "tags": [
+        "template-example",
+        "ai-product",
+        "P1-T17"
+      ],
+      "metadata": {
+        "templateCode": "P1-T17",
+        "templateName": "旅行行李出行场景",
+        "toolSlug": "ai-product",
+        "exampleId": "p1_t17_example_1",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-旅行行李出行场景.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/ai-product/P1-T18/example-1",
+      "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-奢华珠宝展台.png",
+      "storageFileName": "ai-product/p1-t18-example-1.png",
+      "title": "商品图系列-商品场景合成-奢华珠宝展台",
+      "description": "Matched from infra/examples/商品图系列/商品场景合成",
+      "tags": [
+        "template-example",
+        "ai-product",
+        "P1-T18"
+      ],
+      "metadata": {
+        "templateCode": "P1-T18",
+        "templateName": "奢华珠宝展台",
+        "toolSlug": "ai-product",
+        "exampleId": "p1_t18_example_1",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-奢华珠宝展台.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-replacement/P2-T01/example-1",
+      "assetRef": "infra/examples/商品图系列/商品替换/商品图系列-商品替换-同款不同颜色SKU替换.png",
+      "storageFileName": "product-replacement/p2-t01-example-1.png",
+      "title": "商品图系列-商品替换-同款不同颜色SKU替换",
+      "description": "Matched from infra/examples/商品图系列/商品替换",
+      "tags": [
+        "template-example",
+        "product-replacement",
+        "P2-T01"
+      ],
+      "metadata": {
+        "templateCode": "P2-T01",
+        "templateName": "同款不同颜色SKU替换",
+        "toolSlug": "product-replacement",
+        "exampleId": "p2_t01_example_1",
+        "assetRef": "infra/examples/商品图系列/商品替换/商品图系列-商品替换-同款不同颜色SKU替换.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-replacement/P2-T02/example-1",
+      "assetRef": "infra/examples/商品图系列/商品替换/商品图系列-商品替换-同品类新品换入.png",
+      "storageFileName": "product-replacement/p2-t02-example-1.png",
+      "title": "商品图系列-商品替换-同品类新品换入",
+      "description": "Matched from infra/examples/商品图系列/商品替换",
+      "tags": [
+        "template-example",
+        "product-replacement",
+        "P2-T02"
+      ],
+      "metadata": {
+        "templateCode": "P2-T02",
+        "templateName": "同品类新品换入",
+        "toolSlug": "product-replacement",
+        "exampleId": "p2_t02_example_1",
+        "assetRef": "infra/examples/商品图系列/商品替换/商品图系列-商品替换-同品类新品换入.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-replacement/P2-T03/example-1",
+      "assetRef": "infra/examples/商品图系列/商品替换/商品图系列-商品替换-同场景批量SKU套图.png",
+      "storageFileName": "product-replacement/p2-t03-example-1.png",
+      "title": "商品图系列-商品替换-同场景批量SKU套图",
+      "description": "Matched from infra/examples/商品图系列/商品替换",
+      "tags": [
+        "template-example",
+        "product-replacement",
+        "P2-T03"
+      ],
+      "metadata": {
+        "templateCode": "P2-T03",
+        "templateName": "同场景批量SKU套图",
+        "toolSlug": "product-replacement",
+        "exampleId": "p2_t03_example_1",
+        "assetRef": "infra/examples/商品图系列/商品替换/商品图系列-商品替换-同场景批量SKU套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-replacement/P2-T04/example-1",
+      "assetRef": "infra/examples/商品图系列/商品替换/商品图系列-商品替换-节日限定换装.png",
+      "storageFileName": "product-replacement/p2-t04-example-1.png",
+      "title": "商品图系列-商品替换-节日限定换装",
+      "description": "Matched from infra/examples/商品图系列/商品替换",
+      "tags": [
+        "template-example",
+        "product-replacement",
+        "P2-T04"
+      ],
+      "metadata": {
+        "templateCode": "P2-T04",
+        "templateName": "节日限定换装",
+        "toolSlug": "product-replacement",
+        "exampleId": "p2_t04_example_1",
+        "assetRef": "infra/examples/商品图系列/商品替换/商品图系列-商品替换-节日限定换装.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-replacement/P2-T05/example-1",
+      "assetRef": "infra/examples/商品图系列/商品替换/商品图系列-商品替换-新品上市切换.png",
+      "storageFileName": "product-replacement/p2-t05-example-1.png",
+      "title": "商品图系列-商品替换-新品上市切换",
+      "description": "Matched from infra/examples/商品图系列/商品替换",
+      "tags": [
+        "template-example",
+        "product-replacement",
+        "P2-T05"
+      ],
+      "metadata": {
+        "templateCode": "P2-T05",
+        "templateName": "新品上市切换",
+        "toolSlug": "product-replacement",
+        "exampleId": "p2_t05_example_1",
+        "assetRef": "infra/examples/商品图系列/商品替换/商品图系列-商品替换-新品上市切换.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-replacement/P2-T06/example-1",
+      "assetRef": "infra/examples/商品图系列/商品替换/商品图系列-商品替换-多市场适配替换.png",
+      "storageFileName": "product-replacement/p2-t06-example-1.png",
+      "title": "商品图系列-商品替换-多市场适配替换",
+      "description": "Matched from infra/examples/商品图系列/商品替换",
+      "tags": [
+        "template-example",
+        "product-replacement",
+        "P2-T06"
+      ],
+      "metadata": {
+        "templateCode": "P2-T06",
+        "templateName": "多市场适配替换",
+        "toolSlug": "product-replacement",
+        "exampleId": "p2_t06_example_1",
+        "assetRef": "infra/examples/商品图系列/商品替换/商品图系列-商品替换-多市场适配替换.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-replacement/P2-T07/example-1",
+      "assetRef": "infra/examples/商品图系列/商品替换/商品图系列-商品替换-尺寸规格替换.png",
+      "storageFileName": "product-replacement/p2-t07-example-1.png",
+      "title": "商品图系列-商品替换-尺寸规格替换",
+      "description": "Matched from infra/examples/商品图系列/商品替换",
+      "tags": [
+        "template-example",
+        "product-replacement",
+        "P2-T07"
+      ],
+      "metadata": {
+        "templateCode": "P2-T07",
+        "templateName": "尺寸规格替换",
+        "toolSlug": "product-replacement",
+        "exampleId": "p2_t07_example_1",
+        "assetRef": "infra/examples/商品图系列/商品替换/商品图系列-商品替换-尺寸规格替换.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-replacement/P2-T08/example-1",
+      "assetRef": "infra/examples/商品图系列/商品替换/商品图系列-商品替换-白底场景互换.png",
+      "storageFileName": "product-replacement/p2-t08-example-1.png",
+      "title": "商品图系列-商品替换-白底场景互换",
+      "description": "Matched from infra/examples/商品图系列/商品替换",
+      "tags": [
+        "template-example",
+        "product-replacement",
+        "P2-T08"
+      ],
+      "metadata": {
+        "templateCode": "P2-T08",
+        "templateName": "白底场景互换",
+        "toolSlug": "product-replacement",
+        "exampleId": "p2_t08_example_1",
+        "assetRef": "infra/examples/商品图系列/商品替换/商品图系列-商品替换-白底场景互换.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/image-fission/P3-T01/example-1",
+      "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-经典6场景裂变套装.png",
+      "storageFileName": "image-fission/p3-t01-example-1.png",
+      "title": "商品图系列-场景裂变-经典6场景裂变套装",
+      "description": "Matched from infra/examples/商品图系列/场景裂变",
+      "tags": [
+        "template-example",
+        "image-fission",
+        "P3-T01"
+      ],
+      "metadata": {
+        "templateCode": "P3-T01",
+        "templateName": "经典6场景裂变套装",
+        "toolSlug": "image-fission",
+        "exampleId": "p3_t01_example_1",
+        "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-经典6场景裂变套装.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/image-fission/P3-T02/example-1",
+      "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-节日营销8场景套装.png",
+      "storageFileName": "image-fission/p3-t02-example-1.png",
+      "title": "商品图系列-场景裂变-节日营销8场景套装",
+      "description": "Matched from infra/examples/商品图系列/场景裂变",
+      "tags": [
+        "template-example",
+        "image-fission",
+        "P3-T02"
+      ],
+      "metadata": {
+        "templateCode": "P3-T02",
+        "templateName": "节日营销8场景套装",
+        "toolSlug": "image-fission",
+        "exampleId": "p3_t02_example_1",
+        "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-节日营销8场景套装.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/image-fission/P3-T03/example-1",
+      "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-多市场场景适配套装.png",
+      "storageFileName": "image-fission/p3-t03-example-1.png",
+      "title": "商品图系列-场景裂变-多市场场景适配套装",
+      "description": "Matched from infra/examples/商品图系列/场景裂变",
+      "tags": [
+        "template-example",
+        "image-fission",
+        "P3-T03"
+      ],
+      "metadata": {
+        "templateCode": "P3-T03",
+        "templateName": "多市场场景适配套装",
+        "toolSlug": "image-fission",
+        "exampleId": "p3_t03_example_1",
+        "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-多市场场景适配套装.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/image-fission/P3-T04/example-1",
+      "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-四季场景套装.png",
+      "storageFileName": "image-fission/p3-t04-example-1.png",
+      "title": "商品图系列-场景裂变-四季场景套装",
+      "description": "Matched from infra/examples/商品图系列/场景裂变",
+      "tags": [
+        "template-example",
+        "image-fission",
+        "P3-T04"
+      ],
+      "metadata": {
+        "templateCode": "P3-T04",
+        "templateName": "四季场景套装",
+        "toolSlug": "image-fission",
+        "exampleId": "p3_t04_example_1",
+        "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-四季场景套装.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/image-fission/P3-T05/example-1",
+      "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-不同使用场景套装.png",
+      "storageFileName": "image-fission/p3-t05-example-1.png",
+      "title": "商品图系列-场景裂变-不同使用场景套装",
+      "description": "Matched from infra/examples/商品图系列/场景裂变",
+      "tags": [
+        "template-example",
+        "image-fission",
+        "P3-T05"
+      ],
+      "metadata": {
+        "templateCode": "P3-T05",
+        "templateName": "不同使用场景套装",
+        "toolSlug": "image-fission",
+        "exampleId": "p3_t05_example_1",
+        "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-不同使用场景套装.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/image-fission/P3-T06/example-1",
+      "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-色调风格裂变套装.png",
+      "storageFileName": "image-fission/p3-t06-example-1.png",
+      "title": "商品图系列-场景裂变-色调风格裂变套装",
+      "description": "Matched from infra/examples/商品图系列/场景裂变",
+      "tags": [
+        "template-example",
+        "image-fission",
+        "P3-T06"
+      ],
+      "metadata": {
+        "templateCode": "P3-T06",
+        "templateName": "色调风格裂变套装",
+        "toolSlug": "image-fission",
+        "exampleId": "p3_t06_example_1",
+        "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-色调风格裂变套装.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/image-fission/P3-T07/example-1",
+      "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-社媒平台适配套装.png",
+      "storageFileName": "image-fission/p3-t07-example-1.png",
+      "title": "商品图系列-场景裂变-社媒平台适配套装",
+      "description": "Matched from infra/examples/商品图系列/场景裂变",
+      "tags": [
+        "template-example",
+        "image-fission",
+        "P3-T07"
+      ],
+      "metadata": {
+        "templateCode": "P3-T07",
+        "templateName": "社媒平台适配套装",
+        "toolSlug": "image-fission",
+        "exampleId": "p3_t07_example_1",
+        "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-社媒平台适配套装.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/image-fission/P3-T08/example-1",
+      "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-高端vs平价双风格.png",
+      "storageFileName": "image-fission/p3-t08-example-1.png",
+      "title": "商品图系列-场景裂变-高端vs平价双风格",
+      "description": "Matched from infra/examples/商品图系列/场景裂变",
+      "tags": [
+        "template-example",
+        "image-fission",
+        "P3-T08"
+      ],
+      "metadata": {
+        "templateCode": "P3-T08",
+        "templateName": "高端vs平价双风格",
+        "toolSlug": "image-fission",
+        "exampleId": "p3_t08_example_1",
+        "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-高端vs平价双风格.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/image-fission/P3-T09/example-1",
+      "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-竖图详情页场景套.png",
+      "storageFileName": "image-fission/p3-t09-example-1.png",
+      "title": "商品图系列-场景裂变-竖图详情页场景套",
+      "description": "Matched from infra/examples/商品图系列/场景裂变",
+      "tags": [
+        "template-example",
+        "image-fission",
+        "P3-T09"
+      ],
+      "metadata": {
+        "templateCode": "P3-T09",
+        "templateName": "竖图详情页场景套",
+        "toolSlug": "image-fission",
+        "exampleId": "p3_t09_example_1",
+        "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-竖图详情页场景套.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/image-fission/P3-T10/example-1",
+      "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-平台活动主题裂变.png",
+      "storageFileName": "image-fission/p3-t10-example-1.png",
+      "title": "商品图系列-场景裂变-平台活动主题裂变",
+      "description": "Matched from infra/examples/商品图系列/场景裂变",
+      "tags": [
+        "template-example",
+        "image-fission",
+        "P3-T10"
+      ],
+      "metadata": {
+        "templateCode": "P3-T10",
+        "templateName": "平台活动主题裂变",
+        "toolSlug": "image-fission",
+        "exampleId": "p3_t10_example_1",
+        "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-平台活动主题裂变.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/scene-image/P4-T01/example-1",
+      "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-极简白色大理石台面素材.png",
+      "storageFileName": "scene-image/p4-t01-example-1.png",
+      "title": "商品图系列-场景素材生成-极简白色大理石台面素材",
+      "description": "Matched from infra/examples/商品图系列/场景素材生成",
+      "tags": [
+        "template-example",
+        "scene-image",
+        "P4-T01"
+      ],
+      "metadata": {
+        "templateCode": "P4-T01",
+        "templateName": "极简白色大理石台面素材",
+        "toolSlug": "scene-image",
+        "exampleId": "p4_t01_example_1",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-极简白色大理石台面素材.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/scene-image/P4-T02/example-1",
+      "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-暖调北欧原木台面素材.png",
+      "storageFileName": "scene-image/p4-t02-example-1.png",
+      "title": "商品图系列-场景素材生成-暖调北欧原木台面素材",
+      "description": "Matched from infra/examples/商品图系列/场景素材生成",
+      "tags": [
+        "template-example",
+        "scene-image",
+        "P4-T02"
+      ],
+      "metadata": {
+        "templateCode": "P4-T02",
+        "templateName": "暖调北欧原木台面素材",
+        "toolSlug": "scene-image",
+        "exampleId": "p4_t02_example_1",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-暖调北欧原木台面素材.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/scene-image/P4-T03/example-1",
+      "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-深色胡桃木台面素材.png",
+      "storageFileName": "scene-image/p4-t03-example-1.png",
+      "title": "商品图系列-场景素材生成-深色胡桃木台面素材",
+      "description": "Matched from infra/examples/商品图系列/场景素材生成",
+      "tags": [
+        "template-example",
+        "scene-image",
+        "P4-T03"
+      ],
+      "metadata": {
+        "templateCode": "P4-T03",
+        "templateName": "深色胡桃木台面素材",
+        "toolSlug": "scene-image",
+        "exampleId": "p4_t03_example_1",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-深色胡桃木台面素材.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/scene-image/P4-T04/example-1",
+      "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-白色浴室卫浴台面素材.png",
+      "storageFileName": "scene-image/p4-t04-example-1.png",
+      "title": "商品图系列-场景素材生成-白色浴室卫浴台面素材",
+      "description": "Matched from infra/examples/商品图系列/场景素材生成",
+      "tags": [
+        "template-example",
+        "scene-image",
+        "P4-T04"
+      ],
+      "metadata": {
+        "templateCode": "P4-T04",
+        "templateName": "白色浴室卫浴台面素材",
+        "toolSlug": "scene-image",
+        "exampleId": "p4_t04_example_1",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-白色浴室卫浴台面素材.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/scene-image/P4-T05/example-1",
+      "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-户外草地野餐素材.png",
+      "storageFileName": "scene-image/p4-t05-example-1.png",
+      "title": "商品图系列-场景素材生成-户外草地野餐素材",
+      "description": "Matched from infra/examples/商品图系列/场景素材生成",
+      "tags": [
+        "template-example",
+        "scene-image",
+        "P4-T05"
+      ],
+      "metadata": {
+        "templateCode": "P4-T05",
+        "templateName": "户外草地野餐素材",
+        "toolSlug": "scene-image",
+        "exampleId": "p4_t05_example_1",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-户外草地野餐素材.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/scene-image/P4-T06/example-1",
+      "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-科技感深色背景素材.png",
+      "storageFileName": "scene-image/p4-t06-example-1.png",
+      "title": "商品图系列-场景素材生成-科技感深色背景素材",
+      "description": "Matched from infra/examples/商品图系列/场景素材生成",
+      "tags": [
+        "template-example",
+        "scene-image",
+        "P4-T06"
+      ],
+      "metadata": {
+        "templateCode": "P4-T06",
+        "templateName": "科技感深色背景素材",
+        "toolSlug": "scene-image",
+        "exampleId": "p4_t06_example_1",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-科技感深色背景素材.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/scene-image/P4-T07/example-1",
+      "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-圣诞节日场景素材.png",
+      "storageFileName": "scene-image/p4-t07-example-1.png",
+      "title": "商品图系列-场景素材生成-圣诞节日场景素材",
+      "description": "Matched from infra/examples/商品图系列/场景素材生成",
+      "tags": [
+        "template-example",
+        "scene-image",
+        "P4-T07"
+      ],
+      "metadata": {
+        "templateCode": "P4-T07",
+        "templateName": "圣诞节日场景素材",
+        "toolSlug": "scene-image",
+        "exampleId": "p4_t07_example_1",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-圣诞节日场景素材.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/scene-image/P4-T08/example-1",
+      "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-樱花春日场景素材.png",
+      "storageFileName": "scene-image/p4-t08-example-1.png",
+      "title": "商品图系列-场景素材生成-樱花春日场景素材",
+      "description": "Matched from infra/examples/商品图系列/场景素材生成",
+      "tags": [
+        "template-example",
+        "scene-image",
+        "P4-T08"
+      ],
+      "metadata": {
+        "templateCode": "P4-T08",
+        "templateName": "樱花春日场景素材",
+        "toolSlug": "scene-image",
+        "exampleId": "p4_t08_example_1",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-樱花春日场景素材.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/scene-image/P4-T09/example-1",
+      "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-花卉植物装饰背景素材.png",
+      "storageFileName": "scene-image/p4-t09-example-1.png",
+      "title": "商品图系列-场景素材生成-花卉植物装饰背景素材",
+      "description": "Matched from infra/examples/商品图系列/场景素材生成",
+      "tags": [
+        "template-example",
+        "scene-image",
+        "P4-T09"
+      ],
+      "metadata": {
+        "templateCode": "P4-T09",
+        "templateName": "花卉植物装饰背景素材",
+        "toolSlug": "scene-image",
+        "exampleId": "p4_t09_example_1",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-花卉植物装饰背景素材.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/scene-image/P4-T10/example-1",
+      "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-厨房操作台场景素材.png",
+      "storageFileName": "scene-image/p4-t10-example-1.png",
+      "title": "商品图系列-场景素材生成-厨房操作台场景素材",
+      "description": "Matched from infra/examples/商品图系列/场景素材生成",
+      "tags": [
+        "template-example",
+        "scene-image",
+        "P4-T10"
+      ],
+      "metadata": {
+        "templateCode": "P4-T10",
+        "templateName": "厨房操作台场景素材",
+        "toolSlug": "scene-image",
+        "exampleId": "p4_t10_example_1",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-厨房操作台场景素材.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/scene-image/P4-T11/example-1",
+      "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-深色天鹅绒珠宝背景素材.png",
+      "storageFileName": "scene-image/p4-t11-example-1.png",
+      "title": "商品图系列-场景素材生成-深色天鹅绒珠宝背景素材",
+      "description": "Matched from infra/examples/商品图系列/场景素材生成",
+      "tags": [
+        "template-example",
+        "scene-image",
+        "P4-T11"
+      ],
+      "metadata": {
+        "templateCode": "P4-T11",
+        "templateName": "深色天鹅绒珠宝背景素材",
+        "toolSlug": "scene-image",
+        "exampleId": "p4_t11_example_1",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-深色天鹅绒珠宝背景素材.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/scene-image/P4-T12/example-1",
+      "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-书桌文具办公场景素材.png",
+      "storageFileName": "scene-image/p4-t12-example-1.png",
+      "title": "商品图系列-场景素材生成-书桌文具办公场景素材",
+      "description": "Matched from infra/examples/商品图系列/场景素材生成",
+      "tags": [
+        "template-example",
+        "scene-image",
+        "P4-T12"
+      ],
+      "metadata": {
+        "templateCode": "P4-T12",
+        "templateName": "书桌文具办公场景素材",
+        "toolSlug": "scene-image",
+        "exampleId": "p4_t12_example_1",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-书桌文具办公场景素材.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/scene-image/P4-T13/example-1",
+      "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-户外石板_地面场景素材.png",
+      "storageFileName": "scene-image/p4-t13-example-1.png",
+      "title": "商品图系列-场景素材生成-户外石板_地面场景素材",
+      "description": "Matched from infra/examples/商品图系列/场景素材生成",
+      "tags": [
+        "template-example",
+        "scene-image",
+        "P4-T13"
+      ],
+      "metadata": {
+        "templateCode": "P4-T13",
+        "templateName": "户外石板/地面场景素材",
+        "toolSlug": "scene-image",
+        "exampleId": "p4_t13_example_1",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-户外石板_地面场景素材.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/scene-image/P4-T14/example-1",
+      "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-粉色甜美场景素材.png",
+      "storageFileName": "scene-image/p4-t14-example-1.png",
+      "title": "商品图系列-场景素材生成-粉色甜美场景素材",
+      "description": "Matched from infra/examples/商品图系列/场景素材生成",
+      "tags": [
+        "template-example",
+        "scene-image",
+        "P4-T14"
+      ],
+      "metadata": {
+        "templateCode": "P4-T14",
+        "templateName": "粉色甜美场景素材",
+        "toolSlug": "scene-image",
+        "exampleId": "p4_t14_example_1",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-粉色甜美场景素材.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/handheld-goods/P5-T01/example-1",
+      "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-单手正面握持展示.png",
+      "storageFileName": "handheld-goods/p5-t01-example-1.png",
+      "title": "商品图系列-手持商品-单手正面握持展示",
+      "description": "Matched from infra/examples/商品图系列/手持商品",
+      "tags": [
+        "template-example",
+        "handheld-goods",
+        "P5-T01"
+      ],
+      "metadata": {
+        "templateCode": "P5-T01",
+        "templateName": "单手正面握持展示",
+        "toolSlug": "handheld-goods",
+        "exampleId": "p5_t01_example_1",
+        "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-单手正面握持展示.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/handheld-goods/P5-T02/example-1",
+      "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-双手轻捧展示.png",
+      "storageFileName": "handheld-goods/p5-t02-example-1.png",
+      "title": "商品图系列-手持商品-双手轻捧展示",
+      "description": "Matched from infra/examples/商品图系列/手持商品",
+      "tags": [
+        "template-example",
+        "handheld-goods",
+        "P5-T02"
+      ],
+      "metadata": {
+        "templateCode": "P5-T02",
+        "templateName": "双手轻捧展示",
+        "toolSlug": "handheld-goods",
+        "exampleId": "p5_t02_example_1",
+        "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-双手轻捧展示.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/handheld-goods/P5-T03/example-1",
+      "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-开盖_开封互动展示.png",
+      "storageFileName": "handheld-goods/p5-t03-example-1.png",
+      "title": "商品图系列-手持商品-开盖_开封互动展示",
+      "description": "Matched from infra/examples/商品图系列/手持商品",
+      "tags": [
+        "template-example",
+        "handheld-goods",
+        "P5-T03"
+      ],
+      "metadata": {
+        "templateCode": "P5-T03",
+        "templateName": "开盖/开封互动展示",
+        "toolSlug": "handheld-goods",
+        "exampleId": "p5_t03_example_1",
+        "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-开盖_开封互动展示.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/handheld-goods/P5-T04/example-1",
+      "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-涂抹_使用中状态.png",
+      "storageFileName": "handheld-goods/p5-t04-example-1.png",
+      "title": "商品图系列-手持商品-涂抹_使用中状态",
+      "description": "Matched from infra/examples/商品图系列/手持商品",
+      "tags": [
+        "template-example",
+        "handheld-goods",
+        "P5-T04"
+      ],
+      "metadata": {
+        "templateCode": "P5-T04",
+        "templateName": "涂抹/使用中状态",
+        "toolSlug": "handheld-goods",
+        "exampleId": "p5_t04_example_1",
+        "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-涂抹_使用中状态.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/handheld-goods/P5-T05/example-1",
+      "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-男性手持商品展示.png",
+      "storageFileName": "handheld-goods/p5-t05-example-1.png",
+      "title": "商品图系列-手持商品-男性手持商品展示",
+      "description": "Matched from infra/examples/商品图系列/手持商品",
+      "tags": [
+        "template-example",
+        "handheld-goods",
+        "P5-T05"
+      ],
+      "metadata": {
+        "templateCode": "P5-T05",
+        "templateName": "男性手持商品展示",
+        "toolSlug": "handheld-goods",
+        "exampleId": "p5_t05_example_1",
+        "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-男性手持商品展示.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/handheld-goods/P5-T06/example-1",
+      "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-包袋手提展示.png",
+      "storageFileName": "handheld-goods/p5-t06-example-1.png",
+      "title": "商品图系列-手持商品-包袋手提展示",
+      "description": "Matched from infra/examples/商品图系列/手持商品",
+      "tags": [
+        "template-example",
+        "handheld-goods",
+        "P5-T06"
+      ],
+      "metadata": {
+        "templateCode": "P5-T06",
+        "templateName": "包袋手提展示",
+        "toolSlug": "handheld-goods",
+        "exampleId": "p5_t06_example_1",
+        "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-包袋手提展示.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/handheld-goods/P5-T07/example-1",
+      "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-手机_数码产品手持.png",
+      "storageFileName": "handheld-goods/p5-t07-example-1.png",
+      "title": "商品图系列-手持商品-手机_数码产品手持",
+      "description": "Matched from infra/examples/商品图系列/手持商品",
+      "tags": [
+        "template-example",
+        "handheld-goods",
+        "P5-T07"
+      ],
+      "metadata": {
+        "templateCode": "P5-T07",
+        "templateName": "手机/数码产品手持",
+        "toolSlug": "handheld-goods",
+        "exampleId": "p5_t07_example_1",
+        "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-手机_数码产品手持.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/handheld-goods/P5-T08/example-1",
+      "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-饮品瓶_杯手持.png",
+      "storageFileName": "handheld-goods/p5-t08-example-1.png",
+      "title": "商品图系列-手持商品-饮品瓶_杯手持",
+      "description": "Matched from infra/examples/商品图系列/手持商品",
+      "tags": [
+        "template-example",
+        "handheld-goods",
+        "P5-T08"
+      ],
+      "metadata": {
+        "templateCode": "P5-T08",
+        "templateName": "饮品瓶/杯手持",
+        "toolSlug": "handheld-goods",
+        "exampleId": "p5_t08_example_1",
+        "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-饮品瓶_杯手持.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/handheld-goods/P5-T09/example-1",
+      "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-礼盒礼品手捧.png",
+      "storageFileName": "handheld-goods/p5-t09-example-1.png",
+      "title": "商品图系列-手持商品-礼盒礼品手捧",
+      "description": "Matched from infra/examples/商品图系列/手持商品",
+      "tags": [
+        "template-example",
+        "handheld-goods",
+        "P5-T09"
+      ],
+      "metadata": {
+        "templateCode": "P5-T09",
+        "templateName": "礼盒礼品手捧",
+        "toolSlug": "handheld-goods",
+        "exampleId": "p5_t09_example_1",
+        "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-礼盒礼品手捧.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/handheld-goods/P5-T10/example-1",
+      "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-书籍_笔记本手持.png",
+      "storageFileName": "handheld-goods/p5-t10-example-1.png",
+      "title": "商品图系列-手持商品-书籍_笔记本手持",
+      "description": "Matched from infra/examples/商品图系列/手持商品",
+      "tags": [
+        "template-example",
+        "handheld-goods",
+        "P5-T10"
+      ],
+      "metadata": {
+        "templateCode": "P5-T10",
+        "templateName": "书籍/笔记本手持",
+        "toolSlug": "handheld-goods",
+        "exampleId": "p5_t10_example_1",
+        "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-书籍_笔记本手持.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/handheld-goods/P5-T11/example-1",
+      "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-护肤品滴管_喷雾展示.png",
+      "storageFileName": "handheld-goods/p5-t11-example-1.png",
+      "title": "商品图系列-手持商品-护肤品滴管_喷雾展示",
+      "description": "Matched from infra/examples/商品图系列/手持商品",
+      "tags": [
+        "template-example",
+        "handheld-goods",
+        "P5-T11"
+      ],
+      "metadata": {
+        "templateCode": "P5-T11",
+        "templateName": "护肤品滴管/喷雾展示",
+        "toolSlug": "handheld-goods",
+        "exampleId": "p5_t11_example_1",
+        "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-护肤品滴管_喷雾展示.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/handheld-goods/P5-T12/example-1",
+      "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-多产品并列手持组合.png",
+      "storageFileName": "handheld-goods/p5-t12-example-1.png",
+      "title": "商品图系列-手持商品-多产品并列手持组合",
+      "description": "Matched from infra/examples/商品图系列/手持商品",
+      "tags": [
+        "template-example",
+        "handheld-goods",
+        "P5-T12"
+      ],
+      "metadata": {
+        "templateCode": "P5-T12",
+        "templateName": "多产品并列手持组合",
+        "toolSlug": "handheld-goods",
+        "exampleId": "p5_t12_example_1",
+        "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-多产品并列手持组合.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-refine/P6-T01/example-1",
+      "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-亚马逊主图规范精修.png",
+      "storageFileName": "product-refine/p6-t01-example-1.png",
+      "title": "商品图系列-商品精修-亚马逊主图规范精修",
+      "description": "Matched from infra/examples/商品图系列/商品精修",
+      "tags": [
+        "template-example",
+        "product-refine",
+        "P6-T01"
+      ],
+      "metadata": {
+        "templateCode": "P6-T01",
+        "templateName": "亚马逊主图规范精修",
+        "toolSlug": "product-refine",
+        "exampleId": "p6_t01_example_1",
+        "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-亚马逊主图规范精修.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-refine/P6-T02/example-1",
+      "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-eBay_Etsy商品图精修.png",
+      "storageFileName": "product-refine/p6-t02-example-1.png",
+      "title": "商品图系列-商品精修-eBay_Etsy商品图精修",
+      "description": "Matched from infra/examples/商品图系列/商品精修",
+      "tags": [
+        "template-example",
+        "product-refine",
+        "P6-T02"
+      ],
+      "metadata": {
+        "templateCode": "P6-T02",
+        "templateName": "eBay/Etsy商品图精修",
+        "toolSlug": "product-refine",
+        "exampleId": "p6_t02_example_1",
+        "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-eBay_Etsy商品图精修.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-refine/P6-T03/example-1",
+      "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-颜色精准校正精修.png",
+      "storageFileName": "product-refine/p6-t03-example-1.png",
+      "title": "商品图系列-商品精修-颜色精准校正精修",
+      "description": "Matched from infra/examples/商品图系列/商品精修",
+      "tags": [
+        "template-example",
+        "product-refine",
+        "P6-T03"
+      ],
+      "metadata": {
+        "templateCode": "P6-T03",
+        "templateName": "颜色精准校正精修",
+        "toolSlug": "product-refine",
+        "exampleId": "p6_t03_example_1",
+        "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-颜色精准校正精修.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-refine/P6-T04/example-1",
+      "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-金属材质高光精修.png",
+      "storageFileName": "product-refine/p6-t04-example-1.png",
+      "title": "商品图系列-商品精修-金属材质高光精修",
+      "description": "Matched from infra/examples/商品图系列/商品精修",
+      "tags": [
+        "template-example",
+        "product-refine",
+        "P6-T04"
+      ],
+      "metadata": {
+        "templateCode": "P6-T04",
+        "templateName": "金属材质高光精修",
+        "toolSlug": "product-refine",
+        "exampleId": "p6_t04_example_1",
+        "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-金属材质高光精修.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-refine/P6-T05/example-1",
+      "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-皮革_织物材质精修.png",
+      "storageFileName": "product-refine/p6-t05-example-1.png",
+      "title": "商品图系列-商品精修-皮革_织物材质精修",
+      "description": "Matched from infra/examples/商品图系列/商品精修",
+      "tags": [
+        "template-example",
+        "product-refine",
+        "P6-T05"
+      ],
+      "metadata": {
+        "templateCode": "P6-T05",
+        "templateName": "皮革/织物材质精修",
+        "toolSlug": "product-refine",
+        "exampleId": "p6_t05_example_1",
+        "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-皮革_织物材质精修.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-refine/P6-T06/example-1",
+      "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-玻璃_透明材质精修.png",
+      "storageFileName": "product-refine/p6-t06-example-1.png",
+      "title": "商品图系列-商品精修-玻璃_透明材质精修",
+      "description": "Matched from infra/examples/商品图系列/商品精修",
+      "tags": [
+        "template-example",
+        "product-refine",
+        "P6-T06"
+      ],
+      "metadata": {
+        "templateCode": "P6-T06",
+        "templateName": "玻璃/透明材质精修",
+        "toolSlug": "product-refine",
+        "exampleId": "p6_t06_example_1",
+        "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-玻璃_透明材质精修.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-refine/P6-T07/example-1",
+      "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-食品_餐饮图精修.png",
+      "storageFileName": "product-refine/p6-t07-example-1.png",
+      "title": "商品图系列-商品精修-食品_餐饮图精修",
+      "description": "Matched from infra/examples/商品图系列/商品精修",
+      "tags": [
+        "template-example",
+        "product-refine",
+        "P6-T07"
+      ],
+      "metadata": {
+        "templateCode": "P6-T07",
+        "templateName": "食品/餐饮图精修",
+        "toolSlug": "product-refine",
+        "exampleId": "p6_t07_example_1",
+        "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-食品_餐饮图精修.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-refine/P6-T08/example-1",
+      "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-3C数码商品精修.png",
+      "storageFileName": "product-refine/p6-t08-example-1.png",
+      "title": "商品图系列-商品精修-3C数码商品精修",
+      "description": "Matched from infra/examples/商品图系列/商品精修",
+      "tags": [
+        "template-example",
+        "product-refine",
+        "P6-T08"
+      ],
+      "metadata": {
+        "templateCode": "P6-T08",
+        "templateName": "3C数码商品精修",
+        "toolSlug": "product-refine",
+        "exampleId": "p6_t08_example_1",
+        "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-3C数码商品精修.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-refine/P6-T09/example-1",
+      "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-品牌LOGO_文字增强.png",
+      "storageFileName": "product-refine/p6-t09-example-1.png",
+      "title": "商品图系列-商品精修-品牌LOGO_文字增强",
+      "description": "Matched from infra/examples/商品图系列/商品精修",
+      "tags": [
+        "template-example",
+        "product-refine",
+        "P6-T09"
+      ],
+      "metadata": {
+        "templateCode": "P6-T09",
+        "templateName": "品牌LOGO/文字增强",
+        "toolSlug": "product-refine",
+        "exampleId": "p6_t09_example_1",
+        "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-品牌LOGO_文字增强.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-refine/P6-T10/example-1",
+      "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-全流程精修套餐.png",
+      "storageFileName": "product-refine/p6-t10-example-1.png",
+      "title": "商品图系列-商品精修-全流程精修套餐",
+      "description": "Matched from infra/examples/商品图系列/商品精修",
+      "tags": [
+        "template-example",
+        "product-refine",
+        "P6-T10"
+      ],
+      "metadata": {
+        "templateCode": "P6-T10",
+        "templateName": "全流程精修套餐",
+        "toolSlug": "product-refine",
+        "exampleId": "p6_t10_example_1",
+        "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-全流程精修套餐.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/clothing-image-suite/S1-T01/example-1",
+      "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-女装标准9图套装.png",
+      "storageFileName": "clothing-image-suite/s1-t01-example-1.png",
+      "title": "套图系列-服装套图-女装标准9图套装",
+      "description": "Matched from infra/examples/套图系列/服装套图",
+      "tags": [
+        "template-example",
+        "clothing-image-suite",
+        "S1-T01"
+      ],
+      "metadata": {
+        "templateCode": "S1-T01",
+        "templateName": "女装标准9图套装",
+        "toolSlug": "clothing-image-suite",
+        "exampleId": "s1_t01_example_1",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-女装标准9图套装.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/clothing-image-suite/S1-T02/example-1",
+      "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-女装亚马逊合规套装.png",
+      "storageFileName": "clothing-image-suite/s1-t02-example-1.png",
+      "title": "套图系列-服装套图-女装亚马逊合规套装",
+      "description": "Matched from infra/examples/套图系列/服装套图",
+      "tags": [
+        "template-example",
+        "clothing-image-suite",
+        "S1-T02"
+      ],
+      "metadata": {
+        "templateCode": "S1-T02",
+        "templateName": "女装亚马逊合规套装",
+        "toolSlug": "clothing-image-suite",
+        "exampleId": "s1_t02_example_1",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-女装亚马逊合规套装.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/clothing-image-suite/S1-T03/example-1",
+      "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-男装商务风套图.png",
+      "storageFileName": "clothing-image-suite/s1-t03-example-1.png",
+      "title": "套图系列-服装套图-男装商务风套图",
+      "description": "Matched from infra/examples/套图系列/服装套图",
+      "tags": [
+        "template-example",
+        "clothing-image-suite",
+        "S1-T03"
+      ],
+      "metadata": {
+        "templateCode": "S1-T03",
+        "templateName": "男装商务风套图",
+        "toolSlug": "clothing-image-suite",
+        "exampleId": "s1_t03_example_1",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-男装商务风套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/clothing-image-suite/S1-T04/example-1",
+      "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-童装活泼套图.png",
+      "storageFileName": "clothing-image-suite/s1-t04-example-1.png",
+      "title": "套图系列-服装套图-童装活泼套图",
+      "description": "Matched from infra/examples/套图系列/服装套图",
+      "tags": [
+        "template-example",
+        "clothing-image-suite",
+        "S1-T04"
+      ],
+      "metadata": {
+        "templateCode": "S1-T04",
+        "templateName": "童装活泼套图",
+        "toolSlug": "clothing-image-suite",
+        "exampleId": "s1_t04_example_1",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-童装活泼套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/clothing-image-suite/S1-T05/example-1",
+      "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-运动服套图.png",
+      "storageFileName": "clothing-image-suite/s1-t05-example-1.png",
+      "title": "套图系列-服装套图-运动服套图",
+      "description": "Matched from infra/examples/套图系列/服装套图",
+      "tags": [
+        "template-example",
+        "clothing-image-suite",
+        "S1-T05"
+      ],
+      "metadata": {
+        "templateCode": "S1-T05",
+        "templateName": "运动服套图",
+        "toolSlug": "clothing-image-suite",
+        "exampleId": "s1_t05_example_1",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-运动服套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/clothing-image-suite/S1-T06/example-1",
+      "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-泳装海滩套图.png",
+      "storageFileName": "clothing-image-suite/s1-t06-example-1.png",
+      "title": "套图系列-服装套图-泳装海滩套图",
+      "description": "Matched from infra/examples/套图系列/服装套图",
+      "tags": [
+        "template-example",
+        "clothing-image-suite",
+        "S1-T06"
+      ],
+      "metadata": {
+        "templateCode": "S1-T06",
+        "templateName": "泳装海滩套图",
+        "toolSlug": "clothing-image-suite",
+        "exampleId": "s1_t06_example_1",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-泳装海滩套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/clothing-image-suite/S1-T07/example-1",
+      "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-女装时尚大片套图.png",
+      "storageFileName": "clothing-image-suite/s1-t07-example-1.png",
+      "title": "套图系列-服装套图-女装时尚大片套图",
+      "description": "Matched from infra/examples/套图系列/服装套图",
+      "tags": [
+        "template-example",
+        "clothing-image-suite",
+        "S1-T07"
+      ],
+      "metadata": {
+        "templateCode": "S1-T07",
+        "templateName": "女装时尚大片套图",
+        "toolSlug": "clothing-image-suite",
+        "exampleId": "s1_t07_example_1",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-女装时尚大片套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/clothing-image-suite/S1-T08/example-1",
+      "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-内衣_家居服套图.png",
+      "storageFileName": "clothing-image-suite/s1-t08-example-1.png",
+      "title": "套图系列-服装套图-内衣_家居服套图",
+      "description": "Matched from infra/examples/套图系列/服装套图",
+      "tags": [
+        "template-example",
+        "clothing-image-suite",
+        "S1-T08"
+      ],
+      "metadata": {
+        "templateCode": "S1-T08",
+        "templateName": "内衣/家居服套图",
+        "toolSlug": "clothing-image-suite",
+        "exampleId": "s1_t08_example_1",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-内衣_家居服套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/clothing-image-suite/S1-T09/example-1",
+      "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-大码服装套图.png",
+      "storageFileName": "clothing-image-suite/s1-t09-example-1.png",
+      "title": "套图系列-服装套图-大码服装套图",
+      "description": "Matched from infra/examples/套图系列/服装套图",
+      "tags": [
+        "template-example",
+        "clothing-image-suite",
+        "S1-T09"
+      ],
+      "metadata": {
+        "templateCode": "S1-T09",
+        "templateName": "大码服装套图",
+        "toolSlug": "clothing-image-suite",
+        "exampleId": "s1_t09_example_1",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-大码服装套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/clothing-image-suite/S1-T10/example-1",
+      "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-全年龄段套图.png",
+      "storageFileName": "clothing-image-suite/s1-t10-example-1.png",
+      "title": "套图系列-服装套图-全年龄段套图",
+      "description": "Matched from infra/examples/套图系列/服装套图",
+      "tags": [
+        "template-example",
+        "clothing-image-suite",
+        "S1-T10"
+      ],
+      "metadata": {
+        "templateCode": "S1-T10",
+        "templateName": "全年龄段套图",
+        "toolSlug": "clothing-image-suite",
+        "exampleId": "s1_t10_example_1",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-全年龄段套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/clothing-image-suite/S1-T11/example-1",
+      "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-街头潮流套图.png",
+      "storageFileName": "clothing-image-suite/s1-t11-example-1.png",
+      "title": "套图系列-服装套图-街头潮流套图",
+      "description": "Matched from infra/examples/套图系列/服装套图",
+      "tags": [
+        "template-example",
+        "clothing-image-suite",
+        "S1-T11"
+      ],
+      "metadata": {
+        "templateCode": "S1-T11",
+        "templateName": "街头潮流套图",
+        "toolSlug": "clothing-image-suite",
+        "exampleId": "s1_t11_example_1",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-街头潮流套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/clothing-image-suite/S1-T12/example-1",
+      "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-汉服_民族服装套图.png",
+      "storageFileName": "clothing-image-suite/s1-t12-example-1.png",
+      "title": "套图系列-服装套图-汉服_民族服装套图",
+      "description": "Matched from infra/examples/套图系列/服装套图",
+      "tags": [
+        "template-example",
+        "clothing-image-suite",
+        "S1-T12"
+      ],
+      "metadata": {
+        "templateCode": "S1-T12",
+        "templateName": "汉服/民族服装套图",
+        "toolSlug": "clothing-image-suite",
+        "exampleId": "s1_t12_example_1",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-汉服_民族服装套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/clothing-image-suite/S1-T13/example-1",
+      "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-多色SKU统一套图.png",
+      "storageFileName": "clothing-image-suite/s1-t13-example-1.png",
+      "title": "套图系列-服装套图-多色SKU统一套图",
+      "description": "Matched from infra/examples/套图系列/服装套图",
+      "tags": [
+        "template-example",
+        "clothing-image-suite",
+        "S1-T13"
+      ],
+      "metadata": {
+        "templateCode": "S1-T13",
+        "templateName": "多色SKU统一套图",
+        "toolSlug": "clothing-image-suite",
+        "exampleId": "s1_t13_example_1",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-多色SKU统一套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/clothing-image-suite/S1-T14/example-1",
+      "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-Shopify_独立站品牌套图.png",
+      "storageFileName": "clothing-image-suite/s1-t14-example-1.png",
+      "title": "套图系列-服装套图-Shopify_独立站品牌套图",
+      "description": "Matched from infra/examples/套图系列/服装套图",
+      "tags": [
+        "template-example",
+        "clothing-image-suite",
+        "S1-T14"
+      ],
+      "metadata": {
+        "templateCode": "S1-T14",
+        "templateName": "Shopify/独立站品牌套图",
+        "toolSlug": "clothing-image-suite",
+        "exampleId": "s1_t14_example_1",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-Shopify_独立站品牌套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-image-suite/S2-T01/example-1",
+      "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-3C数码标准套图.png",
+      "storageFileName": "product-image-suite/s2-t01-example-1.png",
+      "title": "套图系列-商品套图-3C数码标准套图",
+      "description": "Matched from infra/examples/套图系列/商品套图",
+      "tags": [
+        "template-example",
+        "product-image-suite",
+        "S2-T01"
+      ],
+      "metadata": {
+        "templateCode": "S2-T01",
+        "templateName": "3C数码标准套图",
+        "toolSlug": "product-image-suite",
+        "exampleId": "s2_t01_example_1",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-3C数码标准套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-image-suite/S2-T02/example-1",
+      "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-家居家装套图.png",
+      "storageFileName": "product-image-suite/s2-t02-example-1.png",
+      "title": "套图系列-商品套图-家居家装套图",
+      "description": "Matched from infra/examples/套图系列/商品套图",
+      "tags": [
+        "template-example",
+        "product-image-suite",
+        "S2-T02"
+      ],
+      "metadata": {
+        "templateCode": "S2-T02",
+        "templateName": "家居家装套图",
+        "toolSlug": "product-image-suite",
+        "exampleId": "s2_t02_example_1",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-家居家装套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-image-suite/S2-T03/example-1",
+      "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-美妆护肤套图.png",
+      "storageFileName": "product-image-suite/s2-t03-example-1.png",
+      "title": "套图系列-商品套图-美妆护肤套图",
+      "description": "Matched from infra/examples/套图系列/商品套图",
+      "tags": [
+        "template-example",
+        "product-image-suite",
+        "S2-T03"
+      ],
+      "metadata": {
+        "templateCode": "S2-T03",
+        "templateName": "美妆护肤套图",
+        "toolSlug": "product-image-suite",
+        "exampleId": "s2_t03_example_1",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-美妆护肤套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-image-suite/S2-T04/example-1",
+      "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-食品_零食套图.png",
+      "storageFileName": "product-image-suite/s2-t04-example-1.png",
+      "title": "套图系列-商品套图-食品_零食套图",
+      "description": "Matched from infra/examples/套图系列/商品套图",
+      "tags": [
+        "template-example",
+        "product-image-suite",
+        "S2-T04"
+      ],
+      "metadata": {
+        "templateCode": "S2-T04",
+        "templateName": "食品/零食套图",
+        "toolSlug": "product-image-suite",
+        "exampleId": "s2_t04_example_1",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-食品_零食套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-image-suite/S2-T05/example-1",
+      "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-运动健身套图.png",
+      "storageFileName": "product-image-suite/s2-t05-example-1.png",
+      "title": "套图系列-商品套图-运动健身套图",
+      "description": "Matched from infra/examples/套图系列/商品套图",
+      "tags": [
+        "template-example",
+        "product-image-suite",
+        "S2-T05"
+      ],
+      "metadata": {
+        "templateCode": "S2-T05",
+        "templateName": "运动健身套图",
+        "toolSlug": "product-image-suite",
+        "exampleId": "s2_t05_example_1",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-运动健身套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-image-suite/S2-T06/example-1",
+      "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-宠物用品套图.png",
+      "storageFileName": "product-image-suite/s2-t06-example-1.png",
+      "title": "套图系列-商品套图-宠物用品套图",
+      "description": "Matched from infra/examples/套图系列/商品套图",
+      "tags": [
+        "template-example",
+        "product-image-suite",
+        "S2-T06"
+      ],
+      "metadata": {
+        "templateCode": "S2-T06",
+        "templateName": "宠物用品套图",
+        "toolSlug": "product-image-suite",
+        "exampleId": "s2_t06_example_1",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-宠物用品套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-image-suite/S2-T07/example-1",
+      "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-母婴儿童套图.png",
+      "storageFileName": "product-image-suite/s2-t07-example-1.png",
+      "title": "套图系列-商品套图-母婴儿童套图",
+      "description": "Matched from infra/examples/套图系列/商品套图",
+      "tags": [
+        "template-example",
+        "product-image-suite",
+        "S2-T07"
+      ],
+      "metadata": {
+        "templateCode": "S2-T07",
+        "templateName": "母婴儿童套图",
+        "toolSlug": "product-image-suite",
+        "exampleId": "s2_t07_example_1",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-母婴儿童套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-image-suite/S2-T08/example-1",
+      "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-户外工具套图.png",
+      "storageFileName": "product-image-suite/s2-t08-example-1.png",
+      "title": "套图系列-商品套图-户外工具套图",
+      "description": "Matched from infra/examples/套图系列/商品套图",
+      "tags": [
+        "template-example",
+        "product-image-suite",
+        "S2-T08"
+      ],
+      "metadata": {
+        "templateCode": "S2-T08",
+        "templateName": "户外工具套图",
+        "toolSlug": "product-image-suite",
+        "exampleId": "s2_t08_example_1",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-户外工具套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-image-suite/S2-T09/example-1",
+      "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-珠宝首饰精品套图.png",
+      "storageFileName": "product-image-suite/s2-t09-example-1.png",
+      "title": "套图系列-商品套图-珠宝首饰精品套图",
+      "description": "Matched from infra/examples/套图系列/商品套图",
+      "tags": [
+        "template-example",
+        "product-image-suite",
+        "S2-T09"
+      ],
+      "metadata": {
+        "templateCode": "S2-T09",
+        "templateName": "珠宝首饰精品套图",
+        "toolSlug": "product-image-suite",
+        "exampleId": "s2_t09_example_1",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-珠宝首饰精品套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-image-suite/S2-T10/example-1",
+      "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-亚马逊合规标准套图.png",
+      "storageFileName": "product-image-suite/s2-t10-example-1.png",
+      "title": "套图系列-商品套图-亚马逊合规标准套图",
+      "description": "Matched from infra/examples/套图系列/商品套图",
+      "tags": [
+        "template-example",
+        "product-image-suite",
+        "S2-T10"
+      ],
+      "metadata": {
+        "templateCode": "S2-T10",
+        "templateName": "亚马逊合规标准套图",
+        "toolSlug": "product-image-suite",
+        "exampleId": "s2_t10_example_1",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-亚马逊合规标准套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-image-suite/S2-T11/example-1",
+      "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-亚马逊A+页面套图.png",
+      "storageFileName": "product-image-suite/s2-t11-example-1.png",
+      "title": "套图系列-商品套图-亚马逊A+页面套图",
+      "description": "Matched from infra/examples/套图系列/商品套图",
+      "tags": [
+        "template-example",
+        "product-image-suite",
+        "S2-T11"
+      ],
+      "metadata": {
+        "templateCode": "S2-T11",
+        "templateName": "亚马逊A+页面套图",
+        "toolSlug": "product-image-suite",
+        "exampleId": "s2_t11_example_1",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-亚马逊A+页面套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-image-suite/S2-T12/example-1",
+      "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-Shopify独立站品牌套图.png",
+      "storageFileName": "product-image-suite/s2-t12-example-1.png",
+      "title": "套图系列-商品套图-Shopify独立站品牌套图",
+      "description": "Matched from infra/examples/套图系列/商品套图",
+      "tags": [
+        "template-example",
+        "product-image-suite",
+        "S2-T12"
+      ],
+      "metadata": {
+        "templateCode": "S2-T12",
+        "templateName": "Shopify独立站品牌套图",
+        "toolSlug": "product-image-suite",
+        "exampleId": "s2_t12_example_1",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-Shopify独立站品牌套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-image-suite/S2-T13/example-1",
+      "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-礼品套装套图.png",
+      "storageFileName": "product-image-suite/s2-t13-example-1.png",
+      "title": "套图系列-商品套图-礼品套装套图",
+      "description": "Matched from infra/examples/套图系列/商品套图",
+      "tags": [
+        "template-example",
+        "product-image-suite",
+        "S2-T13"
+      ],
+      "metadata": {
+        "templateCode": "S2-T13",
+        "templateName": "礼品套装套图",
+        "toolSlug": "product-image-suite",
+        "exampleId": "s2_t13_example_1",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-礼品套装套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-image-suite/S2-T14/example-1",
+      "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-食品饮料营养健康套图.png",
+      "storageFileName": "product-image-suite/s2-t14-example-1.png",
+      "title": "套图系列-商品套图-食品饮料营养健康套图",
+      "description": "Matched from infra/examples/套图系列/商品套图",
+      "tags": [
+        "template-example",
+        "product-image-suite",
+        "S2-T14"
+      ],
+      "metadata": {
+        "templateCode": "S2-T14",
+        "templateName": "食品饮料营养健康套图",
+        "toolSlug": "product-image-suite",
+        "exampleId": "s2_t14_example_1",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-食品饮料营养健康套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-image-suite/S2-T15/example-1",
+      "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-办公文具套图.png",
+      "storageFileName": "product-image-suite/s2-t15-example-1.png",
+      "title": "套图系列-商品套图-办公文具套图",
+      "description": "Matched from infra/examples/套图系列/商品套图",
+      "tags": [
+        "template-example",
+        "product-image-suite",
+        "S2-T15"
+      ],
+      "metadata": {
+        "templateCode": "S2-T15",
+        "templateName": "办公文具套图",
+        "toolSlug": "product-image-suite",
+        "exampleId": "s2_t15_example_1",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-办公文具套图.png"
+      }
+    },
+    {
+      "productCode": "ecommerce",
+      "category": "template-examples",
+      "sourceType": "template_example",
+      "sourceRef": "templates/product-image-suite/S2-T16/example-1",
+      "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-批量SKU统一套图.png",
+      "storageFileName": "product-image-suite/s2-t16-example-1.png",
+      "title": "套图系列-商品套图-批量SKU统一套图",
+      "description": "Matched from infra/examples/套图系列/商品套图",
+      "tags": [
+        "template-example",
+        "product-image-suite",
+        "S2-T16"
+      ],
+      "metadata": {
+        "templateCode": "S2-T16",
+        "templateName": "批量SKU统一套图",
+        "toolSlug": "product-image-suite",
+        "exampleId": "s2_t16_example_1",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-批量SKU统一套图.png"
+      }
+    }
+  ]
+}

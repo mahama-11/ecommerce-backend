@@ -13,7 +13,9 @@ DOCS = {
     "model": ROOT.parent / "docs" / "agent_ecommerce_prompt_模特图系列.md",
     "product": ROOT.parent / "docs" / "agent_ecommerce_prompt商品图&套图系列.md",
 }
+EXAMPLES_ROOT = ROOT.parent / "infra" / "examples"
 OUT = ROOT / "internal" / "modules" / "templatecenter" / "generated_seed_definitions.json"
+EXAMPLE_MANIFEST_OUT = ROOT / "internal" / "modules" / "templatecenter" / "example_asset_manifest.json"
 
 @dataclass
 class SectionMeta:
@@ -52,6 +54,23 @@ SECTION_META: dict[str, SectionMeta] = {
 SECTION_RE = re.compile(r"^###\s+([123]\.[0-9]+)\s+(.+)$")
 TABLE_ROW_RE = re.compile(r"^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*(.+?)\s*\|\s*$")
 
+TOOL_EXAMPLE_DIRS: dict[str, list[str]] = {
+    "changing-model": ["模特图系列/真人换模特", "Model/ModelSwap"],
+    "changing-mannequin": ["模特图系列/人台换模特", "Model/Mannequin"],
+    "changing-bg": ["模特图系列/换背景", "Model/BackgroundReplace"],
+    "ai-dressing": ["模特图系列/AI穿衣", "Model/VirtualTryOn"],
+    "ai-wearable": ["模特图系列/穿戴商品", "Model/AccessoriesOnModel"],
+    "ai-posture": ["模特图系列/姿势裂变"],
+    "ai-product": ["商品图系列/商品场景合成"],
+    "product-replacement": ["商品图系列/商品替换"],
+    "image-fission": ["商品图系列/场景裂变"],
+    "scene-image": ["商品图系列/场景素材生成"],
+    "handheld-goods": ["商品图系列/手持商品"],
+    "product-refine": ["商品图系列/商品精修"],
+    "clothing-image-suite": ["套图系列/服装套图"],
+    "product-image-suite": ["套图系列/商品套图"],
+}
+
 
 def slugify(value: str) -> str:
     value = unicodedata.normalize("NFKD", value)
@@ -71,6 +90,95 @@ def infer_count(text: str, fallback: int) -> int:
 def infer_ratio(text: str, fallback: str) -> str:
     m = re.search(r"(1:1|4:5|3:4|9:16|16:9)", text)
     return m.group(1) if m else fallback
+
+
+def normalize_example_name(value: str) -> str:
+    value = unicodedata.normalize("NFKC", value)
+    value = value.lower()
+    value = re.sub(r"\.(jpg|jpeg|png|webp)$", "", value)
+    value = re.sub(r"^(模特图系列|商品图系列|套图系列)-", "", value)
+    value = re.sub(
+        r"^(真人换模特|人台换模特|换背景|ai穿衣|穿戴商品|姿势裂变|商品场景合成|商品替换|场景裂变|场景素材生成|手持商品|商品精修|服装套图|商品套图)-",
+        "",
+        value,
+    )
+    value = value.replace("（", "(").replace("）", ")")
+    value = re.sub(r"[\s_\-/]+", "", value)
+    value = re.sub(r"[()（）,.，:：'\"+]+", "", value)
+    return value
+
+
+def build_example_index() -> dict[str, list[dict[str, str]]]:
+    index: dict[str, list[dict[str, str]]] = {}
+    if not EXAMPLES_ROOT.exists():
+        return index
+    for path in sorted(EXAMPLES_ROOT.rglob("*")):
+        if path.suffix.lower() not in {".jpg", ".jpeg", ".png", ".webp"}:
+            continue
+        rel_path = path.relative_to(ROOT.parent).as_posix()
+        rel_dir = path.parent.relative_to(EXAMPLES_ROOT).as_posix()
+        normalized = normalize_example_name(path.stem)
+        index.setdefault(rel_dir, []).append({
+            "normalized_name": normalized,
+            "title": path.stem,
+            "asset_ref": rel_path,
+            "dir": rel_dir,
+        })
+    return index
+
+
+EXAMPLE_INDEX = build_example_index()
+
+
+def build_example_source_ref(tool_slug: str, template_id: str, example_index: int) -> str:
+    return f"templates/{tool_slug}/{template_id}/example-{example_index}"
+
+
+def build_storage_file_name(tool_slug: str, template_id: str, example_index: int, asset_ref: str) -> str:
+    suffix = Path(asset_ref).suffix.lower() or ".png"
+    return f"{tool_slug}/{template_id.lower()}-example-{example_index}{suffix}"
+
+
+def match_examples(meta: SectionMeta, template_id: str, template_name: str, zh_desc: str) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = []
+    normalized_template_name = normalize_example_name(template_name)
+    normalized_desc = normalize_example_name(zh_desc)
+    for rel_dir in TOOL_EXAMPLE_DIRS.get(meta.tool_slug, []):
+        for item in EXAMPLE_INDEX.get(rel_dir, []):
+            candidate_name = item["normalized_name"]
+            score = 0
+            if candidate_name == normalized_template_name:
+                score = 100
+            elif normalized_template_name and normalized_template_name in candidate_name:
+                score = 80
+            elif candidate_name and candidate_name in normalized_template_name:
+                score = 75
+            elif normalized_desc and candidate_name and candidate_name in normalized_desc:
+                score = 60
+            if score <= 0:
+                continue
+            candidates.append({
+                "score": score,
+                "title": item["title"],
+                "asset_ref": item["asset_ref"],
+                "dir": item["dir"],
+            })
+    if not candidates:
+        return []
+    candidates.sort(key=lambda item: (-item["score"], item["asset_ref"]))
+    best = candidates[0]
+    example_index = 1
+    source_ref = build_example_source_ref(meta.tool_slug, template_id, example_index)
+    example = {
+        "id": f"{template_id.lower().replace('-', '_')}_example_{example_index}",
+        "exampleType": "reference_image",
+        "title": best["title"],
+        "description": f"Matched from infra/examples/{best['dir']}",
+        "assetRef": best["asset_ref"],
+        "sourceRef": source_ref,
+        "storageFileName": build_storage_file_name(meta.tool_slug, template_id, example_index, best["asset_ref"]),
+    }
+    return [example]
 
 
 def parse_doc(doc_key: str, path: Path) -> list[dict[str, Any]]:
@@ -179,6 +287,10 @@ def parse_doc(doc_key: str, path: Path) -> list[dict[str, Any]]:
                 "chineseDescription": zh_desc,
                 "assetRequirements": asset_requirements,
             }
+            examples = match_examples(meta, template_id, template_name, zh_desc)
+            if examples:
+                default_variables["exampleAssetRefs"] = [item["assetRef"] for item in examples]
+                default_variables["exampleSourceRefs"] = [item["sourceRef"] for item in examples]
             results.append({
                 "id": f"tpl_{template_id.lower().replace('-', '_')}",
                 "externalCode": template_id,
@@ -200,7 +312,7 @@ def parse_doc(doc_key: str, path: Path) -> list[dict[str, Any]]:
                 "outputSchema": output_schema,
                 "promptLayers": prompt_layers,
                 "defaultVariables": default_variables,
-                "examples": [],
+                "examples": examples,
                 "localeZH": {
                     "name": template_name,
                     "summary": zh_desc,
@@ -221,12 +333,53 @@ def parse_doc(doc_key: str, path: Path) -> list[dict[str, Any]]:
     return results
 
 
+def build_example_manifest(definitions: list[dict[str, Any]]) -> dict[str, Any]:
+    items: list[dict[str, Any]] = []
+    seen_source_refs: set[str] = set()
+    for definition in definitions:
+        tool_slug = definition.get("toolBinding", {}).get("toolSlug", "")
+        template_code = definition.get("externalCode", "")
+        template_name = definition.get("localeZH", {}).get("name", "")
+        for example in definition.get("examples", []):
+            source_ref = example.get("sourceRef")
+            asset_ref = example.get("assetRef")
+            if not isinstance(source_ref, str) or not source_ref or source_ref in seen_source_refs:
+                continue
+            if not isinstance(asset_ref, str) or not asset_ref:
+                continue
+            seen_source_refs.add(source_ref)
+            items.append({
+                "productCode": "ecommerce",
+                "category": "template-examples",
+                "sourceType": "template_example",
+                "sourceRef": source_ref,
+                "assetRef": asset_ref,
+                "storageFileName": example.get("storageFileName") or build_storage_file_name(tool_slug, template_code, 1, asset_ref),
+                "title": example.get("title") or template_name,
+                "description": example.get("description") or f"Template example for {template_code}",
+                "tags": ["template-example", tool_slug, template_code],
+                "metadata": {
+                    "templateCode": template_code,
+                    "templateName": template_name,
+                    "toolSlug": tool_slug,
+                    "exampleId": example.get("id"),
+                    "assetRef": asset_ref,
+                },
+            })
+    return {
+        "version": 1,
+        "items": items,
+    }
+
+
 def main() -> None:
     definitions = []
     for key, path in DOCS.items():
         definitions.extend(parse_doc(key, path))
     OUT.write_text(json.dumps(definitions, ensure_ascii=False, indent=2))
+    EXAMPLE_MANIFEST_OUT.write_text(json.dumps(build_example_manifest(definitions), ensure_ascii=False, indent=2))
     print(f"generated {len(definitions)} templates -> {OUT}")
+    print(f"generated template example manifest -> {EXAMPLE_MANIFEST_OUT}")
 
 
 if __name__ == "__main__":

@@ -21,7 +21,7 @@ import (
 
 type envelope[T any] struct {
 	Code int `json:"code"`
-	Data  T  `json:"data"`
+	Data T   `json:"data"`
 }
 
 type favoriteResponse struct {
@@ -39,7 +39,7 @@ func TestTemplateCenterHandlerFlow(t *testing.T) {
 
 	db := newTemplateCenterTestDB(t)
 	repo := repository.NewTemplateCenterRepository(db)
-	service := NewService(repo, nil)
+	service := NewService(repo, nil, nil)
 	if err := service.SeedPresetCatalog(); err != nil {
 		t.Fatalf("seed preset catalog: %v", err)
 	}
@@ -162,7 +162,7 @@ func TestSeedPresetCatalogDoesNotOverrideManualOfficialTemplate(t *testing.T) {
 
 	db := newTemplateCenterTestDB(t)
 	repo := repository.NewTemplateCenterRepository(db)
-	service := NewService(repo, nil)
+	service := NewService(repo, nil, nil)
 
 	now := time.Now()
 	manual := models.TemplateCatalog{
@@ -220,10 +220,10 @@ func newTemplateCenterTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
 	cfg := config.DatabaseConfig{
-		Driver:             "sqlite",
-		SQLitePath:         filepath.Join(t.TempDir(), "template-center-test.db"),
-		TablePrefix:        "ecommerce_",
-		AutoMigrateEnabled: true,
+		Driver:              "sqlite",
+		SQLitePath:          filepath.Join(t.TempDir(), "template-center-test.db"),
+		TablePrefix:         "ecommerce_",
+		AutoMigrateEnabled:  true,
 		AllowStartupMigrate: true,
 	}
 

@@ -73,6 +73,12 @@ For product image generation, use the platform runtime as the execution layer an
   - `/internal/v1/ecommerce/jobs/:jobID/results`
 - product-owned asset content is exposed under:
   - `/api/v1/ecommerce/assets/:assetID/content`
+- template center example assets are resolved from `v-platform-backend` at request time
+- template center example preview is proxied under:
+  - `GET /api/v1/ecommerce/template-center/assets/preview?storage_key=...`
+- template center list responses can surface `coverAssetUrl` from resolved example assets
+- template center detail responses can surface `storageKey`, `assetId`, `mimeType`, `checksum`, and `previewAssetUrl`
+- startup now logs a template center seed summary and warns when built-in example assets are missing
 - automated validation currently covers package compilation, workspace module tests, and template center API success paths
 
 ## 6. Runtime Configuration
@@ -83,6 +89,10 @@ For product image generation, use the platform runtime as the execution layer an
 - `monitoring.metrics.enabled=true` exposes Prometheus metrics
 - `monitoring.tracing.enabled=true` enables Jaeger exporter bootstrap
 - `platform.base_url`, `platform.internal_service_secret`, and `platform.jwt_secret` must align with platform backend runtime values
+- template example source-of-truth files are:
+  - `internal/modules/templatecenter/generated_seed_definitions.json`
+  - `internal/modules/templatecenter/example_asset_manifest.json`
+- `internal/modules/templatecenter/example_asset_manifest.resolved.json` is an operational import artifact and should not be committed
 
 ## 7. Near-Term Next Steps
 

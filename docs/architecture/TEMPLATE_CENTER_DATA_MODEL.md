@@ -138,6 +138,26 @@ template_usage_event
   └─ may reference template_instance
 ```
 
+## 4.1 示例资产解析链路
+
+第一版模板示例图片不直接把平台资产主数据复制进模板表，而采用：
+
+- seed 文件保存稳定 `source_ref`
+- 运行时通过 `v-platform-backend` 的资产解析接口把 `source_ref -> storage_key`
+- 业务后端在响应阶段补齐：
+  - `coverAssetUrl`
+  - `storageKey`
+  - `assetId`
+  - `mimeType`
+  - `checksum`
+  - `previewAssetUrl`
+
+这样可以保证：
+
+- 模板 seed 与平台存储注册解耦
+- 平台文件重导入后，模板中心仍能通过稳定 `source_ref` 找回资产
+- 列表和详情都能共享同一条例图解析链路
+
 ## 5. 核心枚举
 
 ## 5.1 `modality`
@@ -843,4 +863,3 @@ type MyTemplateItem = {
 4. 最后接 `template_usage_event`
 
 这样可以先把官方模板目录与用户实例的边界打清楚，再补运营与统计。
-

@@ -193,6 +193,32 @@ type StoredAsset struct {
 	FileSize   int64  `json:"file_size"`
 }
 
+type ResolveAssetInput struct {
+	ProductCode string `json:"product_code,omitempty"`
+	Category    string `json:"category,omitempty"`
+	SourceType  string `json:"source_type,omitempty"`
+	SourceRef   string `json:"source_ref,omitempty"`
+	StorageKey  string `json:"storage_key,omitempty"`
+}
+
+type AssetRecord struct {
+	ID          string         `json:"id"`
+	ProductCode string         `json:"product_code"`
+	Category    string         `json:"category"`
+	SourceType  string         `json:"source_type"`
+	SourceRef   string         `json:"source_ref"`
+	StorageKey  string         `json:"storage_key"`
+	FileName    string         `json:"file_name"`
+	MimeType    string         `json:"mime_type"`
+	FileSize    int64          `json:"file_size"`
+	Checksum    string         `json:"checksum"`
+	Title       string         `json:"title"`
+	Description string         `json:"description"`
+	Tags        []string       `json:"tags"`
+	Metadata    map[string]any `json:"metadata"`
+	Status      string         `json:"status"`
+}
+
 func (c *Client) Register(input AuthRegisterInput) (*PlatformAuthResult, error) {
 	return doPublicPost[AuthRegisterInput, PlatformAuthResult](c, "/auth/register", input)
 }
@@ -217,6 +243,16 @@ func (c *Client) CreateRuntimeJob(input CreateRuntimeJobInput) (*RuntimeJob, err
 }
 func (c *Client) UploadAsset(input UploadAssetInput) (*StoredAsset, error) {
 	return doInternalPost[UploadAssetInput, StoredAsset](c, "/storage/assets", input)
+}
+func (c *Client) ResolveAssets(items []ResolveAssetInput) ([]AssetRecord, error) {
+	type resolveResp struct {
+		Items []AssetRecord `json:"items"`
+	}
+	resp, err := doInternalPost[map[string]any, resolveResp](c, "/storage/assets/resolve", map[string]any{"items": items})
+	if err != nil {
+		return nil, err
+	}
+	return resp.Items, nil
 }
 func (c *Client) DownloadAsset(storageKey string) (io.ReadCloser, http.Header, error) {
 	path := withQuery("/storage/assets/content", map[string]string{"storage_key": storageKey})

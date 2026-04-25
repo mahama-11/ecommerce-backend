@@ -62,7 +62,7 @@ func New(configFile string) (*App, error) {
 	authzService := authz.NewService(platformClient)
 	authService := authmodule.NewService(platformClient, userRepo, authzService, cfg.App)
 	workspaceService := workspace.NewService(workspaceRepo, redisClient)
-	templateCenterService := templatecentermodule.NewService(templateCenterRepo, auditService)
+	templateCenterService := templatecentermodule.NewService(templateCenterRepo, auditService, platformClient)
 	accessHandler := accessmodule.NewHandler(authzService)
 	authHandler := authmodule.NewHandler(authService, auditService)
 	imageRuntimeHandler := imageruntimemodule.NewHandler(imageRuntimeService)

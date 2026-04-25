@@ -103,9 +103,25 @@
           "required": false,
           "fieldType": "select"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/ModelSwap/欧美白人女模特.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-model/M1-T01/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m1_t01_example_1",
+        "exampleType": "reference_image",
+        "title": "欧美白人女模特",
+        "description": "Matched from infra/examples/Model/ModelSwap",
+        "assetRef": "infra/examples/Model/ModelSwap/欧美白人女模特.png",
+        "sourceRef": "templates/changing-model/M1-T01/example-1",
+        "storageFileName": "changing-model/m1-t01-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "欧美白人女模特",
       "summary": "替换为欧美白人女性，身高约175cm，金色长发，蓝色眼睛，肤色白皙，立体五官，自然微笑，适合欧美市场主图",
@@ -225,9 +241,25 @@
           "required": false,
           "fieldType": "select"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/ModelSwap/亚洲女模特（东亚）.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-model/M1-T02/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m1_t02_example_1",
+        "exampleType": "reference_image",
+        "title": "亚洲女模特（东亚）",
+        "description": "Matched from infra/examples/Model/ModelSwap",
+        "assetRef": "infra/examples/Model/ModelSwap/亚洲女模特（东亚）.png",
+        "sourceRef": "templates/changing-model/M1-T02/example-1",
+        "storageFileName": "changing-model/m1-t02-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "亚洲女模特（东亚）",
       "summary": "替换为东亚女性，身高约168cm，黑色直发，白皙细腻肌肤，精致五官，符合日本/韩国/中国跨境市场审美",
@@ -347,9 +379,25 @@
           "required": false,
           "fieldType": "select"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/ModelSwap/非裔欧美女模特.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-model/M1-T03/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m1_t03_example_1",
+        "exampleType": "reference_image",
+        "title": "非裔欧美女模特",
+        "description": "Matched from infra/examples/Model/ModelSwap",
+        "assetRef": "infra/examples/Model/ModelSwap/非裔欧美女模特.png",
+        "sourceRef": "templates/changing-model/M1-T03/example-1",
+        "storageFileName": "changing-model/m1-t03-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "非裔欧美女模特",
       "summary": "替换为非裔美国女性，身高约173cm，自然卷发，深棕色肤色，五官立体饱满，展现多元包容的品牌形象",
@@ -469,9 +517,25 @@
           "required": false,
           "fieldType": "select"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/ModelSwap/拉丁裔女模特.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-model/M1-T04/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m1_t04_example_1",
+        "exampleType": "reference_image",
+        "title": "拉丁裔女模特",
+        "description": "Matched from infra/examples/Model/ModelSwap",
+        "assetRef": "infra/examples/Model/ModelSwap/拉丁裔女模特.png",
+        "sourceRef": "templates/changing-model/M1-T04/example-1",
+        "storageFileName": "changing-model/m1-t04-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "拉丁裔女模特",
       "summary": "替换为拉丁裔女性，橄榄色肌肤，深棕色卷发，热情妩媚气质，适合南美/西班牙语市场",
@@ -591,9 +655,25 @@
           "required": false,
           "fieldType": "select"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/ModelSwap/中东市场女模特.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-model/M1-T05/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m1_t05_example_1",
+        "exampleType": "reference_image",
+        "title": "中东市场女模特",
+        "description": "Matched from infra/examples/Model/ModelSwap",
+        "assetRef": "infra/examples/Model/ModelSwap/中东市场女模特.png",
+        "sourceRef": "templates/changing-model/M1-T05/example-1",
+        "storageFileName": "changing-model/m1-t05-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "中东市场女模特",
       "summary": "替换为中东地区女性，橄榄棕色肤色，深色长发或配头巾（依服装风格），端庄典雅气质，适合中东及穆斯林市场",
@@ -713,9 +793,25 @@
           "required": false,
           "fieldType": "select"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/ModelSwap/欧美男模特.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-model/M1-T06/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m1_t06_example_1",
+        "exampleType": "reference_image",
+        "title": "欧美男模特",
+        "description": "Matched from infra/examples/Model/ModelSwap",
+        "assetRef": "infra/examples/Model/ModelSwap/欧美男模特.png",
+        "sourceRef": "templates/changing-model/M1-T06/example-1",
+        "storageFileName": "changing-model/m1-t06-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "欧美男模特",
       "summary": "替换为欧美男性，身高约185cm，短发整洁，运动健康体型，阳光自信气质，适合男装/运动装展示",
@@ -835,9 +931,25 @@
           "required": false,
           "fieldType": "select"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/ModelSwap/大码女模特（Plus Size）.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-model/M1-T07/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m1_t07_example_1",
+        "exampleType": "reference_image",
+        "title": "大码女模特（Plus Size）",
+        "description": "Matched from infra/examples/Model/ModelSwap",
+        "assetRef": "infra/examples/Model/ModelSwap/大码女模特（Plus Size）.png",
+        "sourceRef": "templates/changing-model/M1-T07/example-1",
+        "storageFileName": "changing-model/m1-t07-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "大码女模特（Plus Size）",
       "summary": "替换为大码女性模特，丰满圆润身材，自信阳光气质，展示服装在大码体型上的真实穿着效果",
@@ -957,9 +1069,25 @@
           "required": false,
           "fieldType": "select"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/ModelSwap/高级感气质女模特.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-model/M1-T08/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m1_t08_example_1",
+        "exampleType": "reference_image",
+        "title": "高级感气质女模特",
+        "description": "Matched from infra/examples/Model/ModelSwap",
+        "assetRef": "infra/examples/Model/ModelSwap/高级感气质女模特.png",
+        "sourceRef": "templates/changing-model/M1-T08/example-1",
+        "storageFileName": "changing-model/m1-t08-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "高级感气质女模特",
       "summary": "替换为高级感冷艳气质女模特，欧洲高端时装风格，棱角分明，眼神深邃，适合轻奢/设计师品牌",
@@ -1079,9 +1207,25 @@
           "required": false,
           "fieldType": "select"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/ModelSwap/青春活力少女.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-model/M1-T09/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m1_t09_example_1",
+        "exampleType": "reference_image",
+        "title": "青春活力少女",
+        "description": "Matched from infra/examples/Model/ModelSwap",
+        "assetRef": "infra/examples/Model/ModelSwap/青春活力少女.png",
+        "sourceRef": "templates/changing-model/M1-T09/example-1",
+        "storageFileName": "changing-model/m1-t09-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "青春活力少女",
       "summary": "替换为18-22岁青春活力少女，甜美可爱面孔，充满朝气，适合少女装/学生装/运动休闲风",
@@ -1201,9 +1345,25 @@
           "required": false,
           "fieldType": "select"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/ModelSwap/成熟优雅女性.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-model/M1-T10/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m1_t10_example_1",
+        "exampleType": "reference_image",
+        "title": "成熟优雅女性",
+        "description": "Matched from infra/examples/Model/ModelSwap",
+        "assetRef": "infra/examples/Model/ModelSwap/成熟优雅女性.png",
+        "sourceRef": "templates/changing-model/M1-T10/example-1",
+        "storageFileName": "changing-model/m1-t10-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "成熟优雅女性",
       "summary": "替换为35-45岁成熟优雅女性，气质从容自信，适合职场装/女士正装/高端家居服",
@@ -1323,9 +1483,25 @@
           "required": false,
           "fieldType": "select"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/ModelSwap/老年模特（银发市场）.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-model/M1-T11/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m1_t11_example_1",
+        "exampleType": "reference_image",
+        "title": "老年模特（银发市场）",
+        "description": "Matched from infra/examples/Model/ModelSwap",
+        "assetRef": "infra/examples/Model/ModelSwap/老年模特（银发市场）.png",
+        "sourceRef": "templates/changing-model/M1-T11/example-1",
+        "storageFileName": "changing-model/m1-t11-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "老年模特（银发市场）",
       "summary": "替换为60岁以上银发女性/男性模特，自然白发，健康红润气色，适合中老年服装/银发经济市场",
@@ -1445,9 +1621,25 @@
           "required": false,
           "fieldType": "select"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/ModelSwap/儿童_亲子模特.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-model/M1-T12/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m1_t12_example_1",
+        "exampleType": "reference_image",
+        "title": "儿童_亲子模特",
+        "description": "Matched from infra/examples/Model/ModelSwap",
+        "assetRef": "infra/examples/Model/ModelSwap/儿童_亲子模特.png",
+        "sourceRef": "templates/changing-model/M1-T12/example-1",
+        "storageFileName": "changing-model/m1-t12-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "儿童/亲子模特",
       "summary": "替换为3-12岁儿童模特，天真可爱表情，自然活泼，适合童装/亲子装展示",
@@ -1561,9 +1753,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/Mannequin/纯白棚拍站姿.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-mannequin/M2-T01/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m2_t01_example_1",
+        "exampleType": "reference_image",
+        "title": "纯白棚拍站姿",
+        "description": "Matched from infra/examples/Model/Mannequin",
+        "assetRef": "infra/examples/Model/Mannequin/纯白棚拍站姿.png",
+        "sourceRef": "templates/changing-mannequin/M2-T01/example-1",
+        "storageFileName": "changing-mannequin/m2-t01-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "纯白棚拍站姿",
       "summary": "人台服装转为真人穿着，模特正面站立，纯白无缝背景，均匀专业布光，商业棚拍风格",
@@ -1677,9 +1885,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/Mannequin/浅灰渐变棚拍.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-mannequin/M2-T02/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m2_t02_example_1",
+        "exampleType": "reference_image",
+        "title": "浅灰渐变棚拍",
+        "description": "Matched from infra/examples/Model/Mannequin",
+        "assetRef": "infra/examples/Model/Mannequin/浅灰渐变棚拍.png",
+        "sourceRef": "templates/changing-mannequin/M2-T02/example-1",
+        "storageFileName": "changing-mannequin/m2-t02-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "浅灰渐变棚拍",
       "summary": "人台服装转为真人穿着，模特正面或3/4站立，浅灰渐变背景（中心亮/四周暗），专业高端时装摄影感",
@@ -1793,9 +2017,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/Mannequin/北欧简约家居.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-mannequin/M2-T03/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m2_t03_example_1",
+        "exampleType": "reference_image",
+        "title": "北欧简约家居",
+        "description": "Matched from infra/examples/Model/Mannequin",
+        "assetRef": "infra/examples/Model/Mannequin/北欧简约家居.png",
+        "sourceRef": "templates/changing-mannequin/M2-T03/example-1",
+        "storageFileName": "changing-mannequin/m2-t03-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "北欧简约家居",
       "summary": "人台服装转为真人穿着，模特置于北欧风简约室内场景，白墙、原木地板、绿植，自然光线，生活方式感",
@@ -1909,9 +2149,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/Mannequin/都市街拍风.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-mannequin/M2-T04/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m2_t04_example_1",
+        "exampleType": "reference_image",
+        "title": "都市街拍风",
+        "description": "Matched from infra/examples/Model/Mannequin",
+        "assetRef": "infra/examples/Model/Mannequin/都市街拍风.png",
+        "sourceRef": "templates/changing-mannequin/M2-T04/example-1",
+        "storageFileName": "changing-mannequin/m2-t04-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "都市街拍风",
       "summary": "人台服装转为真人穿着，模特置于城市街头场景，建筑背景，自然光，随意自信的街拍姿态",
@@ -2025,9 +2281,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/Mannequin/咖啡馆生活场景.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-mannequin/M2-T05/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m2_t05_example_1",
+        "exampleType": "reference_image",
+        "title": "咖啡馆生活场景",
+        "description": "Matched from infra/examples/Model/Mannequin",
+        "assetRef": "infra/examples/Model/Mannequin/咖啡馆生活场景.png",
+        "sourceRef": "templates/changing-mannequin/M2-T05/example-1",
+        "storageFileName": "changing-mannequin/m2-t05-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "咖啡馆生活场景",
       "summary": "人台服装转为真人穿着，模特坐于咖啡馆或手捧咖啡，温暖室内光线，展示服装的日常穿着氛围",
@@ -2141,9 +2413,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/Mannequin/高端杂志大片风.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-mannequin/M2-T06/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m2_t06_example_1",
+        "exampleType": "reference_image",
+        "title": "高端杂志大片风",
+        "description": "Matched from infra/examples/Model/Mannequin",
+        "assetRef": "infra/examples/Model/Mannequin/高端杂志大片风.png",
+        "sourceRef": "templates/changing-mannequin/M2-T06/example-1",
+        "storageFileName": "changing-mannequin/m2-t06-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "高端杂志大片风",
       "summary": "人台服装转为真人穿着，模特呈时装大片风格，戏剧性灯光，构图前卫，适合品牌宣传图",
@@ -2257,9 +2545,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/Mannequin/户外自然光场景.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-mannequin/M2-T07/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m2_t07_example_1",
+        "exampleType": "reference_image",
+        "title": "户外自然光场景",
+        "description": "Matched from infra/examples/Model/Mannequin",
+        "assetRef": "infra/examples/Model/Mannequin/户外自然光场景.png",
+        "sourceRef": "templates/changing-mannequin/M2-T07/example-1",
+        "storageFileName": "changing-mannequin/m2-t07-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "户外自然光场景",
       "summary": "人台服装转为真人穿着，模特置于户外自然场景（公园/草地/林间），柔和自然光，清新自然气质",
@@ -2373,9 +2677,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/Mannequin/白色背景背面展示.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-mannequin/M2-T08/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m2_t08_example_1",
+        "exampleType": "reference_image",
+        "title": "白色背景背面展示",
+        "description": "Matched from infra/examples/Model/Mannequin",
+        "assetRef": "infra/examples/Model/Mannequin/白色背景背面展示.png",
+        "sourceRef": "templates/changing-mannequin/M2-T08/example-1",
+        "storageFileName": "changing-mannequin/m2-t08-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "白色背景背面展示",
       "summary": "人台背面服装图转为真人穿着背面效果，模特背对镜头，展示服装背部设计（拉链/开背/印花/蕾丝），纯白背景",
@@ -2489,9 +2809,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/Mannequin/正背面双图标准套.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-mannequin/M2-T09/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m2_t09_example_1",
+        "exampleType": "reference_image",
+        "title": "正背面双图标准套",
+        "description": "Matched from infra/examples/Model/Mannequin",
+        "assetRef": "infra/examples/Model/Mannequin/正背面双图标准套.png",
+        "sourceRef": "templates/changing-mannequin/M2-T09/example-1",
+        "storageFileName": "changing-mannequin/m2-t09-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "正背面双图标准套",
       "summary": "同时生成真人模特正面和背面穿着图，纯白背景，标准电商展示规格，用于平台商品主图",
@@ -2605,9 +2941,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/Mannequin/高端零售橱窗风.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-mannequin/M2-T10/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m2_t10_example_1",
+        "exampleType": "reference_image",
+        "title": "高端零售橱窗风",
+        "description": "Matched from infra/examples/Model/Mannequin",
+        "assetRef": "infra/examples/Model/Mannequin/高端零售橱窗风.png",
+        "sourceRef": "templates/changing-mannequin/M2-T10/example-1",
+        "storageFileName": "changing-mannequin/m2-t10-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "高端零售橱窗风",
       "summary": "人台服装转为高端零售风格展示，模特身处奢华精品店橱窗或展厅，精致陈列感，适合品牌旗舰店",
@@ -2721,9 +3073,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/BackgroundReplace/纯白无缝背景.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-bg/M3-T01/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m3_t01_example_1",
+        "exampleType": "reference_image",
+        "title": "纯白无缝背景",
+        "description": "Matched from infra/examples/Model/BackgroundReplace",
+        "assetRef": "infra/examples/Model/BackgroundReplace/纯白无缝背景.png",
+        "sourceRef": "templates/changing-bg/M3-T01/example-1",
+        "storageFileName": "changing-bg/m3-t01-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "纯白无缝背景",
       "summary": "替换为纯白色无缝背景（RGB 255,255,255），模特地面有淡淡接触阴影，均匀柔光，亚马逊主图合规",
@@ -2837,9 +3205,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/BackgroundReplace/浅灰渐变棚拍.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-bg/M3-T02/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m3_t02_example_1",
+        "exampleType": "reference_image",
+        "title": "浅灰渐变棚拍",
+        "description": "Matched from infra/examples/Model/BackgroundReplace",
+        "assetRef": "infra/examples/Model/BackgroundReplace/浅灰渐变棚拍.png",
+        "sourceRef": "templates/changing-bg/M3-T02/example-1",
+        "storageFileName": "changing-bg/m3-t02-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "浅灰渐变棚拍",
       "summary": "替换为专业摄影棚浅灰渐变背景，中心略亮四周渐暗，高端时装感",
@@ -2953,9 +3337,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/BackgroundReplace/奶油米白简约.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-bg/M3-T03/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m3_t03_example_1",
+        "exampleType": "reference_image",
+        "title": "奶油米白简约",
+        "description": "Matched from infra/examples/Model/BackgroundReplace",
+        "assetRef": "infra/examples/Model/BackgroundReplace/奶油米白简约.png",
+        "sourceRef": "templates/changing-bg/M3-T03/example-1",
+        "storageFileName": "changing-bg/m3-t03-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "奶油米白简约",
       "summary": "替换为奶油白/米色简约纯色背景，温暖柔和调性，适合女装、家居服、轻奢品牌",
@@ -3069,9 +3469,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/BackgroundReplace/北欧木质室内.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-bg/M3-T04/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m3_t04_example_1",
+        "exampleType": "reference_image",
+        "title": "北欧木质室内",
+        "description": "Matched from infra/examples/Model/BackgroundReplace",
+        "assetRef": "infra/examples/Model/BackgroundReplace/北欧木质室内.png",
+        "sourceRef": "templates/changing-bg/M3-T04/example-1",
+        "storageFileName": "changing-bg/m3-t04-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "北欧木质室内",
       "summary": "替换为北欧风室内场景，浅色木地板，白色墙壁，落地窗自然光，配少量绿植，温馨生活感",
@@ -3185,9 +3601,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/BackgroundReplace/欧式奢华室内.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-bg/M3-T05/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m3_t05_example_1",
+        "exampleType": "reference_image",
+        "title": "欧式奢华室内",
+        "description": "Matched from infra/examples/Model/BackgroundReplace",
+        "assetRef": "infra/examples/Model/BackgroundReplace/欧式奢华室内.png",
+        "sourceRef": "templates/changing-bg/M3-T05/example-1",
+        "storageFileName": "changing-bg/m3-t05-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "欧式奢华室内",
       "summary": "替换为欧式豪华室内场景，大理石地板，装饰性壁炉或拱形走廊，暖金色壁灯，适合高端品牌",
@@ -3301,9 +3733,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/BackgroundReplace/现代简约公寓.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-bg/M3-T06/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m3_t06_example_1",
+        "exampleType": "reference_image",
+        "title": "现代简约公寓",
+        "description": "Matched from infra/examples/Model/BackgroundReplace",
+        "assetRef": "infra/examples/Model/BackgroundReplace/现代简约公寓.png",
+        "sourceRef": "templates/changing-bg/M3-T06/example-1",
+        "storageFileName": "changing-bg/m3-t06-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "现代简约公寓",
       "summary": "替换为现代简约公寓场景，混凝土灰色背景墙，黑色钢架家具，工业loft风，适合男装/中性风",
@@ -3417,9 +3865,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/BackgroundReplace/户外阳光草地.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-bg/M3-T07/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m3_t07_example_1",
+        "exampleType": "reference_image",
+        "title": "户外阳光草地",
+        "description": "Matched from infra/examples/Model/BackgroundReplace",
+        "assetRef": "infra/examples/Model/BackgroundReplace/户外阳光草地.png",
+        "sourceRef": "templates/changing-bg/M3-T07/example-1",
+        "storageFileName": "changing-bg/m3-t07-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "户外阳光草地",
       "summary": "替换为阳光明媚的户外草地场景，翠绿草地，蓝天白云，温暖自然光从左上方斜射，清新自然",
@@ -3533,9 +3997,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/BackgroundReplace/都市街头巷弄.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-bg/M3-T08/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m3_t08_example_1",
+        "exampleType": "reference_image",
+        "title": "都市街头巷弄",
+        "description": "Matched from infra/examples/Model/BackgroundReplace",
+        "assetRef": "infra/examples/Model/BackgroundReplace/都市街头巷弄.png",
+        "sourceRef": "templates/changing-bg/M3-T08/example-1",
+        "storageFileName": "changing-bg/m3-t08-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "都市街头巷弄",
       "summary": "替换为都市街头场景，城市建筑/街道/咖啡馆外墙，自然环境光，轻微景深虚化背景，街拍感",
@@ -3649,9 +4129,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/BackgroundReplace/海滩度假场景.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-bg/M3-T09/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m3_t09_example_1",
+        "exampleType": "reference_image",
+        "title": "海滩度假场景",
+        "description": "Matched from infra/examples/Model/BackgroundReplace",
+        "assetRef": "infra/examples/Model/BackgroundReplace/海滩度假场景.png",
+        "sourceRef": "templates/changing-bg/M3-T09/example-1",
+        "storageFileName": "changing-bg/m3-t09-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "海滩度假场景",
       "summary": "替换为海滩度假场景，蓝天大海，白色沙滩，强烈自然阳光，清透空气感，适合泳装/夏季服装",
@@ -3765,9 +4261,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/BackgroundReplace/日本和风街道.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-bg/M3-T10/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m3_t10_example_1",
+        "exampleType": "reference_image",
+        "title": "日本和风街道",
+        "description": "Matched from infra/examples/Model/BackgroundReplace",
+        "assetRef": "infra/examples/Model/BackgroundReplace/日本和风街道.png",
+        "sourceRef": "templates/changing-bg/M3-T10/example-1",
+        "storageFileName": "changing-bg/m3-t10-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "日本和风街道",
       "summary": "替换为日式街道场景，樱花树/红灯笼/榻榻米或传统建筑背景，柔和粉调光线，适合日本站商品",
@@ -3881,9 +4393,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/BackgroundReplace/圣诞节日主题.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-bg/M3-T11/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m3_t11_example_1",
+        "exampleType": "reference_image",
+        "title": "圣诞节日主题",
+        "description": "Matched from infra/examples/Model/BackgroundReplace",
+        "assetRef": "infra/examples/Model/BackgroundReplace/圣诞节日主题.png",
+        "sourceRef": "templates/changing-bg/M3-T11/example-1",
+        "storageFileName": "changing-bg/m3-t11-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "圣诞节日主题",
       "summary": "替换为圣诞节日背景，雪景或装饰了圣诞树/彩灯的室内，暖色节日灯光，营造Holiday购物季氛围",
@@ -3997,9 +4525,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/BackgroundReplace/秋日森林户外.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-bg/M3-T12/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m3_t12_example_1",
+        "exampleType": "reference_image",
+        "title": "秋日森林户外",
+        "description": "Matched from infra/examples/Model/BackgroundReplace",
+        "assetRef": "infra/examples/Model/BackgroundReplace/秋日森林户外.png",
+        "sourceRef": "templates/changing-bg/M3-T12/example-1",
+        "storageFileName": "changing-bg/m3-t12-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "秋日森林户外",
       "summary": "替换为秋季森林场景，金黄橙红落叶，斑驳阳光穿透树冠，自然大地色调，适合秋冬服装",
@@ -4113,9 +4657,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/BackgroundReplace/工作室艺术背景.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-bg/M3-T13/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m3_t13_example_1",
+        "exampleType": "reference_image",
+        "title": "工作室艺术背景",
+        "description": "Matched from infra/examples/Model/BackgroundReplace",
+        "assetRef": "infra/examples/Model/BackgroundReplace/工作室艺术背景.png",
+        "sourceRef": "templates/changing-bg/M3-T13/example-1",
+        "storageFileName": "changing-bg/m3-t13-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "工作室艺术背景",
       "summary": "替换为艺术感摄影棚背景，撞色几何色块或纸质质感色调墙，创意品牌宣传大片风格",
@@ -4229,9 +4789,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/BackgroundReplace/黑色高端背景.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-bg/M3-T14/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m3_t14_example_1",
+        "exampleType": "reference_image",
+        "title": "黑色高端背景",
+        "description": "Matched from infra/examples/Model/BackgroundReplace",
+        "assetRef": "infra/examples/Model/BackgroundReplace/黑色高端背景.png",
+        "sourceRef": "templates/changing-bg/M3-T14/example-1",
+        "storageFileName": "changing-bg/m3-t14-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "黑色高端背景",
       "summary": "替换为纯黑或深色高端背景，戏剧性侧光或轮廓光，突出服装廓形，适合高端晚礼服/皮革类",
@@ -4345,9 +4921,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/BackgroundReplace/粉色少女甜美背景.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/changing-bg/M3-T15/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m3_t15_example_1",
+        "exampleType": "reference_image",
+        "title": "粉色少女甜美背景",
+        "description": "Matched from infra/examples/Model/BackgroundReplace",
+        "assetRef": "infra/examples/Model/BackgroundReplace/粉色少女甜美背景.png",
+        "sourceRef": "templates/changing-bg/M3-T15/example-1",
+        "storageFileName": "changing-bg/m3-t15-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "粉色少女甜美背景",
       "summary": "替换为粉色系甜美背景，浅粉墙壁或粉色气球/花卉装饰，柔和漫射光，适合少女装/甜美风品牌",
@@ -4467,9 +5059,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/VirtualTryOn/连衣裙穿搭效果.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-dressing/M4-T01/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m4_t01_example_1",
+        "exampleType": "reference_image",
+        "title": "连衣裙穿搭效果",
+        "description": "Matched from infra/examples/Model/VirtualTryOn",
+        "assetRef": "infra/examples/Model/VirtualTryOn/连衣裙穿搭效果.png",
+        "sourceRef": "templates/ai-dressing/M4-T01/example-1",
+        "storageFileName": "ai-dressing/m4-t01-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "连衣裙穿搭效果",
       "summary": "将连衣裙穿到模特身上，展示连衣裙完整廓形、腰线设计、裙摆垂感和领口细节，模特正面站立，白色背景",
@@ -4589,9 +5197,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/VirtualTryOn/衬衫_上衣穿搭.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-dressing/M4-T02/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m4_t02_example_1",
+        "exampleType": "reference_image",
+        "title": "衬衫_上衣穿搭",
+        "description": "Matched from infra/examples/Model/VirtualTryOn",
+        "assetRef": "infra/examples/Model/VirtualTryOn/衬衫_上衣穿搭.png",
+        "sourceRef": "templates/ai-dressing/M4-T02/example-1",
+        "storageFileName": "ai-dressing/m4-t02-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "衬衫/上衣穿搭",
       "summary": "将上衣/衬衫穿到模特身上，搭配中性深色裤装，展示上衣版型、领口形状、袖长和下摆处理",
@@ -4711,9 +5335,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/VirtualTryOn/外套叠穿效果.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-dressing/M4-T03/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m4_t03_example_1",
+        "exampleType": "reference_image",
+        "title": "外套叠穿效果",
+        "description": "Matched from infra/examples/Model/VirtualTryOn",
+        "assetRef": "infra/examples/Model/VirtualTryOn/外套叠穿效果.png",
+        "sourceRef": "templates/ai-dressing/M4-T03/example-1",
+        "storageFileName": "ai-dressing/m4-t03-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "外套叠穿效果",
       "summary": "将外套穿到模特身上，内搭白色基础款衬衣，展示外套廓形、翻领设计、前门襟和扣合方式",
@@ -4833,9 +5473,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/VirtualTryOn/裤装穿搭效果.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-dressing/M4-T04/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m4_t04_example_1",
+        "exampleType": "reference_image",
+        "title": "裤装穿搭效果",
+        "description": "Matched from infra/examples/Model/VirtualTryOn",
+        "assetRef": "infra/examples/Model/VirtualTryOn/裤装穿搭效果.png",
+        "sourceRef": "templates/ai-dressing/M4-T04/example-1",
+        "storageFileName": "ai-dressing/m4-t04-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "裤装穿搭效果",
       "summary": "将裤子穿到模特身上，搭配基础款白色上衣，展示裤子的腰围高度、裤型（直筒/宽腿/锥形）、裤长和细节",
@@ -4955,9 +5611,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/VirtualTryOn/运动装备穿搭.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-dressing/M4-T05/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m4_t05_example_1",
+        "exampleType": "reference_image",
+        "title": "运动装备穿搭",
+        "description": "Matched from infra/examples/Model/VirtualTryOn",
+        "assetRef": "infra/examples/Model/VirtualTryOn/运动装备穿搭.png",
+        "sourceRef": "templates/ai-dressing/M4-T05/example-1",
+        "storageFileName": "ai-dressing/m4-t05-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "运动装备穿搭",
       "summary": "将运动服装穿到模特身上，模特呈运动伸展姿态，展示面料弹力贴合感和运动时的版型效果",
@@ -5077,9 +5749,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/VirtualTryOn/内衣_泳装穿搭.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-dressing/M4-T06/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m4_t06_example_1",
+        "exampleType": "reference_image",
+        "title": "内衣_泳装穿搭",
+        "description": "Matched from infra/examples/Model/VirtualTryOn",
+        "assetRef": "infra/examples/Model/VirtualTryOn/内衣_泳装穿搭.png",
+        "sourceRef": "templates/ai-dressing/M4-T06/example-1",
+        "storageFileName": "ai-dressing/m4-t06-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "内衣/泳装穿搭",
       "summary": "将内衣或泳装穿到模特身上，模特以自信自然的姿态站立，展示款式轮廓、覆盖面积和版型合体度",
@@ -5199,9 +5887,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/VirtualTryOn/民族风_特色服装.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-dressing/M4-T07/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m4_t07_example_1",
+        "exampleType": "reference_image",
+        "title": "民族风_特色服装",
+        "description": "Matched from infra/examples/Model/VirtualTryOn",
+        "assetRef": "infra/examples/Model/VirtualTryOn/民族风_特色服装.png",
+        "sourceRef": "templates/ai-dressing/M4-T07/example-1",
+        "storageFileName": "ai-dressing/m4-t07-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "民族风/特色服装",
       "summary": "将具有民族特色的服装（如汉服/和服/波西米亚/印花裙）穿到模特身上，配合风格适合的背景和配饰",
@@ -5321,9 +6025,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/VirtualTryOn/正装职场穿搭.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-dressing/M4-T08/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m4_t08_example_1",
+        "exampleType": "reference_image",
+        "title": "正装职场穿搭",
+        "description": "Matched from infra/examples/Model/VirtualTryOn",
+        "assetRef": "infra/examples/Model/VirtualTryOn/正装职场穿搭.png",
+        "sourceRef": "templates/ai-dressing/M4-T08/example-1",
+        "storageFileName": "ai-dressing/m4-t08-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "正装职场穿搭",
       "summary": "将职场正装（西装/套裙/职业装）穿到模特身上，干净白色或浅灰背景，展示职业气质和版型挺括感",
@@ -5443,9 +6163,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/VirtualTryOn/多色系同款对比.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-dressing/M4-T09/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m4_t09_example_1",
+        "exampleType": "reference_image",
+        "title": "多色系同款对比",
+        "description": "Matched from infra/examples/Model/VirtualTryOn",
+        "assetRef": "infra/examples/Model/VirtualTryOn/多色系同款对比.png",
+        "sourceRef": "templates/ai-dressing/M4-T09/example-1",
+        "storageFileName": "ai-dressing/m4-t09-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "多色系同款对比",
       "summary": "将同款服装的三个不同颜色版本分别穿到同一模特身上，生成三张颜色不同但构图相同的试穿图",
@@ -5565,9 +6301,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/VirtualTryOn/Flat-lay平铺转穿着.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-dressing/M4-T10/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m4_t10_example_1",
+        "exampleType": "reference_image",
+        "title": "Flat-lay平铺转穿着",
+        "description": "Matched from infra/examples/Model/VirtualTryOn",
+        "assetRef": "infra/examples/Model/VirtualTryOn/Flat-lay平铺转穿着.png",
+        "sourceRef": "templates/ai-dressing/M4-T10/example-1",
+        "storageFileName": "ai-dressing/m4-t10-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "Flat-lay平铺转穿着",
       "summary": "将平铺在桌面的服装产品图转化为真人模特穿着效果图，还原服装的实际立体穿着感",
@@ -5681,9 +6433,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/AccessoriesOnModel/手表腕部展示.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-wearable/M5-T01/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m5_t01_example_1",
+        "exampleType": "reference_image",
+        "title": "手表腕部展示",
+        "description": "Matched from infra/examples/Model/AccessoriesOnModel",
+        "assetRef": "infra/examples/Model/AccessoriesOnModel/手表腕部展示.png",
+        "sourceRef": "templates/ai-wearable/M5-T01/example-1",
+        "storageFileName": "ai-wearable/m5-t01-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "手表腕部展示",
       "summary": "手表自然佩戴在女性纤细手腕上，手腕轻微翻转展示表盘，金属/皮革表带细节真实，白色或大理石背景",
@@ -5797,9 +6565,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/AccessoriesOnModel/手表男士腕部.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-wearable/M5-T02/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m5_t02_example_1",
+        "exampleType": "reference_image",
+        "title": "手表男士腕部",
+        "description": "Matched from infra/examples/Model/AccessoriesOnModel",
+        "assetRef": "infra/examples/Model/AccessoriesOnModel/手表男士腕部.png",
+        "sourceRef": "templates/ai-wearable/M5-T02/example-1",
+        "storageFileName": "ai-wearable/m5-t02-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "手表男士腕部",
       "summary": "手表佩戴在男性有力手腕上，袖口微微卷起露出表盘，展示手表与男性商务风格的搭配",
@@ -5913,9 +6697,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/AccessoriesOnModel/项链颈部展示.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-wearable/M5-T03/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m5_t03_example_1",
+        "exampleType": "reference_image",
+        "title": "项链颈部展示",
+        "description": "Matched from infra/examples/Model/AccessoriesOnModel",
+        "assetRef": "infra/examples/Model/AccessoriesOnModel/项链颈部展示.png",
+        "sourceRef": "templates/ai-wearable/M5-T03/example-1",
+        "storageFileName": "ai-wearable/m5-t03-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "项链颈部展示",
       "summary": "项链佩戴在女性颈部，发型后梳或侧梳展示项链全貌，展示项链的垂感、吊坠位置和链条细节",
@@ -6029,9 +6829,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/AccessoriesOnModel/耳环特写展示.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-wearable/M5-T04/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m5_t04_example_1",
+        "exampleType": "reference_image",
+        "title": "耳环特写展示",
+        "description": "Matched from infra/examples/Model/AccessoriesOnModel",
+        "assetRef": "infra/examples/Model/AccessoriesOnModel/耳环特写展示.png",
+        "sourceRef": "templates/ai-wearable/M5-T04/example-1",
+        "storageFileName": "ai-wearable/m5-t04-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "耳环特写展示",
       "summary": "耳环佩戴在女性耳垂处，侧面或3/4角度特写，发型后梳充分露出耳环，展示耳环大小比例和细节",
@@ -6145,9 +6961,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/AccessoriesOnModel/戒指手部特写.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-wearable/M5-T05/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m5_t05_example_1",
+        "exampleType": "reference_image",
+        "title": "戒指手部特写",
+        "description": "Matched from infra/examples/Model/AccessoriesOnModel",
+        "assetRef": "infra/examples/Model/AccessoriesOnModel/戒指手部特写.png",
+        "sourceRef": "templates/ai-wearable/M5-T05/example-1",
+        "storageFileName": "ai-wearable/m5-t05-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "戒指手部特写",
       "summary": "戒指佩戴在女性手指正确关节位置，手部姿势优雅（轻握/摊开/托腮），展示戒指的设计和宝石光泽",
@@ -6261,9 +7093,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/AccessoriesOnModel/手链手镯展示.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-wearable/M5-T06/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m5_t06_example_1",
+        "exampleType": "reference_image",
+        "title": "手链手镯展示",
+        "description": "Matched from infra/examples/Model/AccessoriesOnModel",
+        "assetRef": "infra/examples/Model/AccessoriesOnModel/手链手镯展示.png",
+        "sourceRef": "templates/ai-wearable/M5-T06/example-1",
+        "storageFileName": "ai-wearable/m5-t06-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "手链手镯展示",
       "summary": "手链/手镯佩戴在女性手腕，手腕自然弯曲展示首饰，背景为白色大理石或木质桌面",
@@ -6377,9 +7225,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/AccessoriesOnModel/太阳镜上脸展示.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-wearable/M5-T07/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m5_t07_example_1",
+        "exampleType": "reference_image",
+        "title": "太阳镜上脸展示",
+        "description": "Matched from infra/examples/Model/AccessoriesOnModel",
+        "assetRef": "infra/examples/Model/AccessoriesOnModel/太阳镜上脸展示.png",
+        "sourceRef": "templates/ai-wearable/M5-T07/example-1",
+        "storageFileName": "ai-wearable/m5-t07-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "太阳镜上脸展示",
       "summary": "太阳镜自然戴在模特脸上，正面或3/4侧面角度，展示镜框与脸型搭配，镜片有自然环境反光",
@@ -6493,9 +7357,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/AccessoriesOnModel/帽子上头展示.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-wearable/M5-T08/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m5_t08_example_1",
+        "exampleType": "reference_image",
+        "title": "帽子上头展示",
+        "description": "Matched from infra/examples/Model/AccessoriesOnModel",
+        "assetRef": "infra/examples/Model/AccessoriesOnModel/帽子上头展示.png",
+        "sourceRef": "templates/ai-wearable/M5-T08/example-1",
+        "storageFileName": "ai-wearable/m5-t08-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "帽子上头展示",
       "summary": "帽子（棒球帽/渔夫帽/针织帽/礼帽）自然戴在模特头上，角度与帽款风格相符，展示帽型和头型搭配",
@@ -6609,9 +7489,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/AccessoriesOnModel/包袋肩背展示.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-wearable/M5-T09/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m5_t09_example_1",
+        "exampleType": "reference_image",
+        "title": "包袋肩背展示",
+        "description": "Matched from infra/examples/Model/AccessoriesOnModel",
+        "assetRef": "infra/examples/Model/AccessoriesOnModel/包袋肩背展示.png",
+        "sourceRef": "templates/ai-wearable/M5-T09/example-1",
+        "storageFileName": "ai-wearable/m5-t09-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "包袋肩背展示",
       "summary": "包袋自然搭在模特肩上或手提，展示包袋在真实使用状态下的大小比例、形态和材质感",
@@ -6725,9 +7621,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/Model/AccessoriesOnModel/包袋腋下夹持.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-wearable/M5-T10/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m5_t10_example_1",
+        "exampleType": "reference_image",
+        "title": "包袋腋下夹持",
+        "description": "Matched from infra/examples/Model/AccessoriesOnModel",
+        "assetRef": "infra/examples/Model/AccessoriesOnModel/包袋腋下夹持.png",
+        "sourceRef": "templates/ai-wearable/M5-T10/example-1",
+        "storageFileName": "ai-wearable/m5-t10-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "包袋腋下夹持",
       "summary": "包袋以腋下夹持的方式展示（Clutch/信封包），模特侧身或3/4角度，突出包袋廓形和皮革质感",
@@ -6841,9 +7753,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/模特图系列/穿戴商品/模特图系列-穿戴商品-美容仪使用展示.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-wearable/M5-T11/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m5_t11_example_1",
+        "exampleType": "reference_image",
+        "title": "模特图系列-穿戴商品-美容仪使用展示",
+        "description": "Matched from infra/examples/模特图系列/穿戴商品",
+        "assetRef": "infra/examples/模特图系列/穿戴商品/模特图系列-穿戴商品-美容仪使用展示.png",
+        "sourceRef": "templates/ai-wearable/M5-T11/example-1",
+        "storageFileName": "ai-wearable/m5-t11-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "美容仪使用展示",
       "summary": "模特手持美容仪（美容棒/射频仪/眼部仪器）展示使用状态，面部舒展放松，突出产品使用场景",
@@ -6957,9 +7885,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/模特图系列/穿戴商品/模特图系列-穿戴商品-全身配饰搭配图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-wearable/M5-T12/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m5_t12_example_1",
+        "exampleType": "reference_image",
+        "title": "模特图系列-穿戴商品-全身配饰搭配图",
+        "description": "Matched from infra/examples/模特图系列/穿戴商品",
+        "assetRef": "infra/examples/模特图系列/穿戴商品/模特图系列-穿戴商品-全身配饰搭配图.png",
+        "sourceRef": "templates/ai-wearable/M5-T12/example-1",
+        "storageFileName": "ai-wearable/m5-t12-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "全身配饰搭配图",
       "summary": "模特穿搭完整，将所有配饰（项链+耳环+手表+戒指+包袋）全部佩戴，全身展示整体造型搭配效果",
@@ -7073,9 +8017,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-正面标准站姿.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-posture/M6-T01/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m6_t01_example_1",
+        "exampleType": "reference_image",
+        "title": "模特图系列-姿势裂变-正面标准站姿",
+        "description": "Matched from infra/examples/模特图系列/姿势裂变",
+        "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-正面标准站姿.png",
+        "sourceRef": "templates/ai-posture/M6-T01/example-1",
+        "storageFileName": "ai-posture/m6-t01-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "正面标准站姿",
       "summary": "模特正面直立，双手自然下垂或轻放腰侧，目视前方，表情自然微笑，展示服装正面全貌",
@@ -7189,9 +8149,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-3_4侧身站姿.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-posture/M6-T02/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m6_t02_example_1",
+        "exampleType": "reference_image",
+        "title": "模特图系列-姿势裂变-3_4侧身站姿",
+        "description": "Matched from infra/examples/模特图系列/姿势裂变",
+        "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-3_4侧身站姿.png",
+        "sourceRef": "templates/ai-posture/M6-T02/example-1",
+        "storageFileName": "ai-posture/m6-t02-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "3/4侧身站姿",
       "summary": "模特呈45度3/4侧身，身体转向右侧，头部轻转向镜头，展示服装侧面线条、肩部和腰部轮廓",
@@ -7305,9 +8281,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-背面全展示.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-posture/M6-T03/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m6_t03_example_1",
+        "exampleType": "reference_image",
+        "title": "模特图系列-姿势裂变-背面全展示",
+        "description": "Matched from infra/examples/模特图系列/姿势裂变",
+        "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-背面全展示.png",
+        "sourceRef": "templates/ai-posture/M6-T03/example-1",
+        "storageFileName": "ai-posture/m6-t03-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "背面全展示",
       "summary": "模特背对镜头，头部微侧（可见侧脸轮廓），手臂自然下垂，展示服装背部设计——拉链/开背/印花/蕾丝",
@@ -7421,9 +8413,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-行走动态姿势.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-posture/M6-T04/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m6_t04_example_1",
+        "exampleType": "reference_image",
+        "title": "模特图系列-姿势裂变-行走动态姿势",
+        "description": "Matched from infra/examples/模特图系列/姿势裂变",
+        "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-行走动态姿势.png",
+        "sourceRef": "templates/ai-posture/M6-T04/example-1",
+        "storageFileName": "ai-posture/m6-t04-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "行走动态姿势",
       "summary": "模特呈自然行走状态，一脚迈出，手臂轻微摆动，展示服装在行走中的动态飘动感和垂感",
@@ -7537,9 +8545,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-双手叉腰自信姿.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-posture/M6-T05/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m6_t05_example_1",
+        "exampleType": "reference_image",
+        "title": "模特图系列-姿势裂变-双手叉腰自信姿",
+        "description": "Matched from infra/examples/模特图系列/姿势裂变",
+        "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-双手叉腰自信姿.png",
+        "sourceRef": "templates/ai-posture/M6-T05/example-1",
+        "storageFileName": "ai-posture/m6-t05-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "双手叉腰自信姿",
       "summary": "模特双手叉腰，挺胸自信站立，眼神直视镜头，展示服装腰部设计和整体廓形",
@@ -7653,9 +8677,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-轻托下颌思考姿.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-posture/M6-T06/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m6_t06_example_1",
+        "exampleType": "reference_image",
+        "title": "模特图系列-姿势裂变-轻托下颌思考姿",
+        "description": "Matched from infra/examples/模特图系列/姿势裂变",
+        "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-轻托下颌思考姿.png",
+        "sourceRef": "templates/ai-posture/M6-T06/example-1",
+        "storageFileName": "ai-posture/m6-t06-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "轻托下颌思考姿",
       "summary": "模特单手轻托下颌，低垂眼神或侧视，展示服装细节的同时增添优雅或思考感",
@@ -7769,9 +8809,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-坐姿展示（椅_台阶）.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-posture/M6-T07/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m6_t07_example_1",
+        "exampleType": "reference_image",
+        "title": "模特图系列-姿势裂变-坐姿展示（椅_台阶）",
+        "description": "Matched from infra/examples/模特图系列/姿势裂变",
+        "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-坐姿展示（椅_台阶）.png",
+        "sourceRef": "templates/ai-posture/M6-T07/example-1",
+        "storageFileName": "ai-posture/m6-t07-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "坐姿展示（椅/台阶）",
       "summary": "模特端坐在椅子上或台阶上，腿部交叠自然，展示服装在坐姿下的版型——裤子裆部/裙摆/上衣收腰",
@@ -7885,9 +8941,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-倚靠墙面姿势.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-posture/M6-T08/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m6_t08_example_1",
+        "exampleType": "reference_image",
+        "title": "模特图系列-姿势裂变-倚靠墙面姿势",
+        "description": "Matched from infra/examples/模特图系列/姿势裂变",
+        "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-倚靠墙面姿势.png",
+        "sourceRef": "templates/ai-posture/M6-T08/example-1",
+        "storageFileName": "ai-posture/m6-t08-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "倚靠墙面姿势",
       "summary": "模特单侧肩膀倚靠墙面，手臂随意交叉或单手插口袋，休闲自然，展示服装的日常穿着感",
@@ -8001,9 +9073,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-领口_上半身特写.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-posture/M6-T09/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m6_t09_example_1",
+        "exampleType": "reference_image",
+        "title": "模特图系列-姿势裂变-领口_上半身特写",
+        "description": "Matched from infra/examples/模特图系列/姿势裂变",
+        "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-领口_上半身特写.png",
+        "sourceRef": "templates/ai-posture/M6-T09/example-1",
+        "storageFileName": "ai-posture/m6-t09-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "领口/上半身特写",
       "summary": "模特上半身或领口区域特写镜头，聚焦领型设计（翻领/V领/圆领/一字领）、纽扣和面料细节",
@@ -8117,9 +9205,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-下半身裤装_裙摆特写.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-posture/M6-T10/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m6_t10_example_1",
+        "exampleType": "reference_image",
+        "title": "模特图系列-姿势裂变-下半身裤装_裙摆特写",
+        "description": "Matched from infra/examples/模特图系列/姿势裂变",
+        "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-下半身裤装_裙摆特写.png",
+        "sourceRef": "templates/ai-posture/M6-T10/example-1",
+        "storageFileName": "ai-posture/m6-t10-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "下半身裤装/裙摆特写",
       "summary": "模特下半身特写，聚焦裤型腿线、裙摆飘动感或褶皱设计，展示下装的设计细节和垂坠感",
@@ -8233,9 +9337,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-回眸肩侧角度.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-posture/M6-T11/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m6_t11_example_1",
+        "exampleType": "reference_image",
+        "title": "模特图系列-姿势裂变-回眸肩侧角度",
+        "description": "Matched from infra/examples/模特图系列/姿势裂变",
+        "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-回眸肩侧角度.png",
+        "sourceRef": "templates/ai-posture/M6-T11/example-1",
+        "storageFileName": "ai-posture/m6-t11-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "回眸肩侧角度",
       "summary": "模特身体背向或侧向镜头，头部回眸向镜头方向，展示服装肩部设计和背面轮廓",
@@ -8349,9 +9469,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-跳跃_活力动态.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-posture/M6-T12/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "m6_t12_example_1",
+        "exampleType": "reference_image",
+        "title": "模特图系列-姿势裂变-跳跃_活力动态",
+        "description": "Matched from infra/examples/模特图系列/姿势裂变",
+        "assetRef": "infra/examples/模特图系列/姿势裂变/模特图系列-姿势裂变-跳跃_活力动态.png",
+        "sourceRef": "templates/ai-posture/M6-T12/example-1",
+        "storageFileName": "ai-posture/m6-t12-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "跳跃/活力动态",
       "summary": "模特呈轻跳或欢跃的动态姿势，展示服装的动态裂变效果和活力感，适合运动装/休闲装",
@@ -8472,9 +9608,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-极简白色大理石桌面.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-product/P1-T01/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p1_t01_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品场景合成-极简白色大理石桌面",
+        "description": "Matched from infra/examples/商品图系列/商品场景合成",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-极简白色大理石桌面.png",
+        "sourceRef": "templates/ai-product/P1-T01/example-1",
+        "storageFileName": "ai-product/p1-t01-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "极简白色大理石桌面",
       "summary": "商品放置在极简白色大理石桌面，白色或浅灰背景，柔和漫射光，少量绿植/书籍装饰在边角，高端简约",
@@ -8595,9 +9747,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-暖调原木桌面.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-product/P1-T02/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p1_t02_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品场景合成-暖调原木桌面",
+        "description": "Matched from infra/examples/商品图系列/商品场景合成",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-暖调原木桌面.png",
+        "sourceRef": "templates/ai-product/P1-T02/example-1",
+        "storageFileName": "ai-product/p1-t02-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "暖调原木桌面",
       "summary": "商品放置在暖色调浅色原木桌面，自然木纹纹理，暖黄色背景墙，左侧自然窗光，北欧家居温馨感",
@@ -8718,9 +9886,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-深色深邃木质桌面.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-product/P1-T03/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p1_t03_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品场景合成-深色深邃木质桌面",
+        "description": "Matched from infra/examples/商品图系列/商品场景合成",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-深色深邃木质桌面.png",
+        "sourceRef": "templates/ai-product/P1-T03/example-1",
+        "storageFileName": "ai-product/p1-t03-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "深色深邃木质桌面",
       "summary": "商品放置在深色深邃的胡桃木桌面，暗调氛围，侧面戏剧性光线，局部高光，适合烈酒/咖啡/男士用品",
@@ -8841,9 +10025,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-浴室卫浴大理石台面.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-product/P1-T04/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p1_t04_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品场景合成-浴室卫浴大理石台面",
+        "description": "Matched from infra/examples/商品图系列/商品场景合成",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-浴室卫浴大理石台面.png",
+        "sourceRef": "templates/ai-product/P1-T04/example-1",
+        "storageFileName": "ai-product/p1-t04-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "浴室卫浴大理石台面",
       "summary": "商品放置在白色浴室大理石台面，配毛巾、浴盐、小蜡烛和鲜花等道具，柔和浴室灯光，适合个护/香皂/美妆",
@@ -8964,9 +10164,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-户外野餐草地.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-product/P1-T05/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p1_t05_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品场景合成-户外野餐草地",
+        "description": "Matched from infra/examples/商品图系列/商品场景合成",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-户外野餐草地.png",
+        "sourceRef": "templates/ai-product/P1-T05/example-1",
+        "storageFileName": "ai-product/p1-t05-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "户外野餐草地",
       "summary": "商品放置在户外野餐场景，绿色草地，格子野餐垫，阳光明媚，配水果/餐巾等道具，清新生活方式感",
@@ -9087,9 +10303,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-科技感深色背景.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-product/P1-T06/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p1_t06_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品场景合成-科技感深色背景",
+        "description": "Matched from infra/examples/商品图系列/商品场景合成",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-科技感深色背景.png",
+        "sourceRef": "templates/ai-product/P1-T06/example-1",
+        "storageFileName": "ai-product/p1-t06-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "科技感深色背景",
       "summary": "商品放置在深灰/炭黑色科技感背景，LED光圈或几何光效，局部强调光，适合3C数码/智能家居商品",
@@ -9210,9 +10442,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-奢华礼品包装场景.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-product/P1-T07/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p1_t07_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品场景合成-奢华礼品包装场景",
+        "description": "Matched from infra/examples/商品图系列/商品场景合成",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-奢华礼品包装场景.png",
+        "sourceRef": "templates/ai-product/P1-T07/example-1",
+        "storageFileName": "ai-product/p1-t07-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "奢华礼品包装场景",
       "summary": "商品与精美礼盒、金色丝带、干花、金粉星星等道具组合，暖金色调，适合节日礼品/高端商品",
@@ -9333,9 +10581,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-厨房料理操作台.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-product/P1-T08/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p1_t08_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品场景合成-厨房料理操作台",
+        "description": "Matched from infra/examples/商品图系列/商品场景合成",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-厨房料理操作台.png",
+        "sourceRef": "templates/ai-product/P1-T08/example-1",
+        "storageFileName": "ai-product/p1-t08-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "厨房料理操作台",
       "summary": "商品放置在厨房场景，白色或木质料理台，配厨具/食材/香草等道具，自然光线，适合厨具/食品/调料",
@@ -9456,9 +10720,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-书桌办公文具场景.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-product/P1-T09/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p1_t09_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品场景合成-书桌办公文具场景",
+        "description": "Matched from infra/examples/商品图系列/商品场景合成",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-书桌办公文具场景.png",
+        "sourceRef": "templates/ai-product/P1-T09/example-1",
+        "storageFileName": "ai-product/p1-t09-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "书桌办公文具场景",
       "summary": "商品放置在整洁书桌场景，配笔记本/钢笔/植物/台灯道具，干净自然光，适合文具/办公用品/数码周边",
@@ -9579,9 +10859,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-咖啡馆吧台场景.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-product/P1-T10/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p1_t10_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品场景合成-咖啡馆吧台场景",
+        "description": "Matched from infra/examples/商品图系列/商品场景合成",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-咖啡馆吧台场景.png",
+        "sourceRef": "templates/ai-product/P1-T10/example-1",
+        "storageFileName": "ai-product/p1-t10-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "咖啡馆吧台场景",
       "summary": "商品摆放在咖啡馆吧台或木质桌面，配咖啡杯/麻袋/咖啡豆等道具，暖调灯光，适合咖啡/茶/饮品类",
@@ -9702,9 +10998,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-水中漂浮效果.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-product/P1-T11/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p1_t11_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品场景合成-水中漂浮效果",
+        "description": "Matched from infra/examples/商品图系列/商品场景合成",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-水中漂浮效果.png",
+        "sourceRef": "templates/ai-product/P1-T11/example-1",
+        "storageFileName": "ai-product/p1-t11-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "水中漂浮效果",
       "summary": "商品漂浮在清澈水面（或浸入浅水中），激起涟漪水花，强调产品的清洁/防水/清爽特性",
@@ -9825,9 +11137,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-冰雪冰镇场景.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-product/P1-T12/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p1_t12_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品场景合成-冰雪冰镇场景",
+        "description": "Matched from infra/examples/商品图系列/商品场景合成",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-冰雪冰镇场景.png",
+        "sourceRef": "templates/ai-product/P1-T12/example-1",
+        "storageFileName": "ai-product/p1-t12-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "冰雪冰镇场景",
       "summary": "商品被冰块环绕或半埋冰中，晶莹透亮的冰晶效果，适合饮料/护肤/凉感商品，突出清爽和保鲜特性",
@@ -9948,9 +11276,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-花卉植物装饰场景.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-product/P1-T13/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p1_t13_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品场景合成-花卉植物装饰场景",
+        "description": "Matched from infra/examples/商品图系列/商品场景合成",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-花卉植物装饰场景.png",
+        "sourceRef": "templates/ai-product/P1-T13/example-1",
+        "storageFileName": "ai-product/p1-t13-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "花卉植物装饰场景",
       "summary": "商品与鲜花/干花/绿植组合场景，花瓣点缀周围，清新自然，适合香水/护肤/精油/蜡烛/家居类商品",
@@ -10071,9 +11415,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-节日圣诞场景.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-product/P1-T14/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p1_t14_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品场景合成-节日圣诞场景",
+        "description": "Matched from infra/examples/商品图系列/商品场景合成",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-节日圣诞场景.png",
+        "sourceRef": "templates/ai-product/P1-T14/example-1",
+        "storageFileName": "ai-product/p1-t14-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "节日圣诞场景",
       "summary": "商品置于圣诞节日场景，雪景/圣诞树/彩灯/礼品盒背景，暖红绿色调，营造黑五/圣诞购物季气氛",
@@ -10194,9 +11554,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-樱花春日场景.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-product/P1-T15/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p1_t15_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品场景合成-樱花春日场景",
+        "description": "Matched from infra/examples/商品图系列/商品场景合成",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-樱花春日场景.png",
+        "sourceRef": "templates/ai-product/P1-T15/example-1",
+        "storageFileName": "ai-product/p1-t15-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "樱花春日场景",
       "summary": "商品置于日式樱花场景，粉色花瓣飘落，浅粉背景，柔和春日光线，适合日本市场或春季新品上市",
@@ -10317,9 +11693,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-健身运动场景.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-product/P1-T16/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p1_t16_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品场景合成-健身运动场景",
+        "description": "Matched from infra/examples/商品图系列/商品场景合成",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-健身运动场景.png",
+        "sourceRef": "templates/ai-product/P1-T16/example-1",
+        "storageFileName": "ai-product/p1-t16-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "健身运动场景",
       "summary": "商品置于健身房或运动场景，配哑铃/运动垫/水瓶等道具，强调运动功能性，适合运动保健品/健身配件",
@@ -10440,9 +11832,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-旅行行李出行场景.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-product/P1-T17/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p1_t17_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品场景合成-旅行行李出行场景",
+        "description": "Matched from infra/examples/商品图系列/商品场景合成",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-旅行行李出行场景.png",
+        "sourceRef": "templates/ai-product/P1-T17/example-1",
+        "storageFileName": "ai-product/p1-t17-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "旅行行李出行场景",
       "summary": "商品置于旅行行李场景，配行李箱/护照/地图等道具，展示商品的便携性和旅行实用性",
@@ -10563,9 +11971,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-奢华珠宝展台.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/ai-product/P1-T18/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p1_t18_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品场景合成-奢华珠宝展台",
+        "description": "Matched from infra/examples/商品图系列/商品场景合成",
+        "assetRef": "infra/examples/商品图系列/商品场景合成/商品图系列-商品场景合成-奢华珠宝展台.png",
+        "sourceRef": "templates/ai-product/P1-T18/example-1",
+        "storageFileName": "ai-product/p1-t18-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "奢华珠宝展台",
       "summary": "商品（珠宝/手表/饰品）放置在专业珠宝展台，天鹅绒托盘或玻璃展台，精致聚光灯，高端品质感",
@@ -10686,9 +12110,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品替换/商品图系列-商品替换-同款不同颜色SKU替换.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-replacement/P2-T01/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p2_t01_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品替换-同款不同颜色SKU替换",
+        "description": "Matched from infra/examples/商品图系列/商品替换",
+        "assetRef": "infra/examples/商品图系列/商品替换/商品图系列-商品替换-同款不同颜色SKU替换.png",
+        "sourceRef": "templates/product-replacement/P2-T01/example-1",
+        "storageFileName": "product-replacement/p2-t01-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "同款不同颜色SKU替换",
       "summary": "在保留所有场景元素的前提下，将原商品替换为相同款式不同颜色的SKU，确保新颜色准确还原，适合颜色SKU批量出图",
@@ -10809,9 +12249,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品替换/商品图系列-商品替换-同品类新品换入.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-replacement/P2-T02/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p2_t02_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品替换-同品类新品换入",
+        "description": "Matched from infra/examples/商品图系列/商品替换",
+        "assetRef": "infra/examples/商品图系列/商品替换/商品图系列-商品替换-同品类新品换入.png",
+        "sourceRef": "templates/product-replacement/P2-T02/example-1",
+        "storageFileName": "product-replacement/p2-t02-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "同品类新品换入",
       "summary": "保留现有精美场景构图和全部道具，将原商品完整替换为同品类的全新商品款式，新品与场景风格相符",
@@ -10932,9 +12388,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品替换/商品图系列-商品替换-同场景批量SKU套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-replacement/P2-T03/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p2_t03_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品替换-同场景批量SKU套图",
+        "description": "Matched from infra/examples/商品图系列/商品替换",
+        "assetRef": "infra/examples/商品图系列/商品替换/商品图系列-商品替换-同场景批量SKU套图.png",
+        "sourceRef": "templates/product-replacement/P2-T03/example-1",
+        "storageFileName": "product-replacement/p2-t03-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "同场景批量SKU套图",
       "summary": "基于同一套精美场景模板，依次将不同SKU商品（同品类不同款式）替换入场景，批量输出整个系列的统一风格图集",
@@ -11055,9 +12527,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品替换/商品图系列-商品替换-节日限定换装.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-replacement/P2-T04/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p2_t04_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品替换-节日限定换装",
+        "description": "Matched from infra/examples/商品图系列/商品替换",
+        "assetRef": "infra/examples/商品图系列/商品替换/商品图系列-商品替换-节日限定换装.png",
+        "sourceRef": "templates/product-replacement/P2-T04/example-1",
+        "storageFileName": "product-replacement/p2-t04-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "节日限定换装",
       "summary": "将场景中的常规商品替换为节日限定款/礼盒版商品，配合场景的节日氛围，形成节日营销专用图",
@@ -11178,9 +12666,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品替换/商品图系列-商品替换-新品上市切换.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-replacement/P2-T05/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p2_t05_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品替换-新品上市切换",
+        "description": "Matched from infra/examples/商品图系列/商品替换",
+        "assetRef": "infra/examples/商品图系列/商品替换/商品图系列-商品替换-新品上市切换.png",
+        "sourceRef": "templates/product-replacement/P2-T05/example-1",
+        "storageFileName": "product-replacement/p2-t05-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "新品上市切换",
       "summary": "将场景中的旧款商品替换为新款更新版本，保持原有场景营销投入，快速产出新品上市视觉物料",
@@ -11301,9 +12805,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品替换/商品图系列-商品替换-多市场适配替换.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-replacement/P2-T06/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p2_t06_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品替换-多市场适配替换",
+        "description": "Matched from infra/examples/商品图系列/商品替换",
+        "assetRef": "infra/examples/商品图系列/商品替换/商品图系列-商品替换-多市场适配替换.png",
+        "sourceRef": "templates/product-replacement/P2-T06/example-1",
+        "storageFileName": "product-replacement/p2-t06-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "多市场适配替换",
       "summary": "将场景中的商品替换为已本地化包装的版本（不同语言标签/不同市场包装），生成多市场适配图",
@@ -11424,9 +12944,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品替换/商品图系列-商品替换-尺寸规格替换.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-replacement/P2-T07/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p2_t07_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品替换-尺寸规格替换",
+        "description": "Matched from infra/examples/商品图系列/商品替换",
+        "assetRef": "infra/examples/商品图系列/商品替换/商品图系列-商品替换-尺寸规格替换.png",
+        "sourceRef": "templates/product-replacement/P2-T07/example-1",
+        "storageFileName": "product-replacement/p2-t07-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "尺寸规格替换",
       "summary": "将场景中的小规格商品替换为大规格/家庭装版本，注意新规格商品与场景道具的比例关系",
@@ -11547,9 +13083,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品替换/商品图系列-商品替换-白底场景互换.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-replacement/P2-T08/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p2_t08_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品替换-白底场景互换",
+        "description": "Matched from infra/examples/商品图系列/商品替换",
+        "assetRef": "infra/examples/商品图系列/商品替换/商品图系列-商品替换-白底场景互换.png",
+        "sourceRef": "templates/product-replacement/P2-T08/example-1",
+        "storageFileName": "product-replacement/p2-t08-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "白底场景互换",
       "summary": "将白底商品主图直接替换为竞品平台要求的特定规格（如eBay/Walmart/Target的不同主图规格）",
@@ -11663,9 +13215,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-经典6场景裂变套装.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/image-fission/P3-T01/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p3_t01_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-场景裂变-经典6场景裂变套装",
+        "description": "Matched from infra/examples/商品图系列/场景裂变",
+        "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-经典6场景裂变套装.png",
+        "sourceRef": "templates/image-fission/P3-T01/example-1",
+        "storageFileName": "image-fission/p3-t01-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "经典6场景裂变套装",
       "summary": "为该商品生成6个差异化场景图：①极简白底棚拍②暖调北欧家居③户外自然场景④节日礼品氛围⑤时尚杂志感场景⑥使用场景生活方式图，每图风格明确差异化，统一1:1规格",
@@ -11779,9 +13347,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-节日营销8场景套装.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/image-fission/P3-T02/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p3_t02_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-场景裂变-节日营销8场景套装",
+        "description": "Matched from infra/examples/商品图系列/场景裂变",
+        "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-节日营销8场景套装.png",
+        "sourceRef": "templates/image-fission/P3-T02/example-1",
+        "storageFileName": "image-fission/p3-t02-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "节日营销8场景套装",
       "summary": "为商品生成8个节日主题场景图：圣诞节/新年/情人节/母亲节/父亲节/感恩节/黑五/万圣节，每个节日专属道具和色调，批量生成全年营销素材",
@@ -11895,9 +13479,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-多市场场景适配套装.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/image-fission/P3-T03/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p3_t03_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-场景裂变-多市场场景适配套装",
+        "description": "Matched from infra/examples/商品图系列/场景裂变",
+        "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-多市场场景适配套装.png",
+        "sourceRef": "templates/image-fission/P3-T03/example-1",
+        "storageFileName": "image-fission/p3-t03-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "多市场场景适配套装",
       "summary": "为商品生成适配不同目标市场审美的场景图：美国现代家居风/英国古典优雅风/日本极简禅意风/德国精工实用风/东南亚热带清新风，各市场一张",
@@ -12011,9 +13611,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-四季场景套装.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/image-fission/P3-T04/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p3_t04_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-场景裂变-四季场景套装",
+        "description": "Matched from infra/examples/商品图系列/场景裂变",
+        "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-四季场景套装.png",
+        "sourceRef": "templates/image-fission/P3-T04/example-1",
+        "storageFileName": "image-fission/p3-t04-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "四季场景套装",
       "summary": "为商品生成春夏秋冬四季主题场景图：春日樱花/夏日清凉/秋日暖意/冬日温馨，呼应不同季节的销售旺季",
@@ -12127,9 +13743,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-不同使用场景套装.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/image-fission/P3-T05/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p3_t05_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-场景裂变-不同使用场景套装",
+        "description": "Matched from infra/examples/商品图系列/场景裂变",
+        "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-不同使用场景套装.png",
+        "sourceRef": "templates/image-fission/P3-T05/example-1",
+        "storageFileName": "image-fission/p3-t05-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "不同使用场景套装",
       "summary": "为商品生成3-4个真实使用场景图，展示商品在不同使用环境下的实际状态（家里/办公室/户外/旅行中使用场景）",
@@ -12243,9 +13875,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-色调风格裂变套装.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/image-fission/P3-T06/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p3_t06_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-场景裂变-色调风格裂变套装",
+        "description": "Matched from infra/examples/商品图系列/场景裂变",
+        "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-色调风格裂变套装.png",
+        "sourceRef": "templates/image-fission/P3-T06/example-1",
+        "storageFileName": "image-fission/p3-t06-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "色调风格裂变套装",
       "summary": "为商品生成5种不同色调风格的同款场景图：暖调金色/冷调蓝白/高对比黑白/马卡龙粉柔/深色高端暗调",
@@ -12359,9 +14007,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-社媒平台适配套装.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/image-fission/P3-T07/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p3_t07_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-场景裂变-社媒平台适配套装",
+        "description": "Matched from infra/examples/商品图系列/场景裂变",
+        "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-社媒平台适配套装.png",
+        "sourceRef": "templates/image-fission/P3-T07/example-1",
+        "storageFileName": "image-fission/p3-t07-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "社媒平台适配套装",
       "summary": "为商品生成多平台适配图：Instagram方图(1:1)/Pinterest竖图(2:3)/Facebook横图(16:9)/亚马逊主图(1:1)/A+页面(16:9)，同一场景不同比例裁剪优化",
@@ -12475,9 +14139,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-高端vs平价双风格.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/image-fission/P3-T08/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p3_t08_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-场景裂变-高端vs平价双风格",
+        "description": "Matched from infra/examples/商品图系列/场景裂变",
+        "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-高端vs平价双风格.png",
+        "sourceRef": "templates/image-fission/P3-T08/example-1",
+        "storageFileName": "image-fission/p3-t08-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "高端vs平价双风格",
       "summary": "为同一商品生成两种档次定位风格图：高端奢华版（黑金调/大理石/精致道具）和大众亲民版（明亮自然/生活化场景），用于A/B测试主图转化率",
@@ -12591,9 +14271,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-竖图详情页场景套.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/image-fission/P3-T09/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p3_t09_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-场景裂变-竖图详情页场景套",
+        "description": "Matched from infra/examples/商品图系列/场景裂变",
+        "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-竖图详情页场景套.png",
+        "sourceRef": "templates/image-fission/P3-T09/example-1",
+        "storageFileName": "image-fission/p3-t09-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "竖图详情页场景套",
       "summary": "为商品生成一套详情页竖图场景（9:16比例），每张展示一个核心卖点+场景，适合移动端详情页视觉叙事",
@@ -12707,9 +14403,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-平台活动主题裂变.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/image-fission/P3-T10/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p3_t10_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-场景裂变-平台活动主题裂变",
+        "description": "Matched from infra/examples/商品图系列/场景裂变",
+        "assetRef": "infra/examples/商品图系列/场景裂变/商品图系列-场景裂变-平台活动主题裂变.png",
+        "sourceRef": "templates/image-fission/P3-T10/example-1",
+        "storageFileName": "image-fission/p3-t10-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "平台活动主题裂变",
       "summary": "为商品生成针对亚马逊/Shopify/eBay/速卖通等不同平台大促活动（Prime Day/双11/BF/新年大促）的主题场景图",
@@ -12823,9 +14535,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-极简白色大理石台面素材.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/scene-image/P4-T01/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p4_t01_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-场景素材生成-极简白色大理石台面素材",
+        "description": "Matched from infra/examples/商品图系列/场景素材生成",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-极简白色大理石台面素材.png",
+        "sourceRef": "templates/scene-image/P4-T01/example-1",
+        "storageFileName": "scene-image/p4-t01-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "极简白色大理石台面素材",
       "summary": "生成极简白色大理石台面背景素材，台面中心留空，左侧配一株小绿植，右侧一本翻开的杂志，柔和漫射光，无商品",
@@ -12939,9 +14667,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-暖调北欧原木台面素材.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/scene-image/P4-T02/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p4_t02_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-场景素材生成-暖调北欧原木台面素材",
+        "description": "Matched from infra/examples/商品图系列/场景素材生成",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-暖调北欧原木台面素材.png",
+        "sourceRef": "templates/scene-image/P4-T02/example-1",
+        "storageFileName": "scene-image/p4-t02-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "暖调北欧原木台面素材",
       "summary": "生成暖色调浅色原木台面背景素材，台面中心留空，配少量干花和蜡烛在一侧，左上方自然窗光，无商品",
@@ -13055,9 +14799,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-深色胡桃木台面素材.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/scene-image/P4-T03/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p4_t03_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-场景素材生成-深色胡桃木台面素材",
+        "description": "Matched from infra/examples/商品图系列/场景素材生成",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-深色胡桃木台面素材.png",
+        "sourceRef": "templates/scene-image/P4-T03/example-1",
+        "storageFileName": "scene-image/p4-t03-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "深色胡桃木台面素材",
       "summary": "生成深色胡桃木台面背景素材，暗调戏剧性光线，中心留空，角落有少量咖啡豆/威士忌杯/皮革书签等道具，无商品",
@@ -13171,9 +14931,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-白色浴室卫浴台面素材.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/scene-image/P4-T04/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p4_t04_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-场景素材生成-白色浴室卫浴台面素材",
+        "description": "Matched from infra/examples/商品图系列/场景素材生成",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-白色浴室卫浴台面素材.png",
+        "sourceRef": "templates/scene-image/P4-T04/example-1",
+        "storageFileName": "scene-image/p4-t04-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "白色浴室卫浴台面素材",
       "summary": "生成白色浴室大理石卫浴台面背景素材，中心留空，两侧配白色卷毛巾、小蜡烛、散落花瓣，柔和浴室灯光，无商品",
@@ -13287,9 +15063,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-户外草地野餐素材.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/scene-image/P4-T05/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p4_t05_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-场景素材生成-户外草地野餐素材",
+        "description": "Matched from infra/examples/商品图系列/场景素材生成",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-户外草地野餐素材.png",
+        "sourceRef": "templates/scene-image/P4-T05/example-1",
+        "storageFileName": "scene-image/p4-t05-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "户外草地野餐素材",
       "summary": "生成户外阳光草地野餐场景背景素材，绿色草地上铺有格子野餐垫，中心区域留空，边缘有草篮/水果/餐巾等道具，无商品",
@@ -13403,9 +15195,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-科技感深色背景素材.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/scene-image/P4-T06/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p4_t06_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-场景素材生成-科技感深色背景素材",
+        "description": "Matched from infra/examples/商品图系列/场景素材生成",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-科技感深色背景素材.png",
+        "sourceRef": "templates/scene-image/P4-T06/example-1",
+        "storageFileName": "scene-image/p4-t06-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "科技感深色背景素材",
       "summary": "生成深灰/炭黑色科技感背景素材，有光效格栅或LED环形光在背景，中心有圆形聚光投射区域，无商品",
@@ -13519,9 +15327,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-圣诞节日场景素材.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/scene-image/P4-T07/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p4_t07_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-场景素材生成-圣诞节日场景素材",
+        "description": "Matched from infra/examples/商品图系列/场景素材生成",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-圣诞节日场景素材.png",
+        "sourceRef": "templates/scene-image/P4-T07/example-1",
+        "storageFileName": "scene-image/p4-t07-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "圣诞节日场景素材",
       "summary": "生成圣诞节日背景素材，圣诞树/雪景/彩灯/礼品盒环绕四周，中心平整区域留空，暖红绿节日色调，无商品",
@@ -13635,9 +15459,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-樱花春日场景素材.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/scene-image/P4-T08/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p4_t08_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-场景素材生成-樱花春日场景素材",
+        "description": "Matched from infra/examples/商品图系列/场景素材生成",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-樱花春日场景素材.png",
+        "sourceRef": "templates/scene-image/P4-T08/example-1",
+        "storageFileName": "scene-image/p4-t08-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "樱花春日场景素材",
       "summary": "生成日式樱花背景素材，粉色樱花花瓣散落，浅粉/白色背景，中心留空，柔和春日漫射光，适合日本市场",
@@ -13751,9 +15591,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-花卉植物装饰背景素材.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/scene-image/P4-T09/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p4_t09_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-场景素材生成-花卉植物装饰背景素材",
+        "description": "Matched from infra/examples/商品图系列/场景素材生成",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-花卉植物装饰背景素材.png",
+        "sourceRef": "templates/scene-image/P4-T09/example-1",
+        "storageFileName": "scene-image/p4-t09-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "花卉植物装饰背景素材",
       "summary": "生成鲜花植物装饰背景素材，玫瑰/牡丹/薰衣草等花卉从左右两侧延伸，中心白色或浅色区域留空，柔和自然光，无商品",
@@ -13867,9 +15723,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-厨房操作台场景素材.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/scene-image/P4-T10/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p4_t10_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-场景素材生成-厨房操作台场景素材",
+        "description": "Matched from infra/examples/商品图系列/场景素材生成",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-厨房操作台场景素材.png",
+        "sourceRef": "templates/scene-image/P4-T10/example-1",
+        "storageFileName": "scene-image/p4-t10-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "厨房操作台场景素材",
       "summary": "生成厨房操作台背景素材，白色或木质台面，中心留空，配木制砧板/香草束/陶瓷碗等道具在一侧，自然厨房光线，无商品",
@@ -13983,9 +15855,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-深色天鹅绒珠宝背景素材.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/scene-image/P4-T11/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p4_t11_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-场景素材生成-深色天鹅绒珠宝背景素材",
+        "description": "Matched from infra/examples/商品图系列/场景素材生成",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-深色天鹅绒珠宝背景素材.png",
+        "sourceRef": "templates/scene-image/P4-T11/example-1",
+        "storageFileName": "scene-image/p4-t11-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "深色天鹅绒珠宝背景素材",
       "summary": "生成深色天鹅绒面料背景素材，黑色/深紫/深蓝天鹅绒材质纹理，中心有精致的珠宝展台或平整区域，聚光灯效果，无商品",
@@ -14099,9 +15987,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-书桌文具办公场景素材.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/scene-image/P4-T12/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p4_t12_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-场景素材生成-书桌文具办公场景素材",
+        "description": "Matched from infra/examples/商品图系列/场景素材生成",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-书桌文具办公场景素材.png",
+        "sourceRef": "templates/scene-image/P4-T12/example-1",
+        "storageFileName": "scene-image/p4-t12-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "书桌文具办公场景素材",
       "summary": "生成书桌文具场景背景素材，木质或白色书桌，左侧配翻开的笔记本/钢笔/小绿植，中心留空，干净窗光，无商品",
@@ -14215,9 +16119,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-户外石板_地面场景素材.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/scene-image/P4-T13/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p4_t13_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-场景素材生成-户外石板_地面场景素材",
+        "description": "Matched from infra/examples/商品图系列/场景素材生成",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-户外石板_地面场景素材.png",
+        "sourceRef": "templates/scene-image/P4-T13/example-1",
+        "storageFileName": "scene-image/p4-t13-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "户外石板/地面场景素材",
       "summary": "生成户外石板/混凝土地面背景素材，地面材质纹理清晰，有自然光投影，周围有少量绿草或落叶点缀，中心留空",
@@ -14331,9 +16251,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-粉色甜美场景素材.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/scene-image/P4-T14/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p4_t14_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-场景素材生成-粉色甜美场景素材",
+        "description": "Matched from infra/examples/商品图系列/场景素材生成",
+        "assetRef": "infra/examples/商品图系列/场景素材生成/商品图系列-场景素材生成-粉色甜美场景素材.png",
+        "sourceRef": "templates/scene-image/P4-T14/example-1",
+        "storageFileName": "scene-image/p4-t14-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "粉色甜美场景素材",
       "summary": "生成粉色系甜美背景素材，浅粉色背景墙，前景白色台面，配少量马卡龙色系小道具（花朵/彩带/贝壳），无商品",
@@ -14454,9 +16390,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/手持商品/商品图系列-手持商品-单手正面握持展示.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/handheld-goods/P5-T01/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p5_t01_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-手持商品-单手正面握持展示",
+        "description": "Matched from infra/examples/商品图系列/手持商品",
+        "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-单手正面握持展示.png",
+        "sourceRef": "templates/handheld-goods/P5-T01/example-1",
+        "storageFileName": "handheld-goods/p5-t01-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "单手正面握持展示",
       "summary": "女性纤细手指单手自然握持商品，商品正面朝镜头，白色或浅色背景，柔和自然光，手腕有精致手链",
@@ -14577,9 +16529,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/手持商品/商品图系列-手持商品-双手轻捧展示.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/handheld-goods/P5-T02/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p5_t02_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-手持商品-双手轻捧展示",
+        "description": "Matched from infra/examples/商品图系列/手持商品",
+        "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-双手轻捧展示.png",
+        "sourceRef": "templates/handheld-goods/P5-T02/example-1",
+        "storageFileName": "handheld-goods/p5-t02-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "双手轻捧展示",
       "summary": "双手轻轻托捧商品（适合礼盒/书籍/香水/护肤品），展示商品全貌和重量感，背景简洁，自然顶光",
@@ -14700,9 +16668,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/手持商品/商品图系列-手持商品-开盖_开封互动展示.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/handheld-goods/P5-T03/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p5_t03_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-手持商品-开盖_开封互动展示",
+        "description": "Matched from infra/examples/商品图系列/手持商品",
+        "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-开盖_开封互动展示.png",
+        "sourceRef": "templates/handheld-goods/P5-T03/example-1",
+        "storageFileName": "handheld-goods/p5-t03-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "开盖/开封互动展示",
       "summary": "手指轻轻掀开/转开商品盖子的动作，展示产品内容物或开启动作，适合护肤品/调料/饮料类，突出使用体验",
@@ -14823,9 +16807,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/手持商品/商品图系列-手持商品-涂抹_使用中状态.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/handheld-goods/P5-T04/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p5_t04_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-手持商品-涂抹_使用中状态",
+        "description": "Matched from infra/examples/商品图系列/手持商品",
+        "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-涂抹_使用中状态.png",
+        "sourceRef": "templates/handheld-goods/P5-T04/example-1",
+        "storageFileName": "handheld-goods/p5-t04-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "涂抹/使用中状态",
       "summary": "手指正在蘸取/涂抹商品（护肤霜/口红/眼影），展示产品质地、色泽和使用感，白色背景，特写",
@@ -14946,9 +16946,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/手持商品/商品图系列-手持商品-男性手持商品展示.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/handheld-goods/P5-T05/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p5_t05_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-手持商品-男性手持商品展示",
+        "description": "Matched from infra/examples/商品图系列/手持商品",
+        "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-男性手持商品展示.png",
+        "sourceRef": "templates/handheld-goods/P5-T05/example-1",
+        "storageFileName": "handheld-goods/p5-t05-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "男性手持商品展示",
       "summary": "男性有力手部自然握持商品，手部稳健，展示商品在男性使用语境下的尺寸和搭配，适合工具/男士护理/3C商品",
@@ -15069,9 +17085,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/手持商品/商品图系列-手持商品-包袋手提展示.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/handheld-goods/P5-T06/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p5_t06_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-手持商品-包袋手提展示",
+        "description": "Matched from infra/examples/商品图系列/手持商品",
+        "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-包袋手提展示.png",
+        "sourceRef": "templates/handheld-goods/P5-T06/example-1",
+        "storageFileName": "handheld-goods/p5-t06-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "包袋手提展示",
       "summary": "女性手握包袋提带，手提姿态自然优雅，侧身展示包袋，背景为浅色或模糊街道环境",
@@ -15192,9 +17224,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/手持商品/商品图系列-手持商品-手机_数码产品手持.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/handheld-goods/P5-T07/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p5_t07_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-手持商品-手机_数码产品手持",
+        "description": "Matched from infra/examples/商品图系列/手持商品",
+        "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-手机_数码产品手持.png",
+        "sourceRef": "templates/handheld-goods/P5-T07/example-1",
+        "storageFileName": "handheld-goods/p5-t07-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "手机/数码产品手持",
       "summary": "手部自然握持手机/平板/数码产品，拇指放置在屏幕自然位置，展示产品大小和手持状态，白色背景",
@@ -15315,9 +17363,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/手持商品/商品图系列-手持商品-饮品瓶_杯手持.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/handheld-goods/P5-T08/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p5_t08_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-手持商品-饮品瓶_杯手持",
+        "description": "Matched from infra/examples/商品图系列/手持商品",
+        "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-饮品瓶_杯手持.png",
+        "sourceRef": "templates/handheld-goods/P5-T08/example-1",
+        "storageFileName": "handheld-goods/p5-t08-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "饮品瓶/杯手持",
       "summary": "手部自然握持饮料瓶或咖啡杯，展示饮品的实际大小和手握感，配合清爽或温馨的背景",
@@ -15438,9 +17502,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/手持商品/商品图系列-手持商品-礼盒礼品手捧.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/handheld-goods/P5-T09/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p5_t09_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-手持商品-礼盒礼品手捧",
+        "description": "Matched from infra/examples/商品图系列/手持商品",
+        "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-礼盒礼品手捧.png",
+        "sourceRef": "templates/handheld-goods/P5-T09/example-1",
+        "storageFileName": "handheld-goods/p5-t09-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "礼盒礼品手捧",
       "summary": "双手托捧精美礼盒，表现出珍视感和礼品价值，配合节日背景道具，适合礼品套装",
@@ -15561,9 +17641,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/手持商品/商品图系列-手持商品-书籍_笔记本手持.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/handheld-goods/P5-T10/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p5_t10_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-手持商品-书籍_笔记本手持",
+        "description": "Matched from infra/examples/商品图系列/手持商品",
+        "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-书籍_笔记本手持.png",
+        "sourceRef": "templates/handheld-goods/P5-T10/example-1",
+        "storageFileName": "handheld-goods/p5-t10-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "书籍/笔记本手持",
       "summary": "单手或双手自然拿持书籍/笔记本，展示产品的实际尺寸，适合文具/学习用品/规划本类商品",
@@ -15684,9 +17780,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/手持商品/商品图系列-手持商品-护肤品滴管_喷雾展示.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/handheld-goods/P5-T11/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p5_t11_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-手持商品-护肤品滴管_喷雾展示",
+        "description": "Matched from infra/examples/商品图系列/手持商品",
+        "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-护肤品滴管_喷雾展示.png",
+        "sourceRef": "templates/handheld-goods/P5-T11/example-1",
+        "storageFileName": "handheld-goods/p5-t11-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "护肤品滴管/喷雾展示",
       "summary": "手持精华液滴管，展示滴出一滴精华的动作，或手持喷雾瓶正在按压喷头，突出产品功能性和使用体验",
@@ -15807,9 +17919,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/手持商品/商品图系列-手持商品-多产品并列手持组合.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/handheld-goods/P5-T12/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p5_t12_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-手持商品-多产品并列手持组合",
+        "description": "Matched from infra/examples/商品图系列/手持商品",
+        "assetRef": "infra/examples/商品图系列/手持商品/商品图系列-手持商品-多产品并列手持组合.png",
+        "sourceRef": "templates/handheld-goods/P5-T12/example-1",
+        "storageFileName": "handheld-goods/p5-t12-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "多产品并列手持组合",
       "summary": "一手或双手同时持握同系列多件商品（如护肤三件套/调料组合），展示产品系列搭配，适合套装商品",
@@ -15924,9 +18052,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品精修/商品图系列-商品精修-亚马逊主图规范精修.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-refine/P6-T01/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p6_t01_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品精修-亚马逊主图规范精修",
+        "description": "Matched from infra/examples/商品图系列/商品精修",
+        "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-亚马逊主图规范精修.png",
+        "sourceRef": "templates/product-refine/P6-T01/example-1",
+        "storageFileName": "product-refine/p6-t01-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "亚马逊主图规范精修",
       "summary": "按亚马逊主图标准精修：纯白背景(RGB 255,255,255)，商品占图片面积≥85%，无水印/文字/图案，高清细节，精准抠图",
@@ -16041,9 +18185,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品精修/商品图系列-商品精修-eBay_Etsy商品图精修.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-refine/P6-T02/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p6_t02_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品精修-eBay_Etsy商品图精修",
+        "description": "Matched from infra/examples/商品图系列/商品精修",
+        "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-eBay_Etsy商品图精修.png",
+        "sourceRef": "templates/product-refine/P6-T02/example-1",
+        "storageFileName": "product-refine/p6-t02-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "eBay/Etsy商品图精修",
       "summary": "按eBay/Etsy平台标准精修，白色或浅色背景，商品清晰，颜色准确，多角度展示的每张图片质量统一",
@@ -16158,9 +18318,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品精修/商品图系列-商品精修-颜色精准校正精修.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-refine/P6-T03/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p6_t03_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品精修-颜色精准校正精修",
+        "description": "Matched from infra/examples/商品图系列/商品精修",
+        "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-颜色精准校正精修.png",
+        "sourceRef": "templates/product-refine/P6-T03/example-1",
+        "storageFileName": "product-refine/p6-t03-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "颜色精准校正精修",
       "summary": "重点对商品颜色进行专业校准：校正偏色（偏黄/偏蓝/偏绿），使图片颜色与实物100%一致，适合多SKU颜色展示",
@@ -16275,9 +18451,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品精修/商品图系列-商品精修-金属材质高光精修.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-refine/P6-T04/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p6_t04_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品精修-金属材质高光精修",
+        "description": "Matched from infra/examples/商品图系列/商品精修",
+        "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-金属材质高光精修.png",
+        "sourceRef": "templates/product-refine/P6-T04/example-1",
+        "storageFileName": "product-refine/p6-t04-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "金属材质高光精修",
       "summary": "专项精修金属商品（手表/首饰/五金/不锈钢商品）的表面高光和反射，使金属质感真实通透，无过曝或欠亮",
@@ -16392,9 +18584,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品精修/商品图系列-商品精修-皮革_织物材质精修.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-refine/P6-T05/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p6_t05_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品精修-皮革_织物材质精修",
+        "description": "Matched from infra/examples/商品图系列/商品精修",
+        "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-皮革_织物材质精修.png",
+        "sourceRef": "templates/product-refine/P6-T05/example-1",
+        "storageFileName": "product-refine/p6-t05-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "皮革/织物材质精修",
       "summary": "专项精修皮革/面料商品的材质纹理，增强皮革的毛孔质感和光泽感，或强化面料的编织纹理和色彩层次",
@@ -16509,9 +18717,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品精修/商品图系列-商品精修-玻璃_透明材质精修.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-refine/P6-T06/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p6_t06_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品精修-玻璃_透明材质精修",
+        "description": "Matched from infra/examples/商品图系列/商品精修",
+        "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-玻璃_透明材质精修.png",
+        "sourceRef": "templates/product-refine/P6-T06/example-1",
+        "storageFileName": "product-refine/p6-t06-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "玻璃/透明材质精修",
       "summary": "专项精修玻璃/亚克力/水晶等透明材质商品，处理透明区域的干净度，增强折射光效，去除内部气泡和污点",
@@ -16626,9 +18850,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品精修/商品图系列-商品精修-食品_餐饮图精修.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-refine/P6-T07/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p6_t07_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品精修-食品_餐饮图精修",
+        "description": "Matched from infra/examples/商品图系列/商品精修",
+        "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-食品_餐饮图精修.png",
+        "sourceRef": "templates/product-refine/P6-T07/example-1",
+        "storageFileName": "product-refine/p6-t07-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "食品/餐饮图精修",
       "summary": "专项精修食品/饮料图片，增强食材新鲜感和食欲感，校正颜色还原真实食物色泽，提升整体食品摄影级质感",
@@ -16743,9 +18983,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品精修/商品图系列-商品精修-3C数码商品精修.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-refine/P6-T08/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p6_t08_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品精修-3C数码商品精修",
+        "description": "Matched from infra/examples/商品图系列/商品精修",
+        "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-3C数码商品精修.png",
+        "sourceRef": "templates/product-refine/P6-T08/example-1",
+        "storageFileName": "product-refine/p6-t08-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "3C数码商品精修",
       "summary": "专项精修3C数码商品（手机/耳机/智能设备），清除表面指纹/划痕，增强屏幕/金属边框光泽，突出工艺精度",
@@ -16860,9 +19116,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品精修/商品图系列-商品精修-品牌LOGO_文字增强.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-refine/P6-T09/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p6_t09_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品精修-品牌LOGO_文字增强",
+        "description": "Matched from infra/examples/商品图系列/商品精修",
+        "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-品牌LOGO_文字增强.png",
+        "sourceRef": "templates/product-refine/P6-T09/example-1",
+        "storageFileName": "product-refine/p6-t09-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "品牌LOGO/文字增强",
       "summary": "专项增强商品标签、品牌LOGO、印刷文字的清晰度和可读性，确保在缩略图状态下仍清晰可辨",
@@ -16977,9 +19249,25 @@
           "required": false,
           "fieldType": "text"
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/商品图系列/商品精修/商品图系列-商品精修-全流程精修套餐.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-refine/P6-T10/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "p6_t10_example_1",
+        "exampleType": "reference_image",
+        "title": "商品图系列-商品精修-全流程精修套餐",
+        "description": "Matched from infra/examples/商品图系列/商品精修",
+        "assetRef": "infra/examples/商品图系列/商品精修/商品图系列-商品精修-全流程精修套餐.png",
+        "sourceRef": "templates/product-refine/P6-T10/example-1",
+        "storageFileName": "product-refine/p6-t10-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "全流程精修套餐",
       "summary": "对商品图进行全流程专业精修：①精准抠图去背景 ②去除所有表面瑕疵 ③颜色校准 ④材质纹理增强 ⑤LOGO/文字锐化 ⑥白色背景规范化 ⑦整体曝光和对比度优化，输出平台发布级成品图",
@@ -17105,9 +19393,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/服装套图/套图系列-服装套图-女装标准9图套装.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/clothing-image-suite/S1-T01/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s1_t01_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-服装套图-女装标准9图套装",
+        "description": "Matched from infra/examples/套图系列/服装套图",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-女装标准9图套装.png",
+        "sourceRef": "templates/clothing-image-suite/S1-T01/example-1",
+        "storageFileName": "clothing-image-suite/s1-t01-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "女装标准9图套装",
       "summary": "为女装生成9张标准套图：①白底正面主图 ②白底背面图 ③模特正面全身图 ④模特3/4角度图 ⑤模特背面图 ⑥领口/上身细节特写 ⑦腰部/下摆细节特写 ⑧生活场景图 ⑨服装平铺俯视图，白背景+浅灰背景统一风格",
@@ -17233,9 +19537,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/服装套图/套图系列-服装套图-女装亚马逊合规套装.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/clothing-image-suite/S1-T02/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s1_t02_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-服装套图-女装亚马逊合规套装",
+        "description": "Matched from infra/examples/套图系列/服装套图",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-女装亚马逊合规套装.png",
+        "sourceRef": "templates/clothing-image-suite/S1-T02/example-1",
+        "storageFileName": "clothing-image-suite/s1-t02-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "女装亚马逊合规套装",
       "summary": "为女装生成符合亚马逊服装品类要求的合规套图：纯白主图+模特展示图+细节图+尺寸测量图，所有图片符合亚马逊图片规范",
@@ -17361,9 +19681,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/服装套图/套图系列-服装套图-男装商务风套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/clothing-image-suite/S1-T03/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s1_t03_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-服装套图-男装商务风套图",
+        "description": "Matched from infra/examples/套图系列/服装套图",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-男装商务风套图.png",
+        "sourceRef": "templates/clothing-image-suite/S1-T03/example-1",
+        "storageFileName": "clothing-image-suite/s1-t03-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "男装商务风套图",
       "summary": "为男装生成商务风格套图：白底主图+男模特棚拍正侧背面+西装/衬衫细节特写（面料/纽扣/缝线）+商务场景图，色调沉稳高端",
@@ -17489,9 +19825,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/服装套图/套图系列-服装套图-童装活泼套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/clothing-image-suite/S1-T04/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s1_t04_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-服装套图-童装活泼套图",
+        "description": "Matched from infra/examples/套图系列/服装套图",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-童装活泼套图.png",
+        "sourceRef": "templates/clothing-image-suite/S1-T04/example-1",
+        "storageFileName": "clothing-image-suite/s1-t04-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "童装活泼套图",
       "summary": "为童装生成活泼可爱风格套图：明亮白背景主图+儿童模特自然活动图+图案/印花细节+色彩互动的趣味场景图，色彩鲜明欢乐",
@@ -17617,9 +19969,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/服装套图/套图系列-服装套图-运动服套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/clothing-image-suite/S1-T05/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s1_t05_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-服装套图-运动服套图",
+        "description": "Matched from infra/examples/套图系列/服装套图",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-运动服套图.png",
+        "sourceRef": "templates/clothing-image-suite/S1-T05/example-1",
+        "storageFileName": "clothing-image-suite/s1-t05-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "运动服套图",
       "summary": "为运动服装生成套图：白底主图+运动模特动态展示（跑步/健身/瑜伽动作）+面料细节（工艺缝线/反光条）+户外运动场景，活力感强",
@@ -17745,9 +20113,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/服装套图/套图系列-服装套图-泳装海滩套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/clothing-image-suite/S1-T06/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s1_t06_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-服装套图-泳装海滩套图",
+        "description": "Matched from infra/examples/套图系列/服装套图",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-泳装海滩套图.png",
+        "sourceRef": "templates/clothing-image-suite/S1-T06/example-1",
+        "storageFileName": "clothing-image-suite/s1-t06-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "泳装海滩套图",
       "summary": "为泳装生成套图：白底正背面主图+模特海边或游泳池穿着图+泳装面料/扣件细节+阳光海滩生活方式图，度假感鲜明",
@@ -17873,9 +20257,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/服装套图/套图系列-服装套图-女装时尚大片套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/clothing-image-suite/S1-T07/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s1_t07_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-服装套图-女装时尚大片套图",
+        "description": "Matched from infra/examples/套图系列/服装套图",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-女装时尚大片套图.png",
+        "sourceRef": "templates/clothing-image-suite/S1-T07/example-1",
+        "storageFileName": "clothing-image-suite/s1-t07-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "女装时尚大片套图",
       "summary": "为女装生成高端时尚大片风格套图：渐变灰背景棚拍主图+多角度时尚姿势图+细节特写+时尚场景大片图，高级感强",
@@ -18001,9 +20401,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/服装套图/套图系列-服装套图-内衣_家居服套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/clothing-image-suite/S1-T08/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s1_t08_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-服装套图-内衣_家居服套图",
+        "description": "Matched from infra/examples/套图系列/服装套图",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-内衣_家居服套图.png",
+        "sourceRef": "templates/clothing-image-suite/S1-T08/example-1",
+        "storageFileName": "clothing-image-suite/s1-t08-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "内衣/家居服套图",
       "summary": "为内衣或家居服生成套图：干净白/米色背景主图+模特自然穿着图（正面/侧面/卧榻）+面料细节（蕾丝/丝绸纹路）+温馨卧室场景图",
@@ -18129,9 +20545,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/服装套图/套图系列-服装套图-大码服装套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/clothing-image-suite/S1-T09/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s1_t09_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-服装套图-大码服装套图",
+        "description": "Matched from infra/examples/套图系列/服装套图",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-大码服装套图.png",
+        "sourceRef": "templates/clothing-image-suite/S1-T09/example-1",
+        "storageFileName": "clothing-image-suite/s1-t09-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "大码服装套图",
       "summary": "为大码服装生成套图，使用大码真人模特，展示服装在大码体型上的真实穿着效果，包含尺寸测量参考图",
@@ -18257,9 +20689,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/服装套图/套图系列-服装套图-全年龄段套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/clothing-image-suite/S1-T10/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s1_t10_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-服装套图-全年龄段套图",
+        "description": "Matched from infra/examples/套图系列/服装套图",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-全年龄段套图.png",
+        "sourceRef": "templates/clothing-image-suite/S1-T10/example-1",
+        "storageFileName": "clothing-image-suite/s1-t10-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "全年龄段套图",
       "summary": "为家庭/亲子服装生成涵盖不同年龄段的套图：儿童/青少年/成人分别穿着，展示服装的全年龄适配性",
@@ -18385,9 +20833,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/服装套图/套图系列-服装套图-街头潮流套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/clothing-image-suite/S1-T11/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s1_t11_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-服装套图-街头潮流套图",
+        "description": "Matched from infra/examples/套图系列/服装套图",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-街头潮流套图.png",
+        "sourceRef": "templates/clothing-image-suite/S1-T11/example-1",
+        "storageFileName": "clothing-image-suite/s1-t11-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "街头潮流套图",
       "summary": "为街头潮流服装生成套图：城市街头背景+模特街拍风姿势+多角度展示+细节特写，潮流感突出",
@@ -18513,9 +20977,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/服装套图/套图系列-服装套图-汉服_民族服装套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/clothing-image-suite/S1-T12/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s1_t12_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-服装套图-汉服_民族服装套图",
+        "description": "Matched from infra/examples/套图系列/服装套图",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-汉服_民族服装套图.png",
+        "sourceRef": "templates/clothing-image-suite/S1-T12/example-1",
+        "storageFileName": "clothing-image-suite/s1-t12-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "汉服/民族服装套图",
       "summary": "为汉服或民族特色服装生成套图：传统场景背景（园林/楼阁/茶室）+模特典雅穿着图+刺绣/印花细节+意境氛围图",
@@ -18641,9 +21121,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/服装套图/套图系列-服装套图-多色SKU统一套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/clothing-image-suite/S1-T13/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s1_t13_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-服装套图-多色SKU统一套图",
+        "description": "Matched from infra/examples/套图系列/服装套图",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-多色SKU统一套图.png",
+        "sourceRef": "templates/clothing-image-suite/S1-T13/example-1",
+        "storageFileName": "clothing-image-suite/s1-t13-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "多色SKU统一套图",
       "summary": "为同款服装的多个颜色SKU生成统一套图，每个颜色生成相同构图和姿势的主图，批量出图颜色系列",
@@ -18769,9 +21265,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/服装套图/套图系列-服装套图-Shopify_独立站品牌套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/clothing-image-suite/S1-T14/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s1_t14_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-服装套图-Shopify_独立站品牌套图",
+        "description": "Matched from infra/examples/套图系列/服装套图",
+        "assetRef": "infra/examples/套图系列/服装套图/套图系列-服装套图-Shopify_独立站品牌套图.png",
+        "sourceRef": "templates/clothing-image-suite/S1-T14/example-1",
+        "storageFileName": "clothing-image-suite/s1-t14-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "Shopify/独立站品牌套图",
       "summary": "为独立站品牌生成高质感品牌套图：有Logo水印位置、品牌色调、故事性场景图、模特大片图，适合Shopify品牌旗舰店",
@@ -18898,9 +21410,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/商品套图/套图系列-商品套图-3C数码标准套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-image-suite/S2-T01/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s2_t01_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-商品套图-3C数码标准套图",
+        "description": "Matched from infra/examples/套图系列/商品套图",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-3C数码标准套图.png",
+        "sourceRef": "templates/product-image-suite/S2-T01/example-1",
+        "storageFileName": "product-image-suite/s2-t01-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "3C数码标准套图",
       "summary": "为3C数码商品生成8张套图：①白底多角度主图 ②正侧背面三视图 ③关键细节特写（接口/按键/屏幕） ④使用场景图 ⑤功能示意/对比图 ⑥包装内容物展示 ⑦尺寸/重量参考图 ⑧品牌高端大图，科技感深色调",
@@ -19027,9 +21555,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/商品套图/套图系列-商品套图-家居家装套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-image-suite/S2-T02/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s2_t02_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-商品套图-家居家装套图",
+        "description": "Matched from infra/examples/套图系列/商品套图",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-家居家装套图.png",
+        "sourceRef": "templates/product-image-suite/S2-T02/example-1",
+        "storageFileName": "product-image-suite/s2-t02-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "家居家装套图",
       "summary": "为家居商品生成套图：白底主图+温馨北欧家居场景图+材质细节特写+尺寸与空间感参照图+安装/使用说明图，暖色调北欧风格",
@@ -19156,9 +21700,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/商品套图/套图系列-商品套图-美妆护肤套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-image-suite/S2-T03/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s2_t03_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-商品套图-美妆护肤套图",
+        "description": "Matched from infra/examples/套图系列/商品套图",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-美妆护肤套图.png",
+        "sourceRef": "templates/product-image-suite/S2-T03/example-1",
+        "storageFileName": "product-image-suite/s2-t03-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "美妆护肤套图",
       "summary": "为护肤/美妆商品生成套图：白底主图+产品细节/成分信息图+质地展示（涂抹/滴落）+使用场景/手持展示+品牌高端氛围图，精致高端粉调风格",
@@ -19285,9 +21845,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/商品套图/套图系列-商品套图-食品_零食套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-image-suite/S2-T04/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s2_t04_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-商品套图-食品_零食套图",
+        "description": "Matched from infra/examples/套图系列/商品套图",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-食品_零食套图.png",
+        "sourceRef": "templates/product-image-suite/S2-T04/example-1",
+        "storageFileName": "product-image-suite/s2-t04-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "食品/零食套图",
       "summary": "为食品商品生成套图：包装外观主图+内容物展示图+食材/原料展示图+食用/料理场景图+营养/成分说明图+多规格展示图，清新食欲感风格",
@@ -19414,9 +21990,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/商品套图/套图系列-商品套图-运动健身套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-image-suite/S2-T05/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s2_t05_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-商品套图-运动健身套图",
+        "description": "Matched from infra/examples/套图系列/商品套图",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-运动健身套图.png",
+        "sourceRef": "templates/product-image-suite/S2-T05/example-1",
+        "storageFileName": "product-image-suite/s2-t05-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "运动健身套图",
       "summary": "为运动健身商品生成套图：白底主图+产品细节特写（材质/功能部件）+运动员使用场景（专业运动动作）+尺寸规格图+与竞品对比优势图，活力运动风格",
@@ -19543,9 +22135,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/商品套图/套图系列-商品套图-宠物用品套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-image-suite/S2-T06/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s2_t06_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-商品套图-宠物用品套图",
+        "description": "Matched from infra/examples/套图系列/商品套图",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-宠物用品套图.png",
+        "sourceRef": "templates/product-image-suite/S2-T06/example-1",
+        "storageFileName": "product-image-suite/s2-t06-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "宠物用品套图",
       "summary": "为宠物商品生成套图：白底主图+实际宠物使用图（猫/狗）+产品细节特写+尺寸适用对比图+使用场景温馨图，可爱活泼风格",
@@ -19672,9 +22280,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/商品套图/套图系列-商品套图-母婴儿童套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-image-suite/S2-T07/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s2_t07_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-商品套图-母婴儿童套图",
+        "description": "Matched from infra/examples/套图系列/商品套图",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-母婴儿童套图.png",
+        "sourceRef": "templates/product-image-suite/S2-T07/example-1",
+        "storageFileName": "product-image-suite/s2-t07-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "母婴儿童套图",
       "summary": "为母婴商品生成套图：安全认证突出的主图+婴幼儿实际使用图+材质/安全细节特写+尺寸成长适用图+温馨家庭场景，温柔安全感风格",
@@ -19801,9 +22425,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/商品套图/套图系列-商品套图-户外工具套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-image-suite/S2-T08/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s2_t08_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-商品套图-户外工具套图",
+        "description": "Matched from infra/examples/套图系列/商品套图",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-户外工具套图.png",
+        "sourceRef": "templates/product-image-suite/S2-T08/example-1",
+        "storageFileName": "product-image-suite/s2-t08-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "户外工具套图",
       "summary": "为户外/工具商品生成套图：白底主图+产品多角度视图+关键功能细节特写+实际使用/工作场景图+规格参数说明图，专业实用风格",
@@ -19930,9 +22570,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/商品套图/套图系列-商品套图-珠宝首饰精品套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-image-suite/S2-T09/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s2_t09_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-商品套图-珠宝首饰精品套图",
+        "description": "Matched from infra/examples/套图系列/商品套图",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-珠宝首饰精品套图.png",
+        "sourceRef": "templates/product-image-suite/S2-T09/example-1",
+        "storageFileName": "product-image-suite/s2-t09-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "珠宝首饰精品套图",
       "summary": "为珠宝商品生成套图：黑色/天鹅绒背景精品展台主图+多角度展示图+宝石/工艺细节特写+模特上身佩戴图+包装礼盒展示图，高端奢华风格",
@@ -20059,9 +22715,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/商品套图/套图系列-商品套图-亚马逊合规标准套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-image-suite/S2-T10/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s2_t10_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-商品套图-亚马逊合规标准套图",
+        "description": "Matched from infra/examples/套图系列/商品套图",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-亚马逊合规标准套图.png",
+        "sourceRef": "templates/product-image-suite/S2-T10/example-1",
+        "storageFileName": "product-image-suite/s2-t10-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "亚马逊合规标准套图",
       "summary": "为商品生成符合亚马逊各品类规范的合规套图：纯白主图(≥85%商品占比)+3张合规副图+至少1张生活场景图，所有图片符合亚马逊尺寸和内容政策",
@@ -20188,9 +22860,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/商品套图/套图系列-商品套图-亚马逊A+页面套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-image-suite/S2-T11/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s2_t11_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-商品套图-亚马逊A+页面套图",
+        "description": "Matched from infra/examples/套图系列/商品套图",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-亚马逊A+页面套图.png",
+        "sourceRef": "templates/product-image-suite/S2-T11/example-1",
+        "storageFileName": "product-image-suite/s2-t11-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "亚马逊A+页面套图",
       "summary": "为商品生成完整的亚马逊A+内容套图：品牌故事横幅图+产品特点说明模块图（3-5个）+比较对比图+使用场景大图，符合A+模块尺寸规格",
@@ -20317,9 +23005,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/商品套图/套图系列-商品套图-Shopify独立站品牌套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-image-suite/S2-T12/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s2_t12_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-商品套图-Shopify独立站品牌套图",
+        "description": "Matched from infra/examples/套图系列/商品套图",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-Shopify独立站品牌套图.png",
+        "sourceRef": "templates/product-image-suite/S2-T12/example-1",
+        "storageFileName": "product-image-suite/s2-t12-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "Shopify独立站品牌套图",
       "summary": "为独立站品牌商品生成高端品牌套图：品牌一致的视觉风格+产品故事化图片+多角度商品图+生活方式场景图+品牌背书图，适合Shopify品牌旗舰",
@@ -20446,9 +23150,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/商品套图/套图系列-商品套图-礼品套装套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-image-suite/S2-T13/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s2_t13_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-商品套图-礼品套装套图",
+        "description": "Matched from infra/examples/套图系列/商品套图",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-礼品套装套图.png",
+        "sourceRef": "templates/product-image-suite/S2-T13/example-1",
+        "storageFileName": "product-image-suite/s2-t13-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "礼品套装套图",
       "summary": "为礼品套装商品生成套图：礼盒外包装主图+打开礼盒内容物展示+单品分别特写+整体礼品感场景图+节日氛围包装图，高档礼品质感",
@@ -20575,9 +23295,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/商品套图/套图系列-商品套图-食品饮料营养健康套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-image-suite/S2-T14/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s2_t14_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-商品套图-食品饮料营养健康套图",
+        "description": "Matched from infra/examples/套图系列/商品套图",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-食品饮料营养健康套图.png",
+        "sourceRef": "templates/product-image-suite/S2-T14/example-1",
+        "storageFileName": "product-image-suite/s2-t14-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "食品饮料营养健康套图",
       "summary": "为营养品/健康食品生成套图：包装主图+成分/原料展示图+使用方法说明图+功效说明图+真实用户使用场景图，专业可信健康风格",
@@ -20704,9 +23440,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/商品套图/套图系列-商品套图-办公文具套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-image-suite/S2-T15/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s2_t15_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-商品套图-办公文具套图",
+        "description": "Matched from infra/examples/套图系列/商品套图",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-办公文具套图.png",
+        "sourceRef": "templates/product-image-suite/S2-T15/example-1",
+        "storageFileName": "product-image-suite/s2-t15-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "办公文具套图",
       "summary": "为办公文具商品生成套图：白底多角度主图+书桌使用场景图+细节/材质特写+尺寸/规格参照图+整套系列展示图，简洁专业风格",
@@ -20833,9 +23585,25 @@
             "webp"
           ]
         }
+      ],
+      "exampleAssetRefs": [
+        "infra/examples/套图系列/商品套图/套图系列-商品套图-批量SKU统一套图.png"
+      ],
+      "exampleSourceRefs": [
+        "templates/product-image-suite/S2-T16/example-1"
       ]
     },
-    "examples": [],
+    "examples": [
+      {
+        "id": "s2_t16_example_1",
+        "exampleType": "reference_image",
+        "title": "套图系列-商品套图-批量SKU统一套图",
+        "description": "Matched from infra/examples/套图系列/商品套图",
+        "assetRef": "infra/examples/套图系列/商品套图/套图系列-商品套图-批量SKU统一套图.png",
+        "sourceRef": "templates/product-image-suite/S2-T16/example-1",
+        "storageFileName": "product-image-suite/s2-t16-example-1.png"
+      }
+    ],
     "localeZH": {
       "name": "批量SKU统一套图",
       "summary": "为同品类多款商品（同系列不同款式/颜色）批量生成统一风格套图，所有SKU使用相同场景模板和构图，快速批量产出整个品类图",

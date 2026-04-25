@@ -81,6 +81,23 @@ func Steps(cfg config.DatabaseConfig) []Step {
 				&models.EcommerceAsset{},
 			)
 		},
+	}, {
+		Version: 202604250001,
+		Name:    "template_center_example_asset_fields",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(&models.TemplateCatalogExample{})
+		},
+	}, {
+		Version: 202604250002,
+		Name:    "template_center_seed_builtin_drift_backfill",
+		Up: func(db *gorm.DB) error {
+			if err := db.AutoMigrate(&models.TemplateCatalog{}); err != nil {
+				return err
+			}
+			return db.Model(&models.TemplateCatalog{}).
+				Where("scope = ? AND owner_team = ? AND created_by = ? AND managed_source = ?", "official", "agent-ecommerce", "system", "ops_manual").
+				Update("managed_source", "seed_builtin").Error
+		},
 	}}
 	sort.Slice(steps, func(i, j int) bool { return steps[i].Version < steps[j].Version })
 	return steps

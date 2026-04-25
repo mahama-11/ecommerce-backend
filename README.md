@@ -29,6 +29,7 @@ make tidy
 make test
 make run
 make build
+bash scripts/install-git-hooks.sh
 ```
 
 ## Runtime Notes
@@ -37,11 +38,14 @@ make build
 - enable Redis cache by setting `redis.enabled=true`
 - register/login/session depend on `v-platform-backend`
 - template center routes are exposed under `/api/v1/ecommerce/template-center/*`
+- template center example preview is proxied at `/api/v1/ecommerce/template-center/assets/preview`
 - metrics are exposed at `/metrics` when enabled
 - readiness is exposed at `/readyz`
 
 ## Documentation
 
 - [Backend Guide](docs/BACKEND_GUIDE.md)
+- [Git Hooks](docs/GIT_HOOKS.md)
 - [Service Boundary](docs/architecture/SERVICE_BOUNDARY.md)
+- [Template Center Data Model](docs/architecture/TEMPLATE_CENTER_DATA_MODEL.md)
 - [Project Agent Context](AGENTS.md)

@@ -112,6 +112,7 @@ func New(cfg config.Config, platformClient *platform.Client, db *gorm.DB, redisC
 			templateCatalog.GET("/catalog/facets", templateCenterHandler.Facets)
 			templateCatalog.GET("/catalog/recommendations", templateCenterHandler.Recommendations)
 			templateCatalog.GET("/catalog/:templateId", templateCenterHandler.Detail)
+			templateCatalog.GET("/assets/preview", templateCenterHandler.PreviewAsset)
 		}
 
 		templateProtected := v1.Group("/template-center")

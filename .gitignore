@@ -7,6 +7,8 @@ data/
 .idea
 
 artifacts
+scripts/__pycache__/
+internal/modules/templatecenter/example_asset_manifest.resolved.json
 
 ecommerce-service-linux
 config.local.yaml

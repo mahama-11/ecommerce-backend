@@ -592,6 +592,19 @@ func (r *TemplateCenterRepository) AddFavorite(scope Scope, templateID string) e
 	return r.db.Where("template_catalog_id = ? AND user_id = ? AND organization_id = ?", templateID, scope.UserID, scope.OrgID).FirstOrCreate(&item).Error
 }
 
+func (r *TemplateCenterRepository) FavoriteTemplateIDs(scope Scope) ([]string, error) {
+	if scope.UserID == "" || scope.OrgID == "" {
+		return []string{}, nil
+	}
+	var ids []string
+	if err := r.db.Model(&models.TemplateFavorite{}).
+		Where("user_id = ? AND organization_id = ?", scope.UserID, scope.OrgID).
+		Pluck("template_catalog_id", &ids).Error; err != nil {
+		return nil, err
+	}
+	return ids, nil
+}
+
 func (r *TemplateCenterRepository) RemoveFavorite(scope Scope, templateID string) error {
 	return r.db.Where("template_catalog_id = ? AND user_id = ? AND organization_id = ?", templateID, scope.UserID, scope.OrgID).Delete(&models.TemplateFavorite{}).Error
 }
@@ -636,6 +649,10 @@ func (r *TemplateCenterRepository) CopyToMyTemplates(scope Scope, templateID str
 		return nil, err
 	}
 	return instance, nil
+}
+
+func (r *TemplateCenterRepository) CreateTemplateInstance(item *models.TemplateInstance) error {
+	return r.db.Create(item).Error
 }
 
 func (r *TemplateCenterRepository) BuildUseResponse(scope Scope, templateID string) (*UseTemplateResponse, error) {

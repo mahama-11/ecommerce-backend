@@ -82,6 +82,19 @@ func Steps(cfg config.DatabaseConfig) []Step {
 			)
 		},
 	}, {
+		Version: 202604260001,
+		Name:    "commercial_schema_bootstrap",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(
+				&models.PromotionAttributionAttempt{},
+				&models.BillingChargeRecord{},
+				&models.CommercialEventOutbox{},
+				&models.CommercialOrder{},
+				&models.CommercialPayment{},
+				&models.CommercialFulfillment{},
+			)
+		},
+	}, {
 		Version: 202604250001,
 		Name:    "template_center_example_asset_fields",
 		Up: func(db *gorm.DB) error {
@@ -97,6 +110,16 @@ func Steps(cfg config.DatabaseConfig) []Step {
 			return db.Model(&models.TemplateCatalog{}).
 				Where("scope = ? AND owner_team = ? AND created_by = ? AND managed_source = ?", "official", "agent-ecommerce", "system", "ops_manual").
 				Update("managed_source", "seed_builtin").Error
+		},
+	}, {
+		Version: 202604280001,
+		Name:    "commercial_order_schema_extend",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(
+				&models.CommercialOrder{},
+				&models.CommercialPayment{},
+				&models.CommercialFulfillment{},
+			)
 		},
 	}}
 	sort.Slice(steps, func(i, j int) bool { return steps[i].Version < steps[j].Version })

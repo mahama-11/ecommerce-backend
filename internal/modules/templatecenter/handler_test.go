@@ -11,6 +11,7 @@ import (
 	"ecommerce-service/internal/config"
 	"ecommerce-service/internal/middleware"
 	"ecommerce-service/internal/models"
+	"ecommerce-service/internal/platform"
 	"ecommerce-service/internal/repository"
 	"ecommerce-service/internal/storage"
 
@@ -213,6 +214,220 @@ func TestSeedPresetCatalogDoesNotOverrideManualOfficialTemplate(t *testing.T) {
 	}
 	if count != 1 {
 		t.Fatalf("manual catalog count = %d", count)
+	}
+}
+
+func TestTemplateCenterHandlerFlowWithPlatformProjection(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	db := newTemplateCenterTestDB(t)
+	repo := repository.NewTemplateCenterRepository(db)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeEnvelope := func(data any) {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"code":      0,
+				"message":   "ok",
+				"timestamp": time.Now().Unix(),
+				"data":      data,
+			})
+		}
+		switch r.URL.Path {
+		case "/internal/v1/template-ops/catalog":
+			writeEnvelope(map[string]any{
+				"items": []map[string]any{
+					{
+						"template_ref":    "ecommerce:tpl_platform_001",
+						"product_code":    "ecommerce",
+						"template_id":     "tpl_platform_001",
+						"slug":            "changing-model-m1-t01-template",
+						"name":            "Platform Ecommerce Template",
+						"summary":         "Managed by platform",
+						"status":          "active",
+						"cover_asset_url": "",
+						"cover_asset_id":  "",
+						"recommend_score": 95,
+						"tags":            []string{"fashion"},
+						"platforms":       []string{"amazon"},
+						"series":          "model_image",
+						"capability_type": "model_swap",
+						"modality":        "image",
+						"scope":           "official",
+						"managed_source":  "platform_projection",
+						"raw": map[string]any{
+							"external_code":     "M1-T01",
+							"executor_type":     "image",
+							"interaction_mode":  "form_based",
+							"industry_tags":     []string{"fashion"},
+							"scenario_tags":     []string{"model"},
+							"featured":          true,
+							"success_rate_hint": 93,
+						},
+					},
+				},
+				"total": 1,
+			})
+		case "/internal/v1/template-ops/catalog/ecommerce:tpl_platform_001":
+			writeEnvelope(map[string]any{
+				"item": map[string]any{
+					"template_ref":    "ecommerce:tpl_platform_001",
+					"product_code":    "ecommerce",
+					"template_id":     "tpl_platform_001",
+					"slug":            "changing-model-m1-t01-template",
+					"name":            "Platform Ecommerce Template",
+					"summary":         "Managed by platform",
+					"status":          "active",
+					"cover_asset_url": "",
+					"cover_asset_id":  "",
+					"recommend_score": 95,
+					"tags":            []string{"fashion"},
+					"platforms":       []string{"amazon"},
+					"series":          "model_image",
+					"capability_type": "model_swap",
+					"modality":        "image",
+					"scope":           "official",
+					"managed_source":  "platform_projection",
+					"raw": map[string]any{
+						"external_code": "M1-T01",
+					},
+				},
+				"product": "ecommerce",
+				"detail_raw": map[string]any{
+					"summary":      "Managed by platform",
+					"inputSchema":  map[string]any{"image": true},
+					"outputSchema": map[string]any{"images": true},
+					"executionSchema": map[string]any{
+						"route":            "/api/v1/ecommerce/image-runtime/jobs",
+						"supportsAsyncJob": true,
+						"supportsBatch":    true,
+					},
+					"promptLayers":     map[string]any{"system": "prompt"},
+					"defaultVariables": map[string]any{"locale": "zh"},
+					"toolBinding":      map[string]any{"toolSlug": "changing-model"},
+					"examples": []any{
+						map[string]any{
+							"id":              "example-1",
+							"exampleType":     "preview",
+							"title":           "Preview One",
+							"sourceRef":       "templates/changing-model/M1-T01/example-1",
+							"storageKey":      "ecommerce/template-examples/example-1.png",
+							"previewAssetUrl": "/api/v1/ecommerce/template-center/assets/preview?storage_key=ecommerce%2Ftemplate-examples%2Fexample-1.png",
+						},
+					},
+				},
+			})
+		case "/internal/v1/storage/assets/resolve":
+			writeEnvelope(map[string]any{
+				"items": []map[string]any{
+					{
+						"id":           "asset_1",
+						"product_code": "ecommerce",
+						"category":     "template-examples",
+						"source_type":  "template_example",
+						"source_ref":   "templates/changing-model/M1-T01/example-1",
+						"storage_key":  "ecommerce/template-examples/example-1.png",
+						"file_name":    "example-1.png",
+						"mime_type":    "image/png",
+						"checksum":     "abc",
+						"status":       "active",
+					},
+				},
+			})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	service := NewService(repo, nil, platform.New(config.PlatformConfig{
+		BaseURL:               server.URL,
+		Timeout:               2 * time.Second,
+		InternalServiceSecret: "platform-dev-secret",
+		ServiceName:           "ecommerce-test",
+	}))
+	handler := NewHandler(service)
+	secret := "platform-dev-secret"
+	router := gin.New()
+
+	public := router.Group("/api/v1/ecommerce/template-center")
+	public.Use(middleware.OptionalPlatformJWTAuth(secret))
+	{
+		public.GET("/catalog", handler.ListCatalog)
+		public.GET("/catalog/recommendations", handler.Recommendations)
+		public.GET("/catalog/:templateId", handler.Detail)
+	}
+
+	protected := router.Group("/api/v1/ecommerce/template-center")
+	protected.Use(middleware.PlatformJWTAuth(secret))
+	{
+		protected.GET("/instances", handler.Instances)
+		protected.GET("/favorites", handler.Favorites)
+		protected.POST("/catalog/:templateId/favorite", handler.AddFavorite)
+		protected.DELETE("/catalog/:templateId/favorite", handler.RemoveFavorite)
+		protected.POST("/catalog/:templateId/copy", handler.CopyToMyTemplates)
+		protected.POST("/catalog/:templateId/use", handler.Use)
+	}
+
+	authHeader := "Bearer " + newTemplateCenterTestToken(t, secret, "user_platform_001", "org_platform_001")
+
+	listResp := performRequest(t, router, http.MethodGet, "/api/v1/ecommerce/template-center/catalog?locale=zh", "")
+	if listResp.Code != http.StatusOK {
+		t.Fatalf("platform catalog status = %d body=%s", listResp.Code, listResp.Body.String())
+	}
+	var listPayload envelope[[]repository.CatalogListItem]
+	decodeResponse(t, listResp, &listPayload)
+	if len(listPayload.Data) != 1 || listPayload.Data[0].ID != "tpl_platform_001" {
+		t.Fatalf("platform catalog payload invalid: %+v", listPayload.Data)
+	}
+
+	detailResp := performRequest(t, router, http.MethodGet, "/api/v1/ecommerce/template-center/catalog/tpl_platform_001?locale=zh", "")
+	if detailResp.Code != http.StatusOK {
+		t.Fatalf("platform detail status = %d body=%s", detailResp.Code, detailResp.Body.String())
+	}
+	var detailPayload envelope[repository.CatalogDetail]
+	decodeResponse(t, detailResp, &detailPayload)
+	if len(detailPayload.Data.Examples) != 1 || detailPayload.Data.Schema.ToolBinding["toolSlug"] != "changing-model" {
+		t.Fatalf("platform detail payload invalid: %+v", detailPayload.Data)
+	}
+
+	recommendResp := performRequest(t, router, http.MethodGet, "/api/v1/ecommerce/template-center/catalog/recommendations?locale=zh", "")
+	if recommendResp.Code != http.StatusOK {
+		t.Fatalf("platform recommendations status = %d body=%s", recommendResp.Code, recommendResp.Body.String())
+	}
+
+	addFavoriteResp := performRequestWithAuth(t, router, http.MethodPost, "/api/v1/ecommerce/template-center/catalog/tpl_platform_001/favorite", authHeader)
+	if addFavoriteResp.Code != http.StatusCreated {
+		t.Fatalf("platform add favorite status = %d body=%s", addFavoriteResp.Code, addFavoriteResp.Body.String())
+	}
+
+	favoritesResp := performRequestWithAuth(t, router, http.MethodGet, "/api/v1/ecommerce/template-center/favorites?locale=zh", authHeader)
+	if favoritesResp.Code != http.StatusOK {
+		t.Fatalf("platform favorites status = %d body=%s", favoritesResp.Code, favoritesResp.Body.String())
+	}
+	var favoritesPayload envelope[[]repository.CatalogListItem]
+	decodeResponse(t, favoritesResp, &favoritesPayload)
+	if len(favoritesPayload.Data) != 1 || !favoritesPayload.Data[0].IsFavorited {
+		t.Fatalf("platform favorites payload invalid: %+v", favoritesPayload.Data)
+	}
+
+	copyResp := performRequestWithAuth(t, router, http.MethodPost, "/api/v1/ecommerce/template-center/catalog/tpl_platform_001/copy", authHeader)
+	if copyResp.Code != http.StatusCreated {
+		t.Fatalf("platform copy status = %d body=%s", copyResp.Code, copyResp.Body.String())
+	}
+
+	instancesResp := performRequestWithAuth(t, router, http.MethodGet, "/api/v1/ecommerce/template-center/instances?locale=zh", authHeader)
+	if instancesResp.Code != http.StatusOK {
+		t.Fatalf("platform instances status = %d body=%s", instancesResp.Code, instancesResp.Body.String())
+	}
+
+	useResp := performRequestWithAuth(t, router, http.MethodPost, "/api/v1/ecommerce/template-center/catalog/tpl_platform_001/use", authHeader)
+	if useResp.Code != http.StatusOK {
+		t.Fatalf("platform use status = %d body=%s", useResp.Code, useResp.Body.String())
+	}
+	var usePayload envelope[repository.UseTemplateResponse]
+	decodeResponse(t, useResp, &usePayload)
+	if usePayload.Data.TargetRoute != "/api/v1/ecommerce/image-runtime/jobs" || usePayload.Data.ToolSlug != "changing-model" {
+		t.Fatalf("platform use payload invalid: %+v", usePayload.Data)
 	}
 }
 

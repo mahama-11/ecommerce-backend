@@ -38,7 +38,8 @@ func TestImageRuntimeInternalCallbacksAndAssetDownload(t *testing.T) {
 
 	db := newImageRuntimeTestDB(t)
 	repo := repository.NewImageRuntimeRepository(db)
-	service := NewService(repo, nil, nil, platform.New(config.PlatformConfig{
+	commercialRepo := repository.NewCommercialRepository(db)
+	service := NewService(repo, commercialRepo, nil, nil, platform.New(config.PlatformConfig{
 		BaseURL:               platformServer.URL,
 		Timeout:               5 * time.Second,
 		ServiceName:           "v-ecommerce-backend",
@@ -130,11 +131,23 @@ func TestRegisterSourceAssetAndCreateImageJob(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	var runtimeCreate platform.CreateRuntimeJobInput
+	var chargeCreate platform.CreateChargeSessionInput
 	platformServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/internal/v1/storage/assets":
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"code":0,"message":"success","data":{"storage_key":"ecommerce-assets/source-1.png","mime_type":"image/png","file_size":128}}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/internal/v1/runtime/charge-sessions":
+			body, _ := io.ReadAll(r.Body)
+			_ = json.Unmarshal(body, &chargeCreate)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"code":0,"message":"success","data":{"id":"charge-session-1","product_code":"ecommerce","business_subject_type":"ecommerce_image_job","business_subject_id":"job-1","billing_subject_type":"organization","billing_subject_id":"org-1","usage_subject_type":"user","usage_subject_id":"user-1","settlement_subject_type":"organization","settlement_subject_id":"org-1","scene_code":"single","input_mode":"image_to_image","idempotency_key":"abc","status":"created","metadata":"{}"}}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/internal/v1/controls/reservations":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"code":0,"message":"success","data":{"id":"reservation-1","resource_type":"ecommerce.image.generate","billing_subject_type":"organization","billing_subject_id":"org-1","billable_item_code":"ecommerce.image.generate","reservation_key":"reserve:job-1","units":1,"status":"reserved","reference_id":"charge-session-1","metadata":"{}"}}`))
+		case r.Method == http.MethodPut && r.URL.Path == "/internal/v1/runtime/charge-sessions/charge-session-1":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"code":0,"message":"success","data":{"id":"charge-session-1","product_code":"ecommerce","business_subject_type":"ecommerce_image_job","business_subject_id":"job-1","billing_subject_type":"organization","billing_subject_id":"org-1","usage_subject_type":"user","usage_subject_id":"user-1","settlement_subject_type":"organization","settlement_subject_id":"org-1","scene_code":"single","input_mode":"image_to_image","idempotency_key":"abc","status":"reserved","metadata":"{}"}}`))
 		case r.Method == http.MethodPost && r.URL.Path == "/internal/v1/runtime/jobs":
 			body, _ := io.ReadAll(r.Body)
 			_ = json.Unmarshal(body, &runtimeCreate)
@@ -148,7 +161,8 @@ func TestRegisterSourceAssetAndCreateImageJob(t *testing.T) {
 
 	db := newImageRuntimeTestDB(t)
 	repo := repository.NewImageRuntimeRepository(db)
-	service := NewService(repo, nil, nil, platform.New(config.PlatformConfig{
+	commercialRepo := repository.NewCommercialRepository(db)
+	service := NewService(repo, commercialRepo, nil, nil, platform.New(config.PlatformConfig{
 		BaseURL:               platformServer.URL,
 		Timeout:               5 * time.Second,
 		ServiceName:           "v-ecommerce-backend",
@@ -230,6 +244,165 @@ func TestRegisterSourceAssetAndCreateImageJob(t *testing.T) {
 	router.ServeHTTP(resp, req)
 	if resp.Code != http.StatusOK {
 		t.Fatalf("list image jobs status = %d, want %d", resp.Code, http.StatusOK)
+	}
+}
+
+func TestCreateImageJobFailsWhenReservationFails(t *testing.T) {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+
+	platformServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/internal/v1/storage/assets":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"code":0,"message":"success","data":{"storage_key":"ecommerce-assets/source-1.png","mime_type":"image/png","file_size":128}}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/internal/v1/runtime/charge-sessions":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"code":0,"message":"success","data":{"id":"charge-session-1","product_code":"ecommerce","organization_id":"org-1","billing_subject_type":"organization","billing_subject_id":"org-1","billable_item_code":"ecommerce.image.generate","resource_type":"ecommerce.image.generate","reservation_key":"reserve:job-1","estimated_units":1,"status":"created","metadata":"{}"}}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/internal/v1/controls/reservations":
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"code":4000,"message":"reservation failed"}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer platformServer.Close()
+
+	db := newImageRuntimeTestDB(t)
+	repo := repository.NewImageRuntimeRepository(db)
+	commercialRepo := repository.NewCommercialRepository(db)
+	service := NewService(repo, commercialRepo, nil, nil, platform.New(config.PlatformConfig{
+		BaseURL:               platformServer.URL,
+		Timeout:               5 * time.Second,
+		ServiceName:           "v-ecommerce-backend",
+		InternalServiceSecret: "platform-internal-secret",
+	}), testImageRuntimeAppConfig())
+	handler := NewHandler(service)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("userID", "user-1")
+		c.Set("orgID", "org-1")
+		c.Next()
+	})
+	router.POST("/api/v1/ecommerce/assets/source", handler.RegisterSourceAsset)
+	router.POST("/api/v1/ecommerce/image-jobs", handler.CreateImageJob)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/ecommerce/assets/source", bytes.NewBufferString(`{"file_name":"source.png","mime_type":"image/png","payload":"data:image/png;base64,Zm9v","width":1024,"height":1024}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+	if resp.Code != http.StatusCreated {
+		t.Fatalf("register source asset status = %d, want %d", resp.Code, http.StatusCreated)
+	}
+	var sourceAsset models.EcommerceAsset
+	if err := db.Where("organization_id = ? AND asset_type = ?", "org-1", "source").First(&sourceAsset).Error; err != nil {
+		t.Fatalf("query source asset: %v", err)
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/ecommerce/image-jobs", bytes.NewBufferString(`{"scene_type":"ai_posture","source_asset_id":"`+sourceAsset.ID+`","prompt":"test","requested_variants":1}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp = httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+	if resp.Code == http.StatusCreated {
+		t.Fatalf("expected create image job to fail when reservation fails")
+	}
+	var count int64
+	if err := db.Model(&models.EcommerceImageJob{}).Count(&count).Error; err != nil {
+		t.Fatalf("count jobs: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("expected no image jobs created when reservation fails, got %d", count)
+	}
+}
+
+func TestRecordJobResultsPersistsWhenMeteringFails(t *testing.T) {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+
+	platformServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/internal/v1/metering/finalizations":
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"code":4000,"message":"invalid finalize request"}`))
+		case r.Method == http.MethodPut && r.URL.Path == "/internal/v1/runtime/charge-sessions/charge-session-1":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"code":0,"message":"success","data":{"id":"charge-session-1","product_code":"ecommerce","organization_id":"org-1","billing_subject_type":"organization","billing_subject_id":"org-1","billable_item_code":"ecommerce.image.generate","resource_type":"ecommerce.image.generate","reservation_key":"reserve:job-1","estimated_units":1,"status":"execution_completed","metadata":"{}"}}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer platformServer.Close()
+
+	db := newImageRuntimeTestDB(t)
+	repo := repository.NewImageRuntimeRepository(db)
+	commercialRepo := repository.NewCommercialRepository(db)
+	service := NewService(repo, commercialRepo, nil, nil, platform.New(config.PlatformConfig{
+		BaseURL:               platformServer.URL,
+		Timeout:               5 * time.Second,
+		ServiceName:           "v-ecommerce-backend",
+		InternalServiceSecret: "platform-internal-secret",
+	}), testImageRuntimeAppConfig())
+
+	job := &models.EcommerceImageJob{
+		ID:             "job-1",
+		OrganizationID: "org-1",
+		UserID:         "user-1",
+		SceneType:      "ai_posture",
+		InputMode:      "image_to_image",
+		Status:         "processing",
+		Stage:          "provider_running",
+		Metadata:       `{"charge_session_id":"charge-session-1","reservation_id":"","billable_item_code":"ecommerce.image.generate","usage_units":1}`,
+	}
+	if err := db.Create(job).Error; err != nil {
+		t.Fatalf("create job: %v", err)
+	}
+
+	input := RecordJobResultsInput{
+		Status:       "completed",
+		Progress:     100,
+		StageMessage: "Image generation completed",
+		Variants: []RecordResultVariantInput{{
+			Index:      0,
+			Status:     "completed",
+			IsSelected: true,
+			Asset: RecordResultAssetInput{
+				AssetType:  "generated",
+				SourceType: "generated",
+				StorageKey: "result-assets/job-1/0.png",
+				MimeType:   "image/png",
+				FileName:   "0.png",
+				Width:      1024,
+				Height:     1024,
+			},
+		}},
+	}
+	item, err := service.RecordJobResults(job.ID, input)
+	if err != nil {
+		t.Fatalf("RecordJobResults: %v", err)
+	}
+	if item.Status != "completed" {
+		t.Fatalf("expected completed status, got %s", item.Status)
+	}
+	if !strings.Contains(item.Metadata, `"metering_status":"failed"`) {
+		t.Fatalf("expected metering failure metadata, got %s", item.Metadata)
+	}
+	var count int64
+	if err := db.Model(&models.EcommerceAsset{}).Where("organization_id = ?", "org-1").Count(&count).Error; err != nil {
+		t.Fatalf("count assets: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected 1 generated asset, got %d", count)
+	}
+	item, err = service.RecordJobResults(job.ID, input)
+	if err != nil {
+		t.Fatalf("RecordJobResults retry: %v", err)
+	}
+	if err := db.Model(&models.EcommerceAsset{}).Where("organization_id = ?", "org-1").Count(&count).Error; err != nil {
+		t.Fatalf("count assets after retry: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected generated assets to stay idempotent, got %d", count)
 	}
 }
 

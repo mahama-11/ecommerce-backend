@@ -67,3 +67,11 @@ func (r *ImageRuntimeRepository) FindAssetByIDGlobal(assetID string) (*models.Ec
 	}
 	return &item, nil
 }
+
+func (r *ImageRuntimeRepository) FindAssetByStorageKey(orgID, storageKey string) (*models.EcommerceAsset, error) {
+	var item models.EcommerceAsset
+	if err := r.db.Where("organization_id = ? AND storage_key = ?", orgID, storageKey).First(&item).Error; err != nil {
+		return nil, err
+	}
+	return &item, nil
+}

@@ -7,15 +7,17 @@ import (
 	"ecommerce-service/internal/config"
 	"ecommerce-service/internal/models"
 	"ecommerce-service/internal/modules/authz"
+	promotionmodule "ecommerce-service/internal/modules/promotion"
 	"ecommerce-service/internal/platform"
 	"ecommerce-service/internal/repository"
 )
 
 type Service struct {
-	platform *platform.Client
-	users    *repository.UserRepository
-	authz    *authz.Service
-	appCfg   config.AppConfig
+	platform  *platform.Client
+	users     *repository.UserRepository
+	authz     *authz.Service
+	promotion *promotionmodule.Service
+	appCfg    config.AppConfig
 }
 
 type RegisterInput struct {
@@ -24,6 +26,7 @@ type RegisterInput struct {
 	Password         string `json:"password" binding:"required,min=6"`
 	OrganizationName string `json:"organization_name,omitempty"`
 	Language         string `json:"language,omitempty"`
+	PromotionCode    string `json:"promotion_code,omitempty"`
 }
 
 type LoginInput struct {
@@ -66,8 +69,8 @@ type SessionResult struct {
 	Access        authz.AccessSummary `json:"access"`
 }
 
-func NewService(platformClient *platform.Client, userRepo *repository.UserRepository, authzService *authz.Service, appCfg config.AppConfig) *Service {
-	return &Service{platform: platformClient, users: userRepo, authz: authzService, appCfg: appCfg}
+func NewService(platformClient *platform.Client, userRepo *repository.UserRepository, authzService *authz.Service, promotionService *promotionmodule.Service, appCfg config.AppConfig) *Service {
+	return &Service{platform: platformClient, users: userRepo, authz: authzService, promotion: promotionService, appCfg: appCfg}
 }
 
 func (s *Service) Register(input RegisterInput) (*AuthResult, error) {
@@ -83,6 +86,9 @@ func (s *Service) Register(input RegisterInput) (*AuthResult, error) {
 	if s.users != nil {
 		_, _ = s.users.UpsertPreference(out.User.ID, out.User.OrgID, language)
 		_ = s.users.CreateActivity(&models.Activity{UserID: out.User.ID, OrganizationID: out.User.OrgID, ActionType: "auth_register", ActionName: "Product Register", Status: "succeeded", EventID: out.User.ID})
+	}
+	if s.promotion != nil {
+		s.promotion.TrackSignupAttribution(out.User.OrgID, out.User.ID, input.PromotionCode)
 	}
 	access, err := s.authz.Resolve(out.User.ID, out.User.OrgID)
 	if err != nil {

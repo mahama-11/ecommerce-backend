@@ -23,11 +23,16 @@ type Config struct {
 }
 
 type AppConfig struct {
-	FrontendBaseURL string             `mapstructure:"frontend_base_url"`
-	ProductName     string             `mapstructure:"product_name"`
-	ProductCode     string             `mapstructure:"product_code"`
-	DefaultLanguage string             `mapstructure:"default_language"`
-	ImageRuntime    ImageRuntimeConfig `mapstructure:"image_runtime"`
+	FrontendBaseURL      string             `mapstructure:"frontend_base_url"`
+	ProductName          string             `mapstructure:"product_name"`
+	ProductCode          string             `mapstructure:"product_code"`
+	DefaultLanguage      string             `mapstructure:"default_language"`
+	CreditsAssetCode     string             `mapstructure:"credits_asset_code"`
+	RewardAssetCode      string             `mapstructure:"reward_asset_code"`
+	AllowanceAssetCode   string             `mapstructure:"allowance_asset_code"`
+	PromotionProgramCode string             `mapstructure:"promotion_program_code"`
+	PromotionProgramName string             `mapstructure:"promotion_program_name"`
+	ImageRuntime         ImageRuntimeConfig `mapstructure:"image_runtime"`
 }
 
 type ImageRuntimeConfig struct {
@@ -147,6 +152,11 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("app.product_name", "Agent Ecommerce")
 	v.SetDefault("app.product_code", "ecommerce")
 	v.SetDefault("app.default_language", "zh")
+	v.SetDefault("app.credits_asset_code", "ECOMMERCE_CREDIT")
+	v.SetDefault("app.reward_asset_code", "ECOMMERCE_PROMO_CREDIT")
+	v.SetDefault("app.allowance_asset_code", "ECOMMERCE_MONTHLY_ALLOWANCE")
+	v.SetDefault("app.promotion_program_code", "ecommerce_signup_default")
+	v.SetDefault("app.promotion_program_name", "Ecommerce Signup Promotion")
 	v.SetDefault("app.image_runtime.global_negative_prompt", "blurry, noise, jpeg artifacts, watermark, text overlay, extra limbs, missing limbs, deformed anatomy, disfigured, bad proportions, duplicate objects, floating objects with no shadow, unrealistic lighting inconsistency, oversaturated colors, artificial plastic texture, lowres, draft quality, sketch, illustration style")
 	v.SetDefault("app.image_runtime.scene_prompt_policies", map[string]any{})
 	v.SetDefault("database.driver", "sqlite")

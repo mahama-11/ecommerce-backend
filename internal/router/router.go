@@ -12,8 +12,13 @@ import (
 	accessmodule "ecommerce-service/internal/modules/access"
 	auditmodule "ecommerce-service/internal/modules/audit"
 	authmodule "ecommerce-service/internal/modules/auth"
+	billingmodule "ecommerce-service/internal/modules/billing"
+	commercialmodule "ecommerce-service/internal/modules/commercial"
+	commissionmodule "ecommerce-service/internal/modules/commission"
 	imageruntimemodule "ecommerce-service/internal/modules/imageruntime"
+	promotionmodule "ecommerce-service/internal/modules/promotion"
 	templatecentermodule "ecommerce-service/internal/modules/templatecenter"
+	walletmodule "ecommerce-service/internal/modules/wallet"
 	"ecommerce-service/internal/modules/workspace"
 	"ecommerce-service/internal/platform"
 	"ecommerce-service/internal/storage"
@@ -25,7 +30,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func New(cfg config.Config, platformClient *platform.Client, db *gorm.DB, redisClient *redis.Client, authHandler *authmodule.Handler, accessHandler *accessmodule.Handler, imageRuntimeHandler *imageruntimemodule.Handler, workspaceHandler *workspace.Handler, auditHandler *auditmodule.Handler, templateCenterHandler *templatecentermodule.Handler) *gin.Engine {
+func New(cfg config.Config, platformClient *platform.Client, db *gorm.DB, redisClient *redis.Client, authHandler *authmodule.Handler, accessHandler *accessmodule.Handler, imageRuntimeHandler *imageruntimemodule.Handler, workspaceHandler *workspace.Handler, auditHandler *auditmodule.Handler, templateCenterHandler *templatecentermodule.Handler, walletHandler *walletmodule.Handler, promotionHandler *promotionmodule.Handler, commissionHandler *commissionmodule.Handler, billingHandler *billingmodule.Handler, commercialHandler *commercialmodule.Handler) *gin.Engine {
 	gin.SetMode(cfg.GinMode)
 	r := gin.New()
 	serviceName := cfg.Monitoring.Tracing.ServiceName
@@ -74,6 +79,7 @@ func New(cfg config.Config, platformClient *platform.Client, db *gorm.DB, redisC
 			authAPI.POST("/login", authHandler.Login)
 			authAPI.GET("/session", middleware.PlatformJWTAuth(cfg.Platform.JWTSecret), authHandler.Session)
 		}
+		v1.GET("/promotions/codes/:code/resolve", promotionHandler.ResolveCode)
 		v1.GET("/health", func(c *gin.Context) {
 			response.JSONSuccess(c, gin.H{"service": "ecommerce-api", "status": "ok", "product": cfg.App.ProductName})
 		})
@@ -83,11 +89,34 @@ func New(cfg config.Config, platformClient *platform.Client, db *gorm.DB, redisC
 		protected.Use(middleware.PlatformJWTAuth(cfg.Platform.JWTSecret))
 		{
 			protected.GET("/user/audit-history", auditHandler.History)
+			protected.GET("/wallet/summary", walletHandler.Summary)
+			protected.GET("/wallet/history", walletHandler.History)
+			protected.GET("/commercial/offerings", commercialHandler.GetOfferings)
+			protected.POST("/commercial/orders", commercialHandler.CreateOrder)
+			protected.GET("/commercial/orders", commercialHandler.ListOrders)
+			protected.GET("/commercial/orders/:orderID", commercialHandler.GetOrder)
+			protected.POST("/commercial/orders/:orderID/confirm-payment", commercialHandler.ConfirmOrderPayment)
+			protected.GET("/billing/summary", billingHandler.Summary)
+			protected.GET("/billing/charges", billingHandler.ListCharges)
+			protected.GET("/promotions/programs", promotionHandler.ListPrograms)
+			protected.GET("/promotions/me/overview", promotionHandler.Overview)
+			protected.GET("/promotions/me/codes", promotionHandler.ListCodes)
+			protected.POST("/promotions/me/codes/ensure", promotionHandler.EnsureCode)
+			protected.POST("/promotions/me/codes", promotionHandler.CreateCode)
+			protected.GET("/promotions/me/conversions", promotionHandler.ListConversions)
+			protected.GET("/commissions/me/overview", commissionHandler.Overview)
+			protected.GET("/commissions/me/referrals", commissionHandler.ListReferralCommissions)
+			protected.POST("/commissions/me/referrals/redeem", commissionHandler.Redeem)
+			protected.GET("/commissions/me/channel/overview", commissionHandler.ChannelOverview)
+			protected.GET("/commissions/me/channel/bindings", commissionHandler.ChannelBindings)
+			protected.GET("/commissions/me/channel/commissions", commissionHandler.ChannelCommissions)
+			protected.GET("/commissions/me/channel/settlements", commissionHandler.ChannelSettlements)
 			protected.POST("/assets/source", imageRuntimeHandler.RegisterSourceAsset)
 			protected.GET("/assets/:assetID/content", imageRuntimeHandler.GetAssetContent)
 			protected.GET("/image-jobs", imageRuntimeHandler.ListJobs)
 			protected.POST("/image-jobs", imageRuntimeHandler.CreateImageJob)
 			protected.GET("/image-jobs/:jobID", imageRuntimeHandler.GetJob)
+			protected.POST("/image-jobs/:jobID/cancel", imageRuntimeHandler.CancelJob)
 		}
 
 		workspaceGroup := v1.Group("")
@@ -132,6 +161,9 @@ func New(cfg config.Config, platformClient *platform.Client, db *gorm.DB, redisC
 	{
 		internal.GET("/health", healthHandler)
 		internal.GET("/ready", readyHandler)
+		internal.POST("/commercial/billing/charges", billingHandler.RecordCharge)
+		internal.POST("/commercial/billing/charges/:recordID/refunds", billingHandler.RefundCharge)
+		internal.POST("/commercial/outbox/replay", billingHandler.ReplayOutbox)
 		internal.POST("/jobs/:jobID/runtime", imageRuntimeHandler.InternalUpdateJobRuntime)
 		internal.POST("/jobs/:jobID/results", imageRuntimeHandler.InternalRecordJobResults)
 	}

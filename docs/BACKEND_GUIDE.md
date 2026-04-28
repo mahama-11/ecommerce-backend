@@ -48,6 +48,9 @@ This creates a stable product contract before moving visual tools, async jobs, o
 When Agent Ecommerce needs identity, org, permission, or billing truth, call `v-platform-backend` through stable APIs.
 Do not duplicate shared tables as a second source of truth.
 
+When reading shared wallet, reward, commission, discount, settlement, or usage data from platform, always pass the Agent Ecommerce `product_code` and keep the product scope explicit in product aggregation code.
+Do not rely on subject-level platform reads that omit `product_code`, and do not use any cross-product query mode in normal product flows.
+
 For product image generation, use the platform runtime as the execution layer and keep product-facing job / asset ownership inside `v-ecommerce-backend`. See [Image Generation Runtime Integration](architecture/IMAGE_GENERATION_RUNTIME_INTEGRATION.md).
 
 ## 5. Engineering Status

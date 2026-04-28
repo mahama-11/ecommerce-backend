@@ -26,10 +26,46 @@ func (s *Service) Resolve(userID, orgID string) (*AccessSummary, error) {
 func defaultAccessByOrgRole(orgRole string) ([]string, []string) {
 	switch orgRole {
 	case "owner", "admin":
-		return []string{"ecommerce.workspace_admin"}, []string{"ecommerce.access", "ecommerce.template.read", "ecommerce.template.save", "ecommerce.workflow.read", "ecommerce.workflow.write", "ecommerce.asset.read", "ecommerce.asset.write"}
+		return []string{"ecommerce.workspace_admin"}, []string{
+			"ecommerce.access",
+			"ecommerce.template.read",
+			"ecommerce.template.save",
+			"ecommerce.workflow.read",
+			"ecommerce.workflow.write",
+			"ecommerce.asset.read",
+			"ecommerce.asset.write",
+			"ecommerce.wallet.read",
+			"ecommerce.billing.read",
+			"ecommerce.billing.manage",
+			"ecommerce.promotion.read",
+			"ecommerce.promotion.manage",
+			"ecommerce.commission.read",
+			"ecommerce.commission.manage",
+		}
 	case "viewer":
-		return []string{"ecommerce.viewer"}, []string{"ecommerce.access", "ecommerce.template.read", "ecommerce.workflow.read", "ecommerce.asset.read"}
+		return []string{"ecommerce.viewer"}, []string{
+			"ecommerce.access",
+			"ecommerce.template.read",
+			"ecommerce.workflow.read",
+			"ecommerce.asset.read",
+			"ecommerce.wallet.read",
+			"ecommerce.billing.read",
+			"ecommerce.promotion.read",
+			"ecommerce.commission.read",
+		}
 	default:
-		return []string{"ecommerce.editor"}, []string{"ecommerce.access", "ecommerce.template.read", "ecommerce.template.save", "ecommerce.workflow.read", "ecommerce.workflow.write", "ecommerce.asset.read", "ecommerce.asset.write"}
+		return []string{"ecommerce.editor"}, []string{
+			"ecommerce.access",
+			"ecommerce.template.read",
+			"ecommerce.template.save",
+			"ecommerce.workflow.read",
+			"ecommerce.workflow.write",
+			"ecommerce.asset.read",
+			"ecommerce.asset.write",
+			"ecommerce.wallet.read",
+			"ecommerce.billing.read",
+			"ecommerce.promotion.read",
+			"ecommerce.commission.read",
+		}
 	}
 }

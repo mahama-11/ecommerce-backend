@@ -67,6 +67,18 @@ func (h *Handler) GetJob(c *gin.Context) {
 	response.JSONSuccess(c, item)
 }
 
+func (h *Handler) CancelJob(c *gin.Context) {
+	span := telemetry.StartGinSpan(c, "ecommerce-service/image-runtime-handler", "ecommerce.image_runtime.job.cancel")
+	defer span.End()
+	item, err := h.service.CancelJob(c.GetString("orgID"), c.Param("jobID"))
+	if err != nil {
+		span.RecordError(err)
+		response.JSONErrorSemantic(c, response.CodeInternalError, "Failed to cancel ecommerce image job", "ECOMMERCE_IMAGE_JOB_CANCEL_FAILED", "Check current job state and try again.")
+		return
+	}
+	response.JSONSuccess(c, item)
+}
+
 func (h *Handler) ListJobs(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/image-runtime-handler", "ecommerce.image_runtime.job.list")
 	defer span.End()

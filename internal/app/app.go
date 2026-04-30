@@ -13,6 +13,7 @@ import (
 	commercialmodule "ecommerce-service/internal/modules/commercial"
 	commissionmodule "ecommerce-service/internal/modules/commission"
 	imageruntimemodule "ecommerce-service/internal/modules/imageruntime"
+	productcoremodule "ecommerce-service/internal/modules/productcore"
 	promotionmodule "ecommerce-service/internal/modules/promotion"
 	templatecentermodule "ecommerce-service/internal/modules/templatecenter"
 	walletmodule "ecommerce-service/internal/modules/wallet"
@@ -63,8 +64,9 @@ func New(configFile string) (*App, error) {
 	workspaceRepo := repository.NewWorkspaceRepository(db)
 	templateCenterRepo := repository.NewTemplateCenterRepository(db)
 	commercialRepo := repository.NewCommercialRepository(db)
+	productcenterRepo := repository.NewProductCenterRepository(db)
 	auditService := auditmodule.NewService(auditRepo)
-	imageRuntimeService := imageruntimemodule.NewService(imageRuntimeRepo, commercialRepo, templateCenterRepo, auditService, platformClient, cfg.App)
+	imageRuntimeService := imageruntimemodule.NewService(imageRuntimeRepo, commercialRepo, templateCenterRepo, productcenterRepo, auditService, platformClient, cfg.App)
 	authzService := authz.NewService(platformClient)
 	promotionService := promotionmodule.NewService(platformClient, commercialRepo, cfg.App)
 	walletService := walletmodule.NewService(platformClient, commercialRepo, cfg.App)
@@ -74,6 +76,7 @@ func New(configFile string) (*App, error) {
 	authService := authmodule.NewService(platformClient, userRepo, authzService, promotionService, cfg.App)
 	workspaceService := workspace.NewService(workspaceRepo, redisClient)
 	templateCenterService := templatecentermodule.NewService(templateCenterRepo, auditService, platformClient)
+	productcoreService := productcoremodule.NewService(productcenterRepo, imageRuntimeRepo, platformClient)
 	accessHandler := accessmodule.NewHandler(authzService)
 	authHandler := authmodule.NewHandler(authService, auditService)
 	billingHandler := billingmodule.NewHandler(billingService)
@@ -85,6 +88,7 @@ func New(configFile string) (*App, error) {
 	auditHandler := auditmodule.NewHandler(auditService)
 	templateCenterHandler := templatecentermodule.NewHandler(templateCenterService)
 	walletHandler := walletmodule.NewHandler(walletService)
+	productcoreHandler := productcoremodule.NewHandler(productcoreService)
 
 	if err := promotionService.Bootstrap(); err != nil {
 		return nil, fmt.Errorf("bootstrap ecommerce promotion: %w", err)
@@ -95,7 +99,7 @@ func New(configFile string) (*App, error) {
 	}
 
 	app := &App{Config: *cfg, DB: db, Redis: redisClient}
-	app.Router = router.New(*cfg, platformClient, db, redisClient, authHandler, accessHandler, imageRuntimeHandler, workspaceHandler, auditHandler, templateCenterHandler, walletHandler, promotionHandler, commissionHandler, billingHandler, commercialHandler)
+	app.Router = router.New(*cfg, platformClient, db, redisClient, authHandler, accessHandler, imageRuntimeHandler, workspaceHandler, auditHandler, templateCenterHandler, walletHandler, promotionHandler, commissionHandler, billingHandler, commercialHandler, productcoreHandler)
 	app.Shutdown = func(ctx context.Context) error {
 		if shutdownTracing != nil {
 			return shutdownTracing(ctx)

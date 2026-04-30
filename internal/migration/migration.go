@@ -121,6 +121,19 @@ func Steps(cfg config.DatabaseConfig) []Step {
 				&models.CommercialFulfillment{},
 			)
 		},
+	}, {
+		Version: 202604290001,
+		Name:    "productcenter_schema_bootstrap",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(
+				&models.EcomProductSKU{},
+				&models.EcomAssetRelation{},
+				&models.EcomListingVersion{},
+				&models.EcomProfitSnapshot{},
+				&models.EcomExportTask{},
+				&models.EcomProductActivity{},
+			)
+		},
 	}}
 	sort.Slice(steps, func(i, j int) bool { return steps[i].Version < steps[j].Version })
 	return steps

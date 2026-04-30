@@ -35,9 +35,16 @@ The current backend slice intentionally focuses on replacing the most fragile fr
 - linked design assets
 - linked delivery bundles
 - design-to-agent template bridges
+- product-owned product center CRUD, status machine, listing, profit, export, and activity flows
+- product-owned download-center aggregation sourced from export tasks
 - product-facing register/login/session orchestration
 - product-facing access resolution backed by platform identity and permission context
 - product-facing wallet summary projection for current org credits
+- product-facing wallet history projection with product-scoped reward, commission, wallet, and billing aggregation
+- product-facing commerce ordering and payment orchestration built on shared platform offerings
+- product-facing billing charge projection, refund projection, and channel-report replay orchestration
+- product-facing promotion program, invite code, conversion, and signup attribution orchestration
+- product-facing commission overview, redeem flow, and channel commission / settlement projection
 - product-owned image-generation callback projection from platform runtime into ecommerce jobs and assets
 - product-facing source asset registration and image job creation/query routes for the first `image_to_image` slice
 
@@ -71,11 +78,73 @@ For product image generation, use the platform runtime as the execution layer an
   - `GET /api/v1/ecommerce/image-jobs`
   - `POST /api/v1/ecommerce/image-jobs`
   - `GET /api/v1/ecommerce/image-jobs/:jobID`
+  - source asset registration now requires `product_id` and `sku_code`
+  - image job creation now requires `product_id` and `sku_code`
+  - source assets are validated against the bound product before job creation
+  - generated result assets are automatically archived into the bound product asset set
+  - `GET /api/v1/ecommerce/image-jobs` can be filtered by `productID` for product-scoped tool history
+- commerce routes are available under:
+  - `GET /api/v1/ecommerce/commercial/offerings`
+  - `POST /api/v1/ecommerce/commercial/orders`
+  - `GET /api/v1/ecommerce/commercial/orders`
+  - `GET /api/v1/ecommerce/commercial/orders/:orderID`
+  - `POST /api/v1/ecommerce/commercial/orders/:orderID/confirm-payment`
+- wallet routes are available under:
+  - `GET /api/v1/ecommerce/wallet/summary`
+  - `GET /api/v1/ecommerce/wallet/history`
+- billing routes are available under:
+  - `GET /api/v1/ecommerce/billing/summary`
+  - `GET /api/v1/ecommerce/billing/charges`
+- promotion routes are available under:
+  - `GET /api/v1/ecommerce/promotions/codes/:code/resolve`
+  - `GET /api/v1/ecommerce/promotions/programs`
+  - `GET /api/v1/ecommerce/promotions/me/overview`
+  - `GET /api/v1/ecommerce/promotions/me/codes`
+  - `POST /api/v1/ecommerce/promotions/me/codes/ensure`
+  - `POST /api/v1/ecommerce/promotions/me/codes`
+  - `GET /api/v1/ecommerce/promotions/me/conversions`
+- commission routes are available under:
+  - `GET /api/v1/ecommerce/commissions/me/overview`
+  - `GET /api/v1/ecommerce/commissions/me/referrals`
+  - `POST /api/v1/ecommerce/commissions/me/referrals/redeem`
+  - `GET /api/v1/ecommerce/commissions/me/channel/overview`
+  - `GET /api/v1/ecommerce/commissions/me/channel/bindings`
+  - `GET /api/v1/ecommerce/commissions/me/channel/commissions`
+  - `GET /api/v1/ecommerce/commissions/me/channel/settlements`
 - internal runtime callbacks are reserved under:
   - `/internal/v1/ecommerce/jobs/:jobID/runtime`
   - `/internal/v1/ecommerce/jobs/:jobID/results`
+- internal billing settlement hooks are available under:
+  - `POST /internal/v1/ecommerce/commercial/billing/charges`
+  - `POST /internal/v1/ecommerce/commercial/billing/charges/:recordID/refunds`
+  - `POST /internal/v1/ecommerce/commercial/outbox/replay`
 - product-owned asset content is exposed under:
   - `/api/v1/ecommerce/assets/:assetID/content`
+- product-owned product center routes are available under:
+  - `GET /api/v1/ecommerce/products`
+  - `POST /api/v1/ecommerce/products`
+  - `GET /api/v1/ecommerce/products/:product_id`
+  - `PATCH /api/v1/ecommerce/products/:product_id`
+  - `PATCH /api/v1/ecommerce/products/:product_id/status`
+  - `DELETE /api/v1/ecommerce/products/:product_id`
+  - `GET /api/v1/ecommerce/products/:product_id/assets`
+  - `POST /api/v1/ecommerce/products/:product_id/assets`
+  - `DELETE /api/v1/ecommerce/products/:product_id/assets/:asset_relation_id`
+  - `GET /api/v1/ecommerce/products/:product_id/listing-versions`
+  - `POST /api/v1/ecommerce/products/:product_id/listing-versions`
+  - `POST /api/v1/ecommerce/products/listing-versions/batch`
+  - `POST /api/v1/ecommerce/products/:product_id/listing-versions/adopt`
+  - `POST /api/v1/ecommerce/products/listing-versions/batch-adopt`
+  - `PATCH /api/v1/ecommerce/products/:product_id/listing-versions/:version_id`
+  - `DELETE /api/v1/ecommerce/products/:product_id/listing-versions/:version_id`
+  - `GET /api/v1/ecommerce/products/:product_id/profit-snapshots`
+  - `POST /api/v1/ecommerce/products/:product_id/profit-snapshots/calculate`
+  - `GET /api/v1/ecommerce/products/:product_id/export-tasks`
+  - `POST /api/v1/ecommerce/products/:product_id/export-tasks`
+  - `PATCH /api/v1/ecommerce/products/:product_id/export-tasks/status`
+- product-owned download center routes are available under:
+  - `GET /api/v1/ecommerce/downloads`
+  - `GET /api/v1/ecommerce/downloads/:download_id/content`
 - template center example assets are resolved from `v-platform-backend` at request time
 - template center example preview is proxied under:
   - `GET /api/v1/ecommerce/template-center/assets/preview?storage_key=...`
@@ -83,6 +152,13 @@ For product image generation, use the platform runtime as the execution layer an
 - template center detail responses can surface `storageKey`, `assetId`, `mimeType`, `checksum`, and `previewAssetUrl`
 - startup now logs a template center seed summary and warns when built-in example assets are missing
 - automated validation currently covers package compilation, workspace module tests, and template center API success paths
+- billing, template center, and image runtime paths now have targeted handler/service validation in the backend test suite
+- download center currently aggregates product export tasks at organization scope and exposes authenticated download streaming when `storage_key` is available, with `package_url` kept as a direct-download fallback
+- download-center payloads now include linked asset manifest snippets so frontend pages can trace package records back to product assets
+- image-runtime tests now also cover product-bound source registration, product-bound job creation, and automatic result archival into product assets
+- batch listing now has real bulk create/adopt endpoints that accept per-product listing payloads and return per-item success/failure details
+- listing version creation now validates that the target product exists before writing data and immediately syncs product `listing_status` / main status after a new version is created
+- listing versions can now be edited in place through a dedicated patch route, preserving existing adoption status while updating title, description, platform/site/locale, and other editable fields
 
 ## 6. Runtime Configuration
 
@@ -101,4 +177,5 @@ For product image generation, use the platform runtime as the execution layer an
 
 - replace optional anonymous workspace fallback with stricter authenticated product sessions
 - add internal API tests for product auth/session and workspace contracts beyond template center
+- unify legacy workspace linked-delivery projections with the product-export-based download center when design workbench backend contracts are ready
 - extend product-owned persistence to designer jobs, catalogs, and reports

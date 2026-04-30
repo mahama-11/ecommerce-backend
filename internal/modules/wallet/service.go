@@ -20,8 +20,19 @@ type Service struct {
 
 type Summary struct {
 	platform.WalletSummary
-	PrimaryAssetCode string `json:"primary_asset_code"`
+	PrimaryAssetCode string        `json:"primary_asset_code"`
+	Quota            *QuotaSummary `json:"quota,omitempty"`
 }
+
+type QuotaSummary struct {
+	BillableItemCode string `json:"billable_item_code"`
+	Granted          int64  `json:"granted"`
+	Consumed         int64  `json:"consumed"`
+	Reserved         int64  `json:"reserved"`
+	Remaining        int64  `json:"remaining"`
+}
+
+const ecommerceQuotaBillableItemCode = "ecommerce.image.generate"
 
 type HistoryEntry struct {
 	ID               string         `json:"id"`
@@ -61,14 +72,25 @@ func (s *Service) Summary(orgID string) (*Summary, error) {
 	if err != nil {
 		return nil, err
 	}
+	quota, quotaErr := s.platform.GetQuotaBalance("organization", orgID, ecommerceQuotaBillableItemCode)
+	if quotaErr != nil {
+		return nil, quotaErr
+	}
+	quotaSummary := &QuotaSummary{
+		BillableItemCode: quota.BillableItemCode,
+		Granted:          quota.Granted,
+		Consumed:         quota.Consumed,
+		Reserved:         quota.Reserved,
+		Remaining:        quota.Available,
+	}
 	if item == nil {
-		return &Summary{PrimaryAssetCode: s.productCode + "_CREDIT"}, nil
+		return &Summary{PrimaryAssetCode: s.productCode + "_CREDIT", Quota: quotaSummary}, nil
 	}
 	primaryAsset := ""
 	if len(item.Assets) > 0 {
 		primaryAsset = item.Assets[0].AssetCode
 	}
-	return &Summary{WalletSummary: *item, PrimaryAssetCode: primaryAsset}, nil
+	return &Summary{WalletSummary: *item, PrimaryAssetCode: primaryAsset, Quota: quotaSummary}, nil
 }
 
 func (s *Service) History(orgID string, limit int) (*HistoryResult, error) {
@@ -164,6 +186,9 @@ func mapCommission(item platform.CommissionLedger) HistoryEntry {
 }
 
 func mapLedger(item platform.WalletLedger) (HistoryEntry, bool) {
+	if item.AssetCode == "ECOMMERCE_MONTHLY_ALLOWANCE" {
+		return HistoryEntry{}, false
+	}
 	switch item.Reason {
 	case "reward_issue", "metering_settlement":
 		return HistoryEntry{}, false
@@ -211,13 +236,15 @@ func mapCharge(item models.BillingChargeRecord) HistoryEntry {
 		title = "Product charge refunded"
 		category = "refund"
 	}
+	metadata := decodeMap(item.MetadataJSON)
+	quotaConsumed := resolveQuotaConsumed(item, metadata)
 	return HistoryEntry{
 		ID:               item.ID,
 		Category:         category,
 		Title:            title,
 		Direction:        "debit",
-		Amount:           item.NetAmount,
-		AssetCode:        item.WalletAssetCode,
+		Amount:           resolveChargeAmount(item, quotaConsumed),
+		AssetCode:        chargeAssetCode(item, quotaConsumed),
 		Currency:         item.Currency,
 		Status:           item.Status,
 		OccurredAt:       item.OccurredAt.UTC().Format(time.RFC3339),
@@ -225,11 +252,45 @@ func mapCharge(item models.BillingChargeRecord) HistoryEntry {
 		ReferenceID:      item.SourceID,
 		BillableItemCode: item.BillableItemCode,
 		ChargeMode:       item.ChargeMode,
-		QuotaConsumed:    item.QuotaConsumed,
+		QuotaConsumed:    quotaConsumed,
 		CreditsConsumed:  item.CreditsConsumed,
 		WalletDebited:    item.WalletDebited,
-		Metadata:         decodeMap(item.MetadataJSON),
+		Metadata:         metadata,
 	}
+}
+
+func chargeAssetCode(item models.BillingChargeRecord, quotaConsumed int64) string {
+	if strings.TrimSpace(item.WalletAssetCode) != "" {
+		return item.WalletAssetCode
+	}
+	if quotaConsumed > 0 {
+		return firstNonEmpty(item.BillableItemCode, ecommerceQuotaBillableItemCode)
+	}
+	return item.WalletAssetCode
+}
+
+func resolveQuotaConsumed(item models.BillingChargeRecord, metadata map[string]any) int64 {
+	if item.QuotaConsumed > 0 {
+		return item.QuotaConsumed
+	}
+	if usageUnits, ok := metadata["usage_units"]; ok {
+		switch typed := usageUnits.(type) {
+		case float64:
+			return int64(typed)
+		case int:
+			return int64(typed)
+		case int64:
+			return typed
+		}
+	}
+	return 0
+}
+
+func resolveChargeAmount(item models.BillingChargeRecord, quotaConsumed int64) int64 {
+	if quotaConsumed > 0 && item.NetAmount == 0 && item.WalletDebited == 0 {
+		return quotaConsumed
+	}
+	return item.NetAmount
 }
 
 func decodeMap(raw string) map[string]any {
@@ -260,4 +321,13 @@ func defaultString(value, fallback string) string {
 		return fallback
 	}
 	return strings.TrimSpace(value)
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
 }

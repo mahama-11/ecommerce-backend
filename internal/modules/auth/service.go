@@ -129,11 +129,21 @@ func (s *Service) buildUserSummary(user platform.PlatformUserProfile) UserSummar
 }
 
 func (s *Service) buildCreditsSummary(orgID string) CreditsSummary {
-	summary, err := s.platform.GetWalletSummary("organization", orgID, s.appCfg.ProductCode)
-	if err != nil || summary == nil {
-		return CreditsSummary{AssetCode: s.appCfg.ProductCode + "_CREDIT"}
+	wallet, err := s.platform.GetWalletSummary("organization", orgID, defaultString(s.appCfg.ProductCode, "ecommerce"))
+	if err != nil || wallet == nil {
+		return CreditsSummary{AssetCode: defaultString(s.appCfg.CreditsAssetCode, s.appCfg.ProductCode+"_CREDIT")}
 	}
-	return CreditsSummary{AssetCode: s.appCfg.ProductCode + "_CREDIT", Balance: summary.TotalBalance, PermanentBalance: summary.PermanentBalance, RewardBalance: summary.RewardBalance, AllowanceBalance: summary.AllowanceBalance}
+	assetCode := defaultString(s.appCfg.CreditsAssetCode, wallet.ProductCode+"_CREDIT")
+	if len(wallet.Assets) > 0 && strings.TrimSpace(wallet.Assets[0].AssetCode) != "" {
+		assetCode = wallet.Assets[0].AssetCode
+	}
+	return CreditsSummary{
+		AssetCode:        assetCode,
+		Balance:          wallet.TotalBalance,
+		PermanentBalance: wallet.PermanentBalance,
+		RewardBalance:    wallet.RewardBalance,
+		AllowanceBalance: wallet.AllowanceBalance,
+	}
 }
 
 func (s *Service) lookupLanguagePreference(userID, orgID string) string {

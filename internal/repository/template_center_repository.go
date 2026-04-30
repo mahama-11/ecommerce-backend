@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"ecommerce-service/internal/models"
+	"ecommerce-service/internal/templateutil"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -27,6 +28,7 @@ type TemplateCatalogFilter struct {
 	Series       string
 	Capability   string
 	Platform     string
+	ToolSlug     string
 	SortBy       string
 	FeaturedOnly bool
 	Limit        int
@@ -49,6 +51,8 @@ type CatalogFacets struct {
 type CatalogListItem struct {
 	ID              string   `json:"id"`
 	Slug            string   `json:"slug"`
+	ToolSlug        string   `json:"toolSlug,omitempty"`
+	TargetRoute     string   `json:"targetRoute,omitempty"`
 	ExternalCode    string   `json:"externalCode,omitempty"`
 	Name            string   `json:"name"`
 	Summary         string   `json:"summary"`
@@ -83,6 +87,7 @@ type RuntimePromptTemplate struct {
 	Slug             string         `json:"slug"`
 	Name             string         `json:"name"`
 	ToolSlug         string         `json:"toolSlug,omitempty"`
+	TargetRoute      string         `json:"targetRoute,omitempty"`
 	PromptLayers     map[string]any `json:"promptLayers"`
 	DefaultVariables map[string]any `json:"defaultVariables"`
 }
@@ -381,11 +386,15 @@ func (r *TemplateCenterRepository) ListCatalog(scope Scope, filter TemplateCatal
 	favoriteSet, _ := r.favoriteSet(scope, catalogs)
 	favoriteCounts, _ := r.favoriteCounts(catalogs)
 	useCounts, _ := r.useCounts(catalogs)
+	schemaBindings, _ := r.loadSchemaBindings(catalogs)
 	items := make([]CatalogListItem, 0, len(catalogs))
 	keyword := strings.ToLower(strings.TrimSpace(filter.Keyword))
 	for _, item := range catalogs {
 		loc := localeMap[item.ID]
-		candidate := toCatalogListItem(item, loc, favoriteSet[item.ID], favoriteCounts[item.ID], useCounts[item.ID])
+		candidate := toCatalogListItem(item, loc, favoriteSet[item.ID], favoriteCounts[item.ID], useCounts[item.ID], schemaBindings[item.ID])
+		if filter.ToolSlug != "" && !strings.EqualFold(candidate.ToolSlug, filter.ToolSlug) {
+			continue
+		}
 		if keyword != "" && !matchesKeyword(candidate, keyword) {
 			continue
 		}
@@ -406,6 +415,7 @@ func (r *TemplateCenterRepository) ListFacets(filter TemplateCatalogFilter) (*Ca
 		return nil, err
 	}
 	_ = locales
+	schemaBindings, _ := r.loadSchemaBindings(catalogs)
 
 	facets := &CatalogFacets{
 		Platforms:    make([]CatalogFacetBucket, 0),
@@ -420,7 +430,10 @@ func (r *TemplateCenterRepository) ListFacets(filter TemplateCatalogFilter) (*Ca
 
 	keyword := strings.ToLower(strings.TrimSpace(filter.Keyword))
 	for _, item := range catalogs {
-		candidate := toCatalogListItem(item, localeMap[item.ID], false, 0, 0)
+		candidate := toCatalogListItem(item, localeMap[item.ID], false, 0, 0, schemaBindings[item.ID])
+		if filter.ToolSlug != "" && !strings.EqualFold(candidate.ToolSlug, filter.ToolSlug) {
+			continue
+		}
 		if keyword != "" && !matchesKeyword(candidate, keyword) {
 			continue
 		}
@@ -463,7 +476,7 @@ func (r *TemplateCenterRepository) GetCatalogDetail(scope Scope, templateID, loc
 	favoriteSet, _ := r.favoriteSet(scope, []models.TemplateCatalog{catalog})
 	favoriteCounts, _ := r.favoriteCounts([]models.TemplateCatalog{catalog})
 	useCounts, _ := r.useCounts([]models.TemplateCatalog{catalog})
-	item := toCatalogListItem(catalog, loc, favoriteSet[catalog.ID], favoriteCounts[catalog.ID], useCounts[catalog.ID])
+	item := toCatalogListItem(catalog, loc, favoriteSet[catalog.ID], favoriteCounts[catalog.ID], useCounts[catalog.ID], schemaBindingFromSchema(schema, catalog))
 	result := &CatalogDetail{
 		Catalog: item,
 		Locale: CatalogLocaleDTO{
@@ -536,13 +549,14 @@ func (r *TemplateCenterRepository) loadRuntimePromptTemplate(catalog models.Temp
 	if err != nil {
 		return nil, err
 	}
-	toolBinding := decodeJSONMap(schema.ToolBindingJSON)
+	binding := schemaBindingFromSchema(schema, catalog)
 	return &RuntimePromptTemplate{
 		TemplateID:       catalog.ID,
 		ExternalCode:     catalog.ExternalCode,
 		Slug:             catalog.Slug,
 		Name:             loc.Name,
-		ToolSlug:         stringValue(toolBinding["toolSlug"]),
+		ToolSlug:         binding.ToolSlug,
+		TargetRoute:      binding.TargetRoute,
 		PromptLayers:     decodeJSONMap(schema.PromptLayersJSON),
 		DefaultVariables: decodeJSONMap(schema.DefaultVariablesJSON),
 	}, nil
@@ -574,9 +588,10 @@ func (r *TemplateCenterRepository) ListFavorites(scope Scope, locale string) ([]
 	favoriteSet, _ := r.favoriteSet(scope, catalogs)
 	favoriteCounts, _ := r.favoriteCounts(catalogs)
 	useCounts, _ := r.useCounts(catalogs)
+	schemaBindings, _ := r.loadSchemaBindings(catalogs)
 	items := make([]CatalogListItem, 0, len(catalogs))
 	for _, item := range catalogs {
-		items = append(items, toCatalogListItem(item, localeMap[item.ID], favoriteSet[item.ID], favoriteCounts[item.ID], useCounts[item.ID]))
+		items = append(items, toCatalogListItem(item, localeMap[item.ID], favoriteSet[item.ID], favoriteCounts[item.ID], useCounts[item.ID], schemaBindings[item.ID]))
 	}
 	return items, nil
 }
@@ -662,10 +677,11 @@ func (r *TemplateCenterRepository) BuildUseResponse(scope Scope, templateID stri
 	}
 	execution := detail.Schema.ExecutionSchema
 	toolBinding := detail.Schema.ToolBinding
+	targetRoute := stringValue(execution["route"])
 	resp := &UseTemplateResponse{
-		TargetRoute:          stringValue(execution["route"]),
+		TargetRoute:          targetRoute,
 		ExecutorType:         detail.Catalog.ExecutorType,
-		ToolSlug:             stringValue(toolBinding["toolSlug"]),
+		ToolSlug:             templateutil.DeriveToolSlug(targetRoute, stringValue(toolBinding["toolSlug"]), stringValue(toolBinding["tool_slug"]), detail.Catalog.Slug, detail.Catalog.ExternalCode),
 		PrefilledInputSchema: detail.Schema.InputSchema,
 		PreloadedTemplatePayload: map[string]any{
 			"templateId":       detail.Catalog.ID,
@@ -879,10 +895,12 @@ func (r *TemplateCenterRepository) useCounts(catalogs []models.TemplateCatalog) 
 	return counts, nil
 }
 
-func toCatalogListItem(item models.TemplateCatalog, locale models.TemplateCatalogLocale, isFavorited bool, favoriteCount, useCount int64) CatalogListItem {
+func toCatalogListItem(item models.TemplateCatalog, locale models.TemplateCatalogLocale, isFavorited bool, favoriteCount, useCount int64, binding schemaBinding) CatalogListItem {
 	return CatalogListItem{
 		ID:              item.ID,
 		Slug:            item.Slug,
+		ToolSlug:        binding.ToolSlug,
+		TargetRoute:     binding.TargetRoute,
 		ExternalCode:    item.ExternalCode,
 		Name:            locale.Name,
 		Summary:         locale.Summary,
@@ -901,6 +919,49 @@ func toCatalogListItem(item models.TemplateCatalog, locale models.TemplateCatalo
 		FavoriteCount:   favoriteCount,
 		UseCount:        useCount,
 		SuccessRateHint: item.SuccessRateHint,
+	}
+}
+
+type schemaBinding struct {
+	ToolSlug    string
+	TargetRoute string
+}
+
+func (r *TemplateCenterRepository) loadSchemaBindings(catalogs []models.TemplateCatalog) (map[string]schemaBinding, error) {
+	out := map[string]schemaBinding{}
+	versionToCatalog := map[string]models.TemplateCatalog{}
+	versionIDs := make([]string, 0, len(catalogs))
+	for _, item := range catalogs {
+		if strings.TrimSpace(item.CurrentVersionID) == "" {
+			continue
+		}
+		versionIDs = append(versionIDs, item.CurrentVersionID)
+		versionToCatalog[item.CurrentVersionID] = item
+	}
+	if len(versionIDs) == 0 {
+		return out, nil
+	}
+	var schemas []models.TemplateCatalogSchema
+	if err := r.db.Where("template_version_id IN ?", versionIDs).Find(&schemas).Error; err != nil {
+		return nil, err
+	}
+	for _, schema := range schemas {
+		catalog, ok := versionToCatalog[schema.TemplateVersionID]
+		if !ok {
+			continue
+		}
+		out[catalog.ID] = schemaBindingFromSchema(schema, catalog)
+	}
+	return out, nil
+}
+
+func schemaBindingFromSchema(schema models.TemplateCatalogSchema, catalog models.TemplateCatalog) schemaBinding {
+	execution := decodeJSONMap(schema.ExecutionSchemaJSON)
+	toolBinding := decodeJSONMap(schema.ToolBindingJSON)
+	targetRoute := stringValue(execution["route"])
+	return schemaBinding{
+		ToolSlug:    templateutil.DeriveToolSlug(targetRoute, stringValue(toolBinding["toolSlug"]), stringValue(toolBinding["tool_slug"]), catalog.Slug, catalog.ExternalCode),
+		TargetRoute: targetRoute,
 	}
 }
 

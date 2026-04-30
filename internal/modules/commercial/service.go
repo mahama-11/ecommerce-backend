@@ -260,7 +260,7 @@ func (s *Service) ConfirmOrderPayment(userID, orgID, orderID string, input Confi
 	if fulfillment == nil || fulfillment.Status != "succeeded" {
 		assignResult, err = s.assignPackage(userID, orgID, order, payment, input.Metadata)
 		if err != nil {
-			order.Status = "payment_succeeded_fulfillment_failed"
+			order.Status = "fulfillment_failed"
 			order.FulfillmentStatus = "failed"
 			order.UpdatedAt = time.Now().UTC()
 			_ = s.repo.SaveOrder(order)

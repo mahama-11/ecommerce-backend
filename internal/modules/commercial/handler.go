@@ -102,5 +102,5 @@ func writeConfirmOrderPaymentError(c *gin.Context, err error) {
 		response.JSONErrorSemantic(c, response.CodeNotFound, "Commercial order not found", "COMMERCIAL_ORDER_NOT_FOUND", firstNonEmpty(platform.ErrorHint(err), "Refresh the page and try again."))
 		return
 	}
-	response.JSONErrorSemantic(c, response.CodeInternalError, "Failed to confirm order payment", "COMMERCIAL_ORDER_PAYMENT_CONFIRM_FAILED", firstNonEmpty(platform.ErrorHint(err), "Check order state and payment parameters before retrying."))
+	moduleutil.WritePlatformError(c, err, "Failed to confirm order payment")
 }

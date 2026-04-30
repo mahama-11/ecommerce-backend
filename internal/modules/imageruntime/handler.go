@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"ecommerce-service/internal/modules/moduleutil"
 	"ecommerce-service/internal/telemetry"
 	"ecommerce-service/pkg/response"
 
@@ -49,7 +50,7 @@ func (h *Handler) CreateImageJob(c *gin.Context) {
 	item, err := h.service.CreateImageJob(c.GetString("userID"), c.GetString("orgID"), req)
 	if err != nil {
 		span.RecordError(err)
-		response.JSONErrorSemantic(c, response.CodeInternalError, "Failed to create ecommerce image job", "ECOMMERCE_IMAGE_JOB_CREATE_FAILED", "Check source asset and runtime parameters.")
+		moduleutil.WritePlatformError(c, err, "Failed to create ecommerce image job")
 		return
 	}
 	response.JSONSuccessWithStatus(c, http.StatusCreated, item)
@@ -83,7 +84,7 @@ func (h *Handler) ListJobs(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/image-runtime-handler", "ecommerce.image_runtime.job.list")
 	defer span.End()
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "8"))
-	items, err := h.service.ListJobs(c.GetString("orgID"), c.GetString("userID"), c.Query("sceneType"), limit)
+	items, err := h.service.ListJobs(c.GetString("orgID"), c.GetString("userID"), c.Query("sceneType"), c.Query("productID"), limit)
 	if err != nil {
 		span.RecordError(err)
 		response.JSONErrorSemantic(c, response.CodeInternalError, "Failed to list ecommerce image jobs", "ECOMMERCE_IMAGE_JOB_LIST_FAILED", "Refresh and try again.")

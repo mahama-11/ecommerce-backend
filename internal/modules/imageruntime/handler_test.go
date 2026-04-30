@@ -39,7 +39,8 @@ func TestImageRuntimeInternalCallbacksAndAssetDownload(t *testing.T) {
 	db := newImageRuntimeTestDB(t)
 	repo := repository.NewImageRuntimeRepository(db)
 	commercialRepo := repository.NewCommercialRepository(db)
-	service := NewService(repo, commercialRepo, nil, nil, platform.New(config.PlatformConfig{
+	productRepo := repository.NewProductCenterRepository(db)
+	service := NewService(repo, commercialRepo, nil, productRepo, nil, platform.New(config.PlatformConfig{
 		BaseURL:               platformServer.URL,
 		Timeout:               5 * time.Second,
 		ServiceName:           "v-ecommerce-backend",
@@ -162,7 +163,20 @@ func TestRegisterSourceAssetAndCreateImageJob(t *testing.T) {
 	db := newImageRuntimeTestDB(t)
 	repo := repository.NewImageRuntimeRepository(db)
 	commercialRepo := repository.NewCommercialRepository(db)
-	service := NewService(repo, commercialRepo, nil, nil, platform.New(config.PlatformConfig{
+	productRepo := repository.NewProductCenterRepository(db)
+	if err := db.Create(&models.EcomProductSKU{
+		ID:             "product-1",
+		OrganizationID: "org-1",
+		SKUCode:        "SKU-001",
+		Title:          "Test Product",
+		Status:         models.ProductStatusDraft,
+		AssetStatus:    models.AssetStatusMissing,
+		ListingStatus:  models.ListingStatusMissing,
+		ExportStatus:   models.ExportStatusPending,
+	}).Error; err != nil {
+		t.Fatalf("create product: %v", err)
+	}
+	service := NewService(repo, commercialRepo, nil, productRepo, nil, platform.New(config.PlatformConfig{
 		BaseURL:               platformServer.URL,
 		Timeout:               5 * time.Second,
 		ServiceName:           "v-ecommerce-backend",
@@ -181,7 +195,7 @@ func TestRegisterSourceAssetAndCreateImageJob(t *testing.T) {
 	router.POST("/api/v1/ecommerce/image-jobs", handler.CreateImageJob)
 	router.GET("/api/v1/ecommerce/image-jobs/:jobID", handler.GetJob)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/ecommerce/assets/source", bytes.NewBufferString(`{"file_name":"source.png","mime_type":"image/png","payload":"data:image/png;base64,Zm9v","width":1024,"height":1024}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/ecommerce/assets/source", bytes.NewBufferString(`{"product_id":"product-1","sku_code":"SKU-001","file_name":"source.png","mime_type":"image/png","payload":"data:image/png;base64,Zm9v","width":1024,"height":1024}`))
 	req.Header.Set("Content-Type", "application/json")
 	resp := httptest.NewRecorder()
 	router.ServeHTTP(resp, req)
@@ -193,7 +207,7 @@ func TestRegisterSourceAssetAndCreateImageJob(t *testing.T) {
 		t.Fatalf("query source asset: %v", err)
 	}
 
-	req = httptest.NewRequest(http.MethodPost, "/api/v1/ecommerce/image-jobs", bytes.NewBufferString(`{"scene_type":"ai_posture","source_asset_id":"`+sourceAsset.ID+`","prompt":"生成多组站姿和行走姿势，适合女装详情页","negative_prompt":"blur","objective":"quality","requested_variants":1,"width":1024,"height":1024}`))
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/ecommerce/image-jobs", bytes.NewBufferString(`{"product_id":"product-1","sku_code":"SKU-001","scene_type":"ai_posture","source_asset_id":"`+sourceAsset.ID+`","prompt":"生成多组站姿和行走姿势，适合女装详情页","negative_prompt":"blur","objective":"quality","requested_variants":1,"width":1024,"height":1024}`))
 	req.Header.Set("Content-Type", "application/json")
 	resp = httptest.NewRecorder()
 	router.ServeHTTP(resp, req)
@@ -271,7 +285,20 @@ func TestCreateImageJobFailsWhenReservationFails(t *testing.T) {
 	db := newImageRuntimeTestDB(t)
 	repo := repository.NewImageRuntimeRepository(db)
 	commercialRepo := repository.NewCommercialRepository(db)
-	service := NewService(repo, commercialRepo, nil, nil, platform.New(config.PlatformConfig{
+	productRepo := repository.NewProductCenterRepository(db)
+	if err := db.Create(&models.EcomProductSKU{
+		ID:             "product-1",
+		OrganizationID: "org-1",
+		SKUCode:        "SKU-001",
+		Title:          "Test Product",
+		Status:         models.ProductStatusDraft,
+		AssetStatus:    models.AssetStatusMissing,
+		ListingStatus:  models.ListingStatusMissing,
+		ExportStatus:   models.ExportStatusPending,
+	}).Error; err != nil {
+		t.Fatalf("create product: %v", err)
+	}
+	service := NewService(repo, commercialRepo, nil, productRepo, nil, platform.New(config.PlatformConfig{
 		BaseURL:               platformServer.URL,
 		Timeout:               5 * time.Second,
 		ServiceName:           "v-ecommerce-backend",
@@ -288,7 +315,7 @@ func TestCreateImageJobFailsWhenReservationFails(t *testing.T) {
 	router.POST("/api/v1/ecommerce/assets/source", handler.RegisterSourceAsset)
 	router.POST("/api/v1/ecommerce/image-jobs", handler.CreateImageJob)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/ecommerce/assets/source", bytes.NewBufferString(`{"file_name":"source.png","mime_type":"image/png","payload":"data:image/png;base64,Zm9v","width":1024,"height":1024}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/ecommerce/assets/source", bytes.NewBufferString(`{"product_id":"product-1","sku_code":"SKU-001","file_name":"source.png","mime_type":"image/png","payload":"data:image/png;base64,Zm9v","width":1024,"height":1024}`))
 	req.Header.Set("Content-Type", "application/json")
 	resp := httptest.NewRecorder()
 	router.ServeHTTP(resp, req)
@@ -300,7 +327,7 @@ func TestCreateImageJobFailsWhenReservationFails(t *testing.T) {
 		t.Fatalf("query source asset: %v", err)
 	}
 
-	req = httptest.NewRequest(http.MethodPost, "/api/v1/ecommerce/image-jobs", bytes.NewBufferString(`{"scene_type":"ai_posture","source_asset_id":"`+sourceAsset.ID+`","prompt":"test","requested_variants":1}`))
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/ecommerce/image-jobs", bytes.NewBufferString(`{"product_id":"product-1","sku_code":"SKU-001","scene_type":"ai_posture","source_asset_id":"`+sourceAsset.ID+`","prompt":"test","requested_variants":1}`))
 	req.Header.Set("Content-Type", "application/json")
 	resp = httptest.NewRecorder()
 	router.ServeHTTP(resp, req)
@@ -337,7 +364,20 @@ func TestRecordJobResultsPersistsWhenMeteringFails(t *testing.T) {
 	db := newImageRuntimeTestDB(t)
 	repo := repository.NewImageRuntimeRepository(db)
 	commercialRepo := repository.NewCommercialRepository(db)
-	service := NewService(repo, commercialRepo, nil, nil, platform.New(config.PlatformConfig{
+	productRepo := repository.NewProductCenterRepository(db)
+	if err := db.Create(&models.EcomProductSKU{
+		ID:             "product-1",
+		OrganizationID: "org-1",
+		SKUCode:        "SKU-001",
+		Title:          "Test Product",
+		Status:         models.ProductStatusDraft,
+		AssetStatus:    models.AssetStatusMissing,
+		ListingStatus:  models.ListingStatusMissing,
+		ExportStatus:   models.ExportStatusPending,
+	}).Error; err != nil {
+		t.Fatalf("create product: %v", err)
+	}
+	service := NewService(repo, commercialRepo, nil, productRepo, nil, platform.New(config.PlatformConfig{
 		BaseURL:               platformServer.URL,
 		Timeout:               5 * time.Second,
 		ServiceName:           "v-ecommerce-backend",
@@ -352,7 +392,7 @@ func TestRecordJobResultsPersistsWhenMeteringFails(t *testing.T) {
 		InputMode:      "image_to_image",
 		Status:         "processing",
 		Stage:          "provider_running",
-		Metadata:       `{"charge_session_id":"charge-session-1","reservation_id":"","billable_item_code":"ecommerce.image.generate","usage_units":1}`,
+		Metadata:       `{"charge_session_id":"charge-session-1","reservation_id":"","billable_item_code":"ecommerce.image.generate","usage_units":1,"product_id":"product-1","sku_code":"SKU-001"}`,
 	}
 	if err := db.Create(job).Error; err != nil {
 		t.Fatalf("create job: %v", err)
@@ -404,6 +444,13 @@ func TestRecordJobResultsPersistsWhenMeteringFails(t *testing.T) {
 	if count != 1 {
 		t.Fatalf("expected generated assets to stay idempotent, got %d", count)
 	}
+	var relationCount int64
+	if err := db.Model(&models.EcomAssetRelation{}).Where("organization_id = ? AND owner_id = ?", "org-1", "product-1").Count(&relationCount).Error; err != nil {
+		t.Fatalf("count asset relations: %v", err)
+	}
+	if relationCount != 1 {
+		t.Fatalf("expected generated result to archive into product assets, got %d", relationCount)
+	}
 }
 
 func newImageRuntimeTestDB(t *testing.T) *gorm.DB {
@@ -413,7 +460,7 @@ func newImageRuntimeTestDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&models.EcommerceImageJob{}, &models.EcommerceAsset{}); err != nil {
+	if err := db.AutoMigrate(&models.EcommerceImageJob{}, &models.EcommerceAsset{}, &models.EcomProductSKU{}, &models.EcomAssetRelation{}, &models.EcomProductActivity{}); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
 	return db

@@ -2,6 +2,7 @@ package imageruntime
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"maps"
@@ -14,12 +15,15 @@ import (
 	auditmodule "ecommerce-service/internal/modules/audit"
 	"ecommerce-service/internal/platform"
 	"ecommerce-service/internal/repository"
+
+	"gorm.io/gorm"
 )
 
 type Service struct {
 	repo           *repository.ImageRuntimeRepository
 	commercialRepo *repository.CommercialRepository
 	templateRepo   *repository.TemplateCenterRepository
+	productRepo    *repository.ProductCenterRepository
 	audit          *auditmodule.Service
 	platform       *platform.Client
 	appCfg         config.AppConfig
@@ -65,15 +69,19 @@ type RecordJobResultsInput struct {
 }
 
 type RegisterSourceAssetInput struct {
-	FileName string         `json:"file_name"`
-	MimeType string         `json:"mime_type" binding:"required"`
-	Payload  string         `json:"payload" binding:"required"`
-	Width    int            `json:"width"`
-	Height   int            `json:"height"`
-	Metadata map[string]any `json:"metadata,omitempty"`
+	ProductID string         `json:"product_id" binding:"required"`
+	SKUCode   string         `json:"sku_code" binding:"required"`
+	FileName  string         `json:"file_name"`
+	MimeType  string         `json:"mime_type" binding:"required"`
+	Payload   string         `json:"payload" binding:"required"`
+	Width     int            `json:"width"`
+	Height    int            `json:"height"`
+	Metadata  map[string]any `json:"metadata,omitempty"`
 }
 
 type CreateImageJobInput struct {
+	ProductID          string   `json:"product_id" binding:"required"`
+	SKUCode            string   `json:"sku_code" binding:"required"`
 	SceneType          string   `json:"scene_type" binding:"required"`
 	InputMode          string   `json:"input_mode,omitempty"`
 	SourceAssetID      string   `json:"source_asset_id" binding:"required"`
@@ -142,13 +150,17 @@ type chargeContext struct {
 	UsageUnits       int64
 }
 
-func NewService(repo *repository.ImageRuntimeRepository, commercialRepo *repository.CommercialRepository, templateRepo *repository.TemplateCenterRepository, auditService *auditmodule.Service, platformClient *platform.Client, appCfg config.AppConfig) *Service {
-	return &Service{repo: repo, commercialRepo: commercialRepo, templateRepo: templateRepo, audit: auditService, platform: platformClient, appCfg: appCfg}
+func NewService(repo *repository.ImageRuntimeRepository, commercialRepo *repository.CommercialRepository, templateRepo *repository.TemplateCenterRepository, productRepo *repository.ProductCenterRepository, auditService *auditmodule.Service, platformClient *platform.Client, appCfg config.AppConfig) *Service {
+	return &Service{repo: repo, commercialRepo: commercialRepo, templateRepo: templateRepo, productRepo: productRepo, audit: auditService, platform: platformClient, appCfg: appCfg}
 }
 
 func (s *Service) RegisterSourceAsset(userID, orgID string, input RegisterSourceAssetInput) (*AssetSummary, error) {
 	if strings.TrimSpace(input.Payload) == "" {
 		return nil, fmt.Errorf("source asset payload is required")
+	}
+	product, err := s.requireBoundProduct(orgID, input.ProductID, input.SKUCode)
+	if err != nil {
+		return nil, err
 	}
 	if s.platform == nil {
 		return nil, fmt.Errorf("platform client is required")
@@ -165,6 +177,8 @@ func (s *Service) RegisterSourceAsset(userID, orgID string, input RegisterSource
 	}
 	metadata := cloneMap(input.Metadata)
 	metadata["kind"] = "source"
+	metadata["product_id"] = product.ID
+	metadata["sku_code"] = product.SKUCode
 	asset := &models.EcommerceAsset{
 		ID:             buildID("asset"),
 		OrganizationID: orgID,
@@ -185,8 +199,15 @@ func (s *Service) RegisterSourceAsset(userID, orgID string, input RegisterSource
 }
 
 func (s *Service) CreateImageJob(userID, orgID string, input CreateImageJobInput) (*ImageJobSummary, error) {
+	product, err := s.requireBoundProduct(orgID, input.ProductID, input.SKUCode)
+	if err != nil {
+		return nil, err
+	}
 	sourceAsset, err := s.repo.FindAssetByID(orgID, input.SourceAssetID)
 	if err != nil {
+		return nil, err
+	}
+	if err := validateSourceAssetBinding(sourceAsset, product.ID); err != nil {
 		return nil, err
 	}
 	promptPlan, err := s.buildCompiledPromptPlan(input)
@@ -224,6 +245,8 @@ func (s *Service) CreateImageJob(userID, orgID string, input CreateImageJobInput
 			"prompt_strategy":         promptPlan.PromptStrategy,
 			"prompt_layer_l1_source":  promptPlan.L1Source,
 			"prompt_layer_l2_enabled": promptPlan.L2Enabled,
+			"product_id":              product.ID,
+			"sku_code":                product.SKUCode,
 			"charge_session_id":       chargeCtx.ChargeSessionID,
 			"reservation_id":          chargeCtx.ReservationID,
 			"billable_item_code":      chargeCtx.BillableItemCode,
@@ -254,6 +277,8 @@ func (s *Service) CreateImageJob(userID, orgID string, input CreateImageJobInput
 			"mime_type":   sourceAsset.MimeType,
 			"width":       sourceAsset.Width,
 			"height":      sourceAsset.Height,
+			"product_id":  product.ID,
+			"sku_code":    product.SKUCode,
 		}},
 		"requested_variants": defaultRequestedVariants(input.RequestedVariants),
 	})
@@ -356,14 +381,18 @@ func (s *Service) CancelJob(orgID, jobID string) (*models.EcommerceImageJob, err
 	return item, nil
 }
 
-func (s *Service) ListJobs(orgID, userID, sceneType string, limit int) ([]ImageJobSummary, error) {
+func (s *Service) ListJobs(orgID, userID, sceneType, productID string, limit int) ([]ImageJobSummary, error) {
 	items, err := s.repo.ListJobs(orgID, userID, sceneType, limit)
 	if err != nil {
 		return nil, err
 	}
 	result := make([]ImageJobSummary, 0, len(items))
 	for idx := range items {
-		result = append(result, *mapImageJobSummary(&items[idx]))
+		summary := mapImageJobSummary(&items[idx])
+		if productID != "" && stringValue(summary.Metadata["product_id"]) != productID {
+			continue
+		}
+		result = append(result, *summary)
 	}
 	return result, nil
 }
@@ -437,6 +466,9 @@ func (s *Service) RecordJobResults(jobID string, input RecordJobResultsInput) (*
 		if assetErr != nil {
 			return nil, assetErr
 		}
+		if bindErr := s.archiveGeneratedAssetToProduct(item, asset, variant); bindErr != nil {
+			return nil, bindErr
+		}
 		if variant.IsSelected || (selectedAssetID == "" && idx == 0) {
 			selectedAssetID = asset.ID
 		}
@@ -455,6 +487,158 @@ func (s *Service) RecordJobResults(jobID string, input RecordJobResultsInput) (*
 		_ = s.repo.SaveJob(item)
 	}
 	return item, nil
+}
+
+func (s *Service) requireBoundProduct(orgID, productID, skuCode string) (*models.EcomProductSKU, error) {
+	if s.productRepo == nil {
+		return nil, fmt.Errorf("product repository is required")
+	}
+	productID = strings.TrimSpace(productID)
+	skuCode = strings.TrimSpace(skuCode)
+	if productID == "" || skuCode == "" {
+		return nil, fmt.Errorf("product_id and sku_code are required")
+	}
+	product, err := s.productRepo.GetProduct(repository.Scope{OrgID: orgID}, productID)
+	if err != nil {
+		return nil, fmt.Errorf("bound product not found")
+	}
+	if product.SKUCode != skuCode {
+		return nil, fmt.Errorf("sku_code does not match the selected product")
+	}
+	return product, nil
+}
+
+func validateSourceAssetBinding(asset *models.EcommerceAsset, productID string) error {
+	if asset == nil {
+		return fmt.Errorf("source asset is required")
+	}
+	if productID == "" {
+		return fmt.Errorf("product_id is required")
+	}
+	meta := decodeMap(asset.Metadata)
+	if stringValue(meta["product_id"]) != productID {
+		return fmt.Errorf("source asset is not bound to the selected product")
+	}
+	return nil
+}
+
+func (s *Service) archiveGeneratedAssetToProduct(job *models.EcommerceImageJob, asset *models.EcommerceAsset, variant RecordResultVariantInput) error {
+	if s.productRepo == nil || job == nil || asset == nil {
+		return nil
+	}
+	meta := decodeMap(job.Metadata)
+	productID := stringValue(meta["product_id"])
+	if productID == "" {
+		return nil
+	}
+	scope := repository.Scope{OrgID: job.OrganizationID, UserID: job.UserID}
+	if _, err := s.productRepo.GetProduct(scope, productID); err != nil {
+		return err
+	}
+	if _, err := s.productRepo.FindProductAssetRelation(scope, productID, asset.ID); err == nil {
+		return nil
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
+	existingAssets, err := s.productRepo.ListProductAssets(scope, productID)
+	if err != nil {
+		return err
+	}
+	item := models.EcomAssetRelation{
+		ID:           buildID("rel"),
+		AssetID:      asset.ID,
+		OwnerType:    models.AssetRelationOwnerTypeProduct,
+		OwnerID:      productID,
+		RelationType: models.AssetRelationTypeResult,
+		AssetRole:    assetRoleForScene(job.SceneType),
+		IsPrimary:    variant.IsSelected && !hasPrimaryProductAsset(existingAssets),
+		SortOrder:    variant.Index,
+	}
+	if _, err := s.productRepo.AddProductAsset(scope, item); err != nil {
+		return err
+	}
+	if _, err := s.productRepo.CreateProductActivity(scope, models.EcomProductActivity{
+		ID:        buildID("activity"),
+		ProductID: productID,
+		Type:      models.ProductActivityTypeAssetCreated,
+		Title:     "AI Result Archived",
+		Summary:   fmt.Sprintf("Generated asset archived from image job %s", job.ID),
+		Metadata: mustMarshal(map[string]any{
+			"job_id":     job.ID,
+			"asset_id":   asset.ID,
+			"scene_type": job.SceneType,
+		}),
+	}); err != nil {
+		return err
+	}
+	return s.syncProductStatuses(scope, productID)
+}
+
+func (s *Service) syncProductStatuses(scope repository.Scope, productID string) error {
+	product, err := s.productRepo.GetProduct(scope, productID)
+	if err != nil {
+		return err
+	}
+	assets, err := s.productRepo.ListProductAssets(scope, productID)
+	if err != nil {
+		return err
+	}
+	switch {
+	case len(assets) == 0:
+		product.AssetStatus = models.AssetStatusMissing
+	case hasAssetRole(assets, models.AssetRoleHero) && hasAssetRole(assets, models.AssetRoleModelShot):
+		product.AssetStatus = models.AssetStatusReady
+	default:
+		product.AssetStatus = models.AssetStatusPartial
+	}
+	if product.Status != models.ProductStatusPublished && product.Status != models.ProductStatusArchived {
+		switch {
+		case product.AssetStatus == models.AssetStatusReady &&
+			product.ListingStatus == models.ListingStatusReady &&
+			product.ExportStatus == models.ExportStatusReady:
+			product.Status = models.ProductStatusExportReady
+		case product.AssetStatus == models.AssetStatusReady &&
+			product.ListingStatus == models.ListingStatusReady:
+			product.Status = models.ProductStatusListingReady
+		case product.AssetStatus == models.AssetStatusReady:
+			product.Status = models.ProductStatusAssetsReady
+		default:
+			product.Status = models.ProductStatusDraft
+		}
+	}
+	_, err = s.productRepo.UpdateProduct(scope, *product)
+	return err
+}
+
+func hasPrimaryProductAsset(items []models.EcomAssetRelation) bool {
+	for _, item := range items {
+		if item.IsPrimary {
+			return true
+		}
+	}
+	return false
+}
+
+func hasAssetRole(items []models.EcomAssetRelation, role string) bool {
+	for _, item := range items {
+		if item.AssetRole == role {
+			return true
+		}
+	}
+	return false
+}
+
+func assetRoleForScene(sceneType string) string {
+	switch normalizeSceneType(sceneType) {
+	case "ai_posture", "model_pose", "refinement":
+		return models.AssetRoleModelShot
+	case "scene", "scene_composition", "background_swap":
+		return models.AssetRoleSceneShot
+	case "detail", "detail_focus":
+		return models.AssetRoleDetailShot
+	default:
+		return models.AssetRoleHero
+	}
 }
 
 func (s *Service) GetAssetContent(orgID, assetID string) (*models.EcommerceAsset, io.ReadCloser, http.Header, error) {
@@ -986,6 +1170,7 @@ func (s *Service) persistBillingCharge(item *models.EcommerceImageJob, eventID, 
 		SettlementID:     result.Settlement.EventID,
 		Currency:         result.Settlement.Currency,
 		NetAmount:        result.Settlement.Amount,
+		QuotaConsumed:    usageUnits,
 		Status:           firstNonEmpty(result.Settlement.Status, "settled"),
 		OccurredAt:       time.Now().UTC(),
 		MetadataJSON:     mustMarshal(map[string]any{"usage_units": usageUnits, "job_id": item.ID}),

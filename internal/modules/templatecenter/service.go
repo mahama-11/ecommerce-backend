@@ -12,6 +12,7 @@ import (
 	auditmodule "ecommerce-service/internal/modules/audit"
 	"ecommerce-service/internal/platform"
 	"ecommerce-service/internal/repository"
+	"ecommerce-service/internal/templateutil"
 	"ecommerce-service/pkg/logger"
 	"ecommerce-service/pkg/metrics"
 
@@ -98,9 +99,14 @@ func mapPlatformCatalogListItems(items []platform.PlatformTemplateCatalogItem) [
 	result := make([]repository.CatalogListItem, 0, len(items))
 	for _, item := range items {
 		raw := item.Raw
+		execution := firstMapAnyValue(raw, "executionSchema", "execution_schema")
+		targetRoute := stringMapValue(execution, "route")
+		toolBinding := firstMapAnyValue(raw, "toolBinding", "tool_binding")
 		result = append(result, repository.CatalogListItem{
 			ID:              item.TemplateID,
 			Slug:            item.Slug,
+			ToolSlug:        templateutil.DeriveToolSlug(targetRoute, stringMapValue(toolBinding, "toolSlug"), stringMapValue(toolBinding, "tool_slug"), templateutil.ToolSlugFromCatalog(item.Slug, stringMapValue(raw, "external_code"))),
+			TargetRoute:     targetRoute,
 			ExternalCode:    stringMapValue(raw, "external_code"),
 			Name:            item.Name,
 			Summary:         item.Summary,
@@ -378,14 +384,22 @@ func buildID(prefix string) string {
 
 func (s *Service) enrichCatalogListItems(items []repository.CatalogListItem) []repository.CatalogListItem {
 	if s.platform == nil || len(items) == 0 {
+		for idx := range items {
+			if items[idx].ToolSlug == "" {
+				items[idx].ToolSlug = templateutil.ToolSlugFromCatalog(items[idx].Slug, items[idx].ExternalCode)
+			}
+		}
 		return items
 	}
 	sourceRefs := make([]string, 0, len(items))
 	for _, item := range items {
+		if item.ToolSlug == "" {
+			item.ToolSlug = templateutil.ToolSlugFromCatalog(item.Slug, item.ExternalCode)
+		}
 		if item.CoverAssetURL != "" {
 			continue
 		}
-		toolSlug := toolSlugFromCatalog(item.Slug, item.ExternalCode)
+		toolSlug := item.ToolSlug
 		if item.ExternalCode == "" || toolSlug == "" {
 			continue
 		}
@@ -393,7 +407,10 @@ func (s *Service) enrichCatalogListItems(items []repository.CatalogListItem) []r
 	}
 	resolved := s.resolveExampleAssets(sourceRefs)
 	for idx := range items {
-		toolSlug := toolSlugFromCatalog(items[idx].Slug, items[idx].ExternalCode)
+		if items[idx].ToolSlug == "" {
+			items[idx].ToolSlug = templateutil.ToolSlugFromCatalog(items[idx].Slug, items[idx].ExternalCode)
+		}
+		toolSlug := items[idx].ToolSlug
 		if items[idx].CoverAssetURL != "" || items[idx].ExternalCode == "" || toolSlug == "" {
 			continue
 		}
@@ -480,11 +497,27 @@ func (s *Service) platformEnabled() bool {
 }
 
 func (s *Service) listPlatformCatalog(scope repository.Scope, filter repository.TemplateCatalogFilter) ([]repository.CatalogListItem, error) {
-	result, err := s.platform.InternalTemplateCatalog("ecommerce")
-	if err != nil {
-		return nil, err
+	allItems := make([]platform.PlatformTemplateCatalogItem, 0, 64)
+	offset := 0
+	const pageSize = 200
+	for {
+		result, err := s.platform.InternalTemplateCatalog(platform.InternalTemplateCatalogInput{
+			ProductCode:   "ecommerce",
+			ToolSlug:      filter.ToolSlug,
+			Limit:         pageSize,
+			Offset:        offset,
+			PublishedOnly: true,
+		})
+		if err != nil {
+			return nil, err
+		}
+		allItems = append(allItems, result.Items...)
+		if len(result.Items) < pageSize || len(allItems) >= result.Total {
+			break
+		}
+		offset += pageSize
 	}
-	items := mapPlatformCatalogListItems(result.Items)
+	items := mapPlatformCatalogListItems(allItems)
 	favoriteIDs, favoriteErr := s.repo.FavoriteTemplateIDs(scope)
 	if favoriteErr != nil {
 		return nil, favoriteErr
@@ -579,10 +612,11 @@ func (s *Service) copyPlatformTemplate(scope repository.Scope, detail *repositor
 func buildPlatformUseResponse(detail *repository.CatalogDetail) *repository.UseTemplateResponse {
 	execution := detail.Schema.ExecutionSchema
 	toolBinding := detail.Schema.ToolBinding
+	targetRoute := stringMapValue(execution, "route")
 	return &repository.UseTemplateResponse{
-		TargetRoute:          stringMapValue(execution, "route"),
+		TargetRoute:          targetRoute,
 		ExecutorType:         detail.Catalog.ExecutorType,
-		ToolSlug:             stringMapValue(toolBinding, "toolSlug"),
+		ToolSlug:             templateutil.DeriveToolSlug(targetRoute, stringMapValue(toolBinding, "toolSlug"), stringMapValue(toolBinding, "tool_slug"), detail.Catalog.Slug, detail.Catalog.ExternalCode),
 		PrefilledInputSchema: detail.Schema.InputSchema,
 		PreloadedTemplatePayload: map[string]any{
 			"templateId":       detail.Catalog.ID,
@@ -600,6 +634,9 @@ func buildPlatformUseResponse(detail *repository.CatalogDetail) *repository.UseT
 }
 
 func matchesPlatformCatalogFilter(item repository.CatalogListItem, filter repository.TemplateCatalogFilter) bool {
+	if filter.ToolSlug != "" && !strings.EqualFold(item.ToolSlug, filter.ToolSlug) {
+		return false
+	}
 	if filter.Modality != "" && !strings.EqualFold(item.Modality, filter.Modality) {
 		return false
 	}
@@ -648,18 +685,6 @@ func containsFold(items []string, target string) bool {
 		}
 	}
 	return false
-}
-
-func toolSlugFromCatalog(slug, externalCode string) string {
-	if slug == "" || externalCode == "" {
-		return ""
-	}
-	code := strings.ToLower(strings.TrimSpace(externalCode))
-	marker := "-" + code + "-"
-	if idx := strings.Index(slug, marker); idx > 0 {
-		return slug[:idx]
-	}
-	return ""
 }
 
 func (s *Service) DownloadExampleAsset(storageKey string) (io.ReadCloser, map[string]string, error) {

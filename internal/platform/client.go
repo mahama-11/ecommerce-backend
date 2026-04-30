@@ -547,6 +547,16 @@ type AssetRecord struct {
 	Status      string         `json:"status"`
 }
 
+type QuotaBalance struct {
+	BillingSubjectType string `json:"billing_subject_type"`
+	BillingSubjectID   string `json:"billing_subject_id"`
+	BillableItemCode   string `json:"billable_item_code"`
+	Granted            int64  `json:"granted"`
+	Consumed           int64  `json:"consumed"`
+	Reserved           int64  `json:"reserved"`
+	Available          int64  `json:"available"`
+}
+
 func (c *Client) Register(input AuthRegisterInput) (*PlatformAuthResult, error) {
 	return doPublicPost[AuthRegisterInput, PlatformAuthResult](c, "/auth/register", input)
 }
@@ -565,6 +575,13 @@ func (c *Client) GetAccessContext(userID, orgID string) (*PlatformAccessData, er
 }
 func (c *Client) GetWalletSummary(subjectType, subjectID, productCode string) (*WalletSummary, error) {
 	return doInternalGet[WalletSummary](c, fmt.Sprintf("/wallet/summary?billing_subject_type=%s&billing_subject_id=%s&product_code=%s", subjectType, subjectID, productCode))
+}
+func (c *Client) GetQuotaBalance(subjectType, subjectID, billableItemCode string) (*QuotaBalance, error) {
+	return doInternalGet[QuotaBalance](c, withQuery("/controls/quota/balance", map[string]string{
+		"billing_subject_type": subjectType,
+		"billing_subject_id":   subjectID,
+		"billable_item_code":   billableItemCode,
+	}))
 }
 func (c *Client) GetCatalogOfferings(productCode string) (*OfferingsView, error) {
 	return doInternalGet[OfferingsView](c, fmt.Sprintf("/catalog/offerings?product_code=%s", productCode))
@@ -685,10 +702,29 @@ func doInternalPut[Req any, Resp any](c *Client, path string, payload Req) (*Res
 	return doRequest[Resp](c, http.MethodPut, c.baseURL+"/internal/v1"+path, path, payload, true)
 }
 
-func (c *Client) InternalTemplateCatalog(productCode string) (*PlatformTemplateCatalogResult, error) {
+type InternalTemplateCatalogInput struct {
+	ProductCode   string
+	ToolSlug      string
+	Limit         int
+	Offset        int
+	PublishedOnly bool
+}
+
+func (c *Client) InternalTemplateCatalog(input InternalTemplateCatalogInput) (*PlatformTemplateCatalogResult, error) {
 	params := url.Values{}
-	params.Set("product_code", productCode)
-	params.Set("published_only", "true")
+	params.Set("product_code", input.ProductCode)
+	if strings.TrimSpace(input.ToolSlug) != "" {
+		params.Set("tool_slug", strings.TrimSpace(input.ToolSlug))
+	}
+	if input.Limit > 0 {
+		params.Set("limit", strconv.Itoa(input.Limit))
+	}
+	if input.Offset > 0 {
+		params.Set("offset", strconv.Itoa(input.Offset))
+	}
+	if input.PublishedOnly {
+		params.Set("published_only", "true")
+	}
 	return doInternalGet[PlatformTemplateCatalogResult](c, "/template-ops/catalog?"+params.Encode())
 }
 

@@ -16,6 +16,7 @@ import (
 	commercialmodule "ecommerce-service/internal/modules/commercial"
 	commissionmodule "ecommerce-service/internal/modules/commission"
 	imageruntimemodule "ecommerce-service/internal/modules/imageruntime"
+	productcoremodule "ecommerce-service/internal/modules/productcore"
 	promotionmodule "ecommerce-service/internal/modules/promotion"
 	templatecentermodule "ecommerce-service/internal/modules/templatecenter"
 	walletmodule "ecommerce-service/internal/modules/wallet"
@@ -30,7 +31,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func New(cfg config.Config, platformClient *platform.Client, db *gorm.DB, redisClient *redis.Client, authHandler *authmodule.Handler, accessHandler *accessmodule.Handler, imageRuntimeHandler *imageruntimemodule.Handler, workspaceHandler *workspace.Handler, auditHandler *auditmodule.Handler, templateCenterHandler *templatecentermodule.Handler, walletHandler *walletmodule.Handler, promotionHandler *promotionmodule.Handler, commissionHandler *commissionmodule.Handler, billingHandler *billingmodule.Handler, commercialHandler *commercialmodule.Handler) *gin.Engine {
+func New(cfg config.Config, platformClient *platform.Client, db *gorm.DB, redisClient *redis.Client, authHandler *authmodule.Handler, accessHandler *accessmodule.Handler, imageRuntimeHandler *imageruntimemodule.Handler, workspaceHandler *workspace.Handler, auditHandler *auditmodule.Handler, templateCenterHandler *templatecentermodule.Handler, walletHandler *walletmodule.Handler, promotionHandler *promotionmodule.Handler, commissionHandler *commissionmodule.Handler, billingHandler *billingmodule.Handler, commercialHandler *commercialmodule.Handler, productcoreHandler *productcoremodule.Handler) *gin.Engine {
 	gin.SetMode(cfg.GinMode)
 	r := gin.New()
 	serviceName := cfg.Monitoring.Tracing.ServiceName
@@ -117,6 +118,35 @@ func New(cfg config.Config, platformClient *platform.Client, db *gorm.DB, redisC
 			protected.POST("/image-jobs", imageRuntimeHandler.CreateImageJob)
 			protected.GET("/image-jobs/:jobID", imageRuntimeHandler.GetJob)
 			protected.POST("/image-jobs/:jobID/cancel", imageRuntimeHandler.CancelJob)
+
+			// Product Center APIs
+			protected.GET("/products", productcoreHandler.ListProducts)
+			protected.POST("/products", productcoreHandler.CreateProduct)
+			protected.GET("/products/:product_id", productcoreHandler.GetProduct)
+			protected.PATCH("/products/:product_id", productcoreHandler.UpdateProduct)
+			protected.PATCH("/products/:product_id/status", productcoreHandler.UpdateProductStatus)
+			protected.DELETE("/products/:product_id", productcoreHandler.DeleteProduct)
+			protected.GET("/products/:product_id/assets", productcoreHandler.ListProductAssets)
+			protected.POST("/products/:product_id/assets", productcoreHandler.AddProductAsset)
+			protected.PATCH("/products/:product_id/assets/:asset_relation_id", productcoreHandler.UpdateProductAsset)
+			protected.DELETE("/products/:product_id/assets/:asset_relation_id", productcoreHandler.DeleteProductAsset)
+			// Listing Version APIs
+			protected.GET("/products/:product_id/listing-versions", productcoreHandler.ListListingVersions)
+			protected.POST("/products/:product_id/listing-versions", productcoreHandler.CreateListingVersion)
+			protected.POST("/products/listing-versions/batch", productcoreHandler.BatchCreateListingVersions)
+			protected.POST("/products/:product_id/listing-versions/adopt", productcoreHandler.AdoptListingVersion)
+			protected.POST("/products/listing-versions/batch-adopt", productcoreHandler.BatchAdoptListingVersions)
+			protected.PATCH("/products/:product_id/listing-versions/:version_id", productcoreHandler.UpdateListingVersion)
+			protected.DELETE("/products/:product_id/listing-versions/:version_id", productcoreHandler.DeleteListingVersion)
+			// Profit Snapshot APIs
+			protected.GET("/products/:product_id/profit-snapshots", productcoreHandler.ListProfitSnapshots)
+			protected.POST("/products/:product_id/profit-snapshots/calculate", productcoreHandler.CalculateProfit)
+			// Export Task APIs
+			protected.GET("/products/:product_id/export-tasks", productcoreHandler.ListExportTasks)
+			protected.POST("/products/:product_id/export-tasks", productcoreHandler.CreateExportTask)
+			protected.PATCH("/products/:product_id/export-tasks/status", productcoreHandler.UpdateExportTaskStatus)
+			protected.GET("/downloads", productcoreHandler.ListDownloads)
+			protected.GET("/downloads/:download_id/content", productcoreHandler.DownloadContent)
 		}
 
 		workspaceGroup := v1.Group("")

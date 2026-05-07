@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    name: Go tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download modules
+        run: go mod download
+
+      - name: Check gofmt on changed files
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="origin/${{ github.base_ref }}"
+          else
+            base="HEAD~1"
+          fi
+          changed=$(git diff --name-only "$base"...HEAD -- '*.go' ':!vendor/*' || true)
+          if [ -z "$changed" ]; then
+            echo "No changed Go files."
+            exit 0
+          fi
+          files=$(gofmt -l $changed)
+          if [ -n "$files" ]; then
+            echo "gofmt required:"
+            echo "$files"
+            exit 1
+          fi
+
+      - name: Run tests
+        run: go test ./... -count=1

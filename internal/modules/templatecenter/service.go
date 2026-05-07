@@ -31,9 +31,6 @@ func NewService(repo *repository.TemplateCenterRepository, audit *auditmodule.Se
 }
 
 func (s *Service) SeedPresetCatalog() error {
-	if s.platformEnabled() {
-		return nil
-	}
 	if err := s.repo.SeedIfEmpty(seedCatalogs()); err != nil {
 		return err
 	}
@@ -52,7 +49,11 @@ func (s *Service) SeedPresetCatalog() error {
 
 func (s *Service) ListCatalog(scope repository.Scope, filter repository.TemplateCatalogFilter) ([]repository.CatalogListItem, error) {
 	if s.platformEnabled() {
-		return s.listPlatformCatalog(scope, filter)
+		items, err := s.listPlatformCatalog(scope, filter)
+		if err == nil {
+			return items, nil
+		}
+		logger.With("module", "templatecenter").Warn("platform template catalog unavailable; falling back to local seed", "error", err)
 	}
 	items, err := s.repo.ListCatalog(scope, filter)
 	if err != nil {
@@ -68,13 +69,13 @@ func (s *Service) Facets(filter repository.TemplateCatalogFilter) (*repository.C
 func (s *Service) Recommendations(scope repository.Scope, locale string) ([]repository.CatalogListItem, error) {
 	if s.platformEnabled() {
 		items, err := s.listPlatformCatalog(scope, repository.TemplateCatalogFilter{Locale: locale, FeaturedOnly: true, Limit: 8, SortBy: "recommended"})
-		if err != nil {
-			return nil, err
+		if err == nil {
+			if len(items) > 8 {
+				items = items[:8]
+			}
+			return items, nil
 		}
-		if len(items) > 8 {
-			items = items[:8]
-		}
-		return items, nil
+		logger.With("module", "templatecenter").Warn("platform template recommendations unavailable; falling back to local seed", "error", err)
 	}
 	items, err := s.repo.ListCatalog(scope, repository.TemplateCatalogFilter{Locale: locale, FeaturedOnly: true, Limit: 8})
 	if err != nil {
@@ -84,8 +85,18 @@ func (s *Service) Recommendations(scope repository.Scope, locale string) ([]repo
 }
 
 func (s *Service) Detail(scope repository.Scope, templateID, locale string) (*repository.CatalogDetail, error) {
+	return s.catalogDetail(scope, templateID, locale)
+}
+
+func (s *Service) catalogDetail(scope repository.Scope, templateID, locale string) (*repository.CatalogDetail, error) {
 	if s.platformEnabled() {
-		return s.platformCatalogDetail(scope, templateID)
+		item, err := s.platformCatalogDetail(scope, templateID)
+		if err == nil {
+			return item, nil
+		}
+		if err != gorm.ErrRecordNotFound {
+			logger.With("module", "templatecenter").Warn("platform template detail unavailable; falling back to local seed", "template_id", templateID, "error", err)
+		}
 	}
 	item, err := s.repo.GetCatalogDetail(scope, templateID, locale)
 	if err != nil {
@@ -263,21 +274,21 @@ func (s *Service) Favorites(scope repository.Scope, locale string) ([]repository
 			return []repository.CatalogListItem{}, nil
 		}
 		items, err := s.listPlatformCatalog(scope, repository.TemplateCatalogFilter{Locale: locale})
-		if err != nil {
-			return nil, err
-		}
-		favoriteSet := make(map[string]struct{}, len(favoriteIDs))
-		for _, id := range favoriteIDs {
-			favoriteSet[id] = struct{}{}
-		}
-		out := make([]repository.CatalogListItem, 0, len(favoriteIDs))
-		for _, item := range items {
-			if _, ok := favoriteSet[item.ID]; ok {
-				item.IsFavorited = true
-				out = append(out, item)
+		if err == nil {
+			favoriteSet := make(map[string]struct{}, len(favoriteIDs))
+			for _, id := range favoriteIDs {
+				favoriteSet[id] = struct{}{}
 			}
+			out := make([]repository.CatalogListItem, 0, len(favoriteIDs))
+			for _, item := range items {
+				if _, ok := favoriteSet[item.ID]; ok {
+					item.IsFavorited = true
+					out = append(out, item)
+				}
+			}
+			return out, nil
 		}
-		return out, nil
+		logger.With("module", "templatecenter").Warn("platform template favorites unavailable; falling back to local seed", "error", err)
 	}
 	items, err := s.repo.ListFavorites(scope, locale)
 	if err != nil {
@@ -291,10 +302,8 @@ func (s *Service) Instances(scope repository.Scope, locale string) ([]repository
 }
 
 func (s *Service) AddFavorite(c *gin.Context, scope repository.Scope, templateID string) error {
-	if s.platformEnabled() {
-		if _, err := s.platformCatalogDetail(scope, templateID); err != nil {
-			return err
-		}
+	if _, err := s.catalogDetail(scope, templateID, "zh"); err != nil {
+		return err
 	}
 	if err := s.repo.AddFavorite(scope, templateID); err != nil {
 		return err
@@ -321,19 +330,21 @@ func (s *Service) RemoveFavorite(c *gin.Context, scope repository.Scope, templat
 func (s *Service) CopyToMyTemplates(c *gin.Context, scope repository.Scope, templateID string) (*models.TemplateInstance, error) {
 	if s.platformEnabled() {
 		detail, err := s.platformCatalogDetail(scope, templateID)
-		if err != nil {
-			return nil, err
+		if err == nil {
+			instance, err := s.copyPlatformTemplate(scope, detail)
+			if err != nil {
+				return nil, err
+			}
+			metrics.IncBusinessCounter("ecommerce_template_center_copy_total")
+			_ = s.recordUsage(c, scope, templateID, "copy", "success", map[string]any{"templateInstanceId": instance.ID, "managed_source": "platform_projection"})
+			if s.audit != nil {
+				_ = s.audit.RecordFromGin(c, auditmodule.RecordInput{Action: "template_center.copy_to_my_templates", TargetType: "template_instance", TargetID: instance.ID, Status: "success", Details: "template copied from platform projection", AfterSnapshot: instance})
+			}
+			return instance, nil
 		}
-		instance, err := s.copyPlatformTemplate(scope, detail)
-		if err != nil {
-			return nil, err
+		if err != gorm.ErrRecordNotFound {
+			logger.With("module", "templatecenter").Warn("platform template copy unavailable; falling back to local seed", "template_id", templateID, "error", err)
 		}
-		metrics.IncBusinessCounter("ecommerce_template_center_copy_total")
-		_ = s.recordUsage(c, scope, templateID, "copy", "success", map[string]any{"templateInstanceId": instance.ID, "managed_source": "platform_projection"})
-		if s.audit != nil {
-			_ = s.audit.RecordFromGin(c, auditmodule.RecordInput{Action: "template_center.copy_to_my_templates", TargetType: "template_instance", TargetID: instance.ID, Status: "success", Details: "template copied from platform projection", AfterSnapshot: instance})
-		}
-		return instance, nil
 	}
 	instance, err := s.repo.CopyToMyTemplates(scope, templateID)
 	if err != nil {
@@ -350,16 +361,18 @@ func (s *Service) CopyToMyTemplates(c *gin.Context, scope repository.Scope, temp
 func (s *Service) Use(c *gin.Context, scope repository.Scope, templateID string) (*repository.UseTemplateResponse, error) {
 	if s.platformEnabled() {
 		detail, err := s.platformCatalogDetail(scope, templateID)
-		if err != nil {
-			return nil, err
+		if err == nil {
+			result := buildPlatformUseResponse(detail)
+			metrics.IncBusinessCounter("ecommerce_template_center_use_total")
+			_ = s.recordUsage(c, scope, templateID, "use", "success", map[string]any{"managed_source": "platform_projection", "targetRoute": result.TargetRoute})
+			if s.audit != nil {
+				_ = s.audit.RecordFromGin(c, auditmodule.RecordInput{Action: "template_center.use", TargetType: "template_catalog", TargetID: templateID, Status: "success", Details: "platform template use route resolved", AfterSnapshot: result})
+			}
+			return result, nil
 		}
-		result := buildPlatformUseResponse(detail)
-		metrics.IncBusinessCounter("ecommerce_template_center_use_total")
-		_ = s.recordUsage(c, scope, templateID, "use", "success", map[string]any{"managed_source": "platform_projection", "targetRoute": result.TargetRoute})
-		if s.audit != nil {
-			_ = s.audit.RecordFromGin(c, auditmodule.RecordInput{Action: "template_center.use", TargetType: "template_catalog", TargetID: templateID, Status: "success", Details: "platform template use route resolved", AfterSnapshot: result})
+		if err != gorm.ErrRecordNotFound {
+			logger.With("module", "templatecenter").Warn("platform template use unavailable; falling back to local seed", "template_id", templateID, "error", err)
 		}
-		return result, nil
 	}
 	result, err := s.repo.BuildUseResponse(scope, templateID)
 	if err != nil {
@@ -518,6 +531,13 @@ func (s *Service) listPlatformCatalog(scope repository.Scope, filter repository.
 		offset += pageSize
 	}
 	items := mapPlatformCatalogListItems(allItems)
+	if len(items) == 0 {
+		localItems, err := s.repo.ListCatalog(scope, filter)
+		if err != nil {
+			return nil, err
+		}
+		return s.enrichCatalogListItems(localItems), nil
+	}
 	favoriteIDs, favoriteErr := s.repo.FavoriteTemplateIDs(scope)
 	if favoriteErr != nil {
 		return nil, favoriteErr

@@ -345,6 +345,9 @@ func TestTemplateCenterHandlerFlowWithPlatformProjection(t *testing.T) {
 		InternalServiceSecret: "platform-dev-secret",
 		ServiceName:           "ecommerce-test",
 	}))
+	if err := service.SeedPresetCatalog(); err != nil {
+		t.Fatalf("seed preset catalog before platform preference test: %v", err)
+	}
 	handler := NewHandler(service)
 	secret := "platform-dev-secret"
 	router := gin.New()
@@ -428,6 +431,101 @@ func TestTemplateCenterHandlerFlowWithPlatformProjection(t *testing.T) {
 	decodeResponse(t, useResp, &usePayload)
 	if usePayload.Data.TargetRoute != "/api/v1/ecommerce/image-runtime/jobs" || usePayload.Data.ToolSlug != "changing-model" {
 		t.Fatalf("platform use payload invalid: %+v", usePayload.Data)
+	}
+}
+
+func TestPlatformProjectionEmptyOrNotFoundFallsBackToLocalFlow(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	db := newTemplateCenterTestDB(t)
+	repo := repository.NewTemplateCenterRepository(db)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/internal/v1/template-ops/catalog":
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": 0, "message": "ok", "data": map[string]any{"items": []any{}, "total": 0}})
+		default:
+			w.WriteHeader(http.StatusNotFound)
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": 404, "message": "not found", "error_code": "not_found"})
+		}
+	}))
+	defer server.Close()
+
+	service := NewService(repo, nil, platform.New(config.PlatformConfig{BaseURL: server.URL, Timeout: 2 * time.Second, InternalServiceSecret: "platform-dev-secret", ServiceName: "ecommerce-test"}))
+	if err := service.SeedPresetCatalog(); err != nil {
+		t.Fatalf("seed preset catalog: %v", err)
+	}
+	scope := repository.Scope{UserID: "user_fallback_001", OrgID: "org_fallback_001"}
+	items, err := service.ListCatalog(scope, repository.TemplateCatalogFilter{Locale: "zh", Limit: 3})
+	if err != nil {
+		t.Fatalf("fallback list: %v", err)
+	}
+	if len(items) == 0 || items[0].ID == "" {
+		t.Fatalf("fallback list returned no local templates: %+v", items)
+	}
+	templateID := items[0].ID
+	detail, err := service.Detail(scope, templateID, "zh")
+	if err != nil {
+		t.Fatalf("fallback detail: %v", err)
+	}
+	if detail.Catalog.ID != templateID || detail.Version.ID == "" {
+		t.Fatalf("fallback detail invalid: %+v", detail)
+	}
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/ecommerce/template-center/catalog/"+templateID+"/favorite", nil)
+	if err := service.AddFavorite(c, scope, templateID); err != nil {
+		t.Fatalf("fallback favorite: %v", err)
+	}
+	favorites, err := service.Favorites(scope, "zh")
+	if err != nil {
+		t.Fatalf("fallback favorites: %v", err)
+	}
+	if len(favorites) != 1 || favorites[0].ID != templateID || !favorites[0].IsFavorited {
+		t.Fatalf("fallback favorites invalid: %+v", favorites)
+	}
+	instance, err := service.CopyToMyTemplates(c, scope, templateID)
+	if err != nil {
+		t.Fatalf("fallback copy: %v", err)
+	}
+	if instance.PresetTemplateID != templateID {
+		t.Fatalf("fallback copy invalid: %+v", instance)
+	}
+	use, err := service.Use(c, scope, templateID)
+	if err != nil {
+		t.Fatalf("fallback use: %v", err)
+	}
+	if use.TargetRoute == "" || use.ToolSlug == "" {
+		t.Fatalf("fallback use invalid: %+v", use)
+	}
+}
+
+func TestPlatformProjectionUnavailableFallsBackToLocalDetail(t *testing.T) {
+	db := newTemplateCenterTestDB(t)
+	repo := repository.NewTemplateCenterRepository(db)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadGateway)
+		_ = json.NewEncoder(w).Encode(map[string]any{"code": 502, "message": "platform unavailable", "error_code": "platform_bad_gateway"})
+	}))
+	defer server.Close()
+	service := NewService(repo, nil, platform.New(config.PlatformConfig{BaseURL: server.URL, Timeout: 2 * time.Second, InternalServiceSecret: "platform-dev-secret", ServiceName: "ecommerce-test"}))
+	if err := service.SeedPresetCatalog(); err != nil {
+		t.Fatalf("seed preset catalog: %v", err)
+	}
+	scope := repository.Scope{UserID: "user_err", OrgID: "org_err"}
+	items, err := service.ListCatalog(scope, repository.TemplateCatalogFilter{Locale: "zh", Limit: 1})
+	if err != nil {
+		t.Fatalf("list should fall back on platform unavailable: %v", err)
+	}
+	if len(items) != 1 || items[0].ID == "" {
+		t.Fatalf("fallback list invalid: %+v", items)
+	}
+	detail, err := service.Detail(scope, items[0].ID, "zh")
+	if err != nil {
+		t.Fatalf("detail should fall back on platform unavailable: %v", err)
+	}
+	if detail.Catalog.ID != items[0].ID || detail.Version.ID == "" {
+		t.Fatalf("fallback detail invalid: %+v", detail)
 	}
 }
 

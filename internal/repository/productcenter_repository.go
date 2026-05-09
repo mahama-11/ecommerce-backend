@@ -2,6 +2,9 @@ package repository
 
 import (
 	"ecommerce-service/internal/models"
+	"strings"
+	"time"
+
 	"gorm.io/gorm"
 )
 
@@ -27,6 +30,14 @@ func (r *ProductCenterRepository) ListProducts(scope Scope) ([]models.EcomProduc
 func (r *ProductCenterRepository) GetProduct(scope Scope, productID string) (*models.EcomProductSKU, error) {
 	var item models.EcomProductSKU
 	if err := r.db.Where("id = ? AND organization_id = ?", productID, scope.OrgID).First(&item).Error; err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+func (r *ProductCenterRepository) GetProductBySKUCode(scope Scope, skuCode string) (*models.EcomProductSKU, error) {
+	var item models.EcomProductSKU
+	if err := r.db.Where("organization_id = ? AND sku_code = ?", scope.OrgID, strings.TrimSpace(skuCode)).First(&item).Error; err != nil {
 		return nil, err
 	}
 	return &item, nil
@@ -158,6 +169,157 @@ func (r *ProductCenterRepository) FindProductAssetRelation(scope Scope, productI
 	return &item, nil
 }
 
+// ==================== Asset Library ====================
+
+type AssetLibraryFilter struct {
+	SKUCode    string
+	ProductID  string
+	SourceType string
+	AssetRole  string
+	Visibility string
+	Status     string
+	Tag        string
+	Query      string
+	Limit      int
+	Offset     int
+}
+
+type AssetLibraryRecord struct {
+	RelationID        string
+	ProductID         string
+	SKUCode           string
+	ProductTitle      string
+	AssetID           string
+	RelationType      string
+	AssetRole         string
+	IsPrimary         bool
+	PlatformCode      string
+	SiteCode          string
+	LocaleCode        string
+	SortOrder         int
+	Visibility        string
+	RelationMetadata  string
+	RelationCreatedAt time.Time
+	RelationUpdatedAt time.Time
+	AssetType         string
+	SourceType        string
+	StorageKey        string
+	MimeType          string
+	Width             int
+	Height            int
+	FileName          string
+	AssetMetadata     string
+	AssetCreatedAt    time.Time
+	AssetUpdatedAt    time.Time
+}
+
+func (r *ProductCenterRepository) assetLibraryBaseQuery(scope Scope, filter AssetLibraryFilter) *gorm.DB {
+	query := r.db.Table("ecom_asset_relation AS rel").
+		Joins("JOIN ecom_product_sku AS sku ON sku.id = rel.owner_id AND sku.organization_id = rel.organization_id").
+		Joins("JOIN ecommerce_assets AS asset ON asset.id = rel.asset_id AND asset.organization_id = rel.organization_id").
+		Where("rel.organization_id = ? AND rel.owner_type = ?", scope.OrgID, models.AssetRelationOwnerTypeProduct)
+	if filter.SKUCode = strings.TrimSpace(filter.SKUCode); filter.SKUCode != "" {
+		query = query.Where("sku.sku_code = ?", filter.SKUCode)
+	}
+	if filter.ProductID = strings.TrimSpace(filter.ProductID); filter.ProductID != "" {
+		query = query.Where("sku.id = ?", filter.ProductID)
+	}
+	if filter.SourceType = strings.TrimSpace(filter.SourceType); filter.SourceType != "" {
+		query = query.Where("asset.source_type = ?", filter.SourceType)
+	}
+	if filter.AssetRole = strings.TrimSpace(filter.AssetRole); filter.AssetRole != "" {
+		query = query.Where("rel.asset_role = ?", filter.AssetRole)
+	}
+	if filter.Visibility = strings.TrimSpace(filter.Visibility); filter.Visibility != "" {
+		query = query.Where("rel.visibility = ?", filter.Visibility)
+	}
+	if filter.Status = strings.TrimSpace(filter.Status); filter.Status != "" {
+		query = query.Where("rel.metadata LIKE ?", "%\"status\":\""+filter.Status+"\"%")
+	}
+	if filter.Tag = strings.TrimSpace(filter.Tag); filter.Tag != "" {
+		query = query.Where("rel.metadata LIKE ?", "%\""+filter.Tag+"\"%")
+	}
+	if filter.Query = strings.TrimSpace(filter.Query); filter.Query != "" {
+		like := "%" + filter.Query + "%"
+		query = query.Where("sku.sku_code LIKE ? OR sku.title LIKE ? OR rel.asset_id LIKE ? OR rel.id LIKE ? OR asset.file_name LIKE ? OR asset.metadata LIKE ?", like, like, like, like, like, like)
+	}
+	return query
+}
+
+func (r *ProductCenterRepository) ListAssetLibrary(scope Scope, filter AssetLibraryFilter) ([]AssetLibraryRecord, int64, error) {
+	var total int64
+	if err := r.assetLibraryBaseQuery(scope, filter).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if filter.Limit <= 0 || filter.Limit > 100 {
+		filter.Limit = 50
+	}
+	if filter.Offset < 0 {
+		filter.Offset = 0
+	}
+	var items []AssetLibraryRecord
+	err := r.assetLibraryBaseQuery(scope, filter).
+		Select(`rel.id AS relation_id, rel.owner_id AS product_id, sku.sku_code, sku.title AS product_title,
+			rel.asset_id, rel.relation_type, rel.asset_role, rel.is_primary, rel.platform_code, rel.site_code, rel.locale_code,
+			rel.sort_order, rel.visibility, rel.metadata AS relation_metadata, rel.created_at AS relation_created_at, rel.updated_at AS relation_updated_at,
+			asset.asset_type, asset.source_type, asset.storage_key, asset.mime_type, asset.width, asset.height, asset.file_name,
+			asset.metadata AS asset_metadata, asset.created_at AS asset_created_at, asset.updated_at AS asset_updated_at`).
+		Order("rel.created_at DESC, rel.id DESC").
+		Limit(filter.Limit).Offset(filter.Offset).
+		Scan(&items).Error
+	return items, total, err
+}
+
+func (r *ProductCenterRepository) GetAssetLibraryRelation(scope Scope, relationID string) (*models.EcomAssetRelation, error) {
+	var item models.EcomAssetRelation
+	if err := r.db.Where("organization_id = ? AND owner_type = ? AND id = ?", scope.OrgID, models.AssetRelationOwnerTypeProduct, relationID).First(&item).Error; err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+func (r *ProductCenterRepository) GetAssetLibraryRecord(scope Scope, relationID string) (*AssetLibraryRecord, error) {
+	var item AssetLibraryRecord
+	err := r.assetLibraryBaseQuery(scope, AssetLibraryFilter{}).
+		Where("rel.id = ?", strings.TrimSpace(relationID)).
+		Select(`rel.id AS relation_id, rel.owner_id AS product_id, sku.sku_code, sku.title AS product_title,
+			rel.asset_id, rel.relation_type, rel.asset_role, rel.is_primary, rel.platform_code, rel.site_code, rel.locale_code,
+			rel.sort_order, rel.visibility, rel.metadata AS relation_metadata, rel.created_at AS relation_created_at, rel.updated_at AS relation_updated_at,
+			asset.asset_type, asset.source_type, asset.storage_key, asset.mime_type, asset.width, asset.height, asset.file_name,
+			asset.metadata AS asset_metadata, asset.created_at AS asset_created_at, asset.updated_at AS asset_updated_at`).
+		Limit(1).
+		Scan(&item).Error
+	if err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+type AssetLibraryStatRow struct {
+	Key   string `json:"key"`
+	Count int64  `json:"count"`
+}
+
+func (r *ProductCenterRepository) AssetLibraryStats(scope Scope, filter AssetLibraryFilter, groupBy string) ([]AssetLibraryStatRow, error) {
+	selectExpr := "rel.asset_role AS key"
+	groupExpr := "rel.asset_role"
+	switch groupBy {
+	case "source_type":
+		selectExpr, groupExpr = "asset.source_type AS key", "asset.source_type"
+	case "sku", "sku_code":
+		selectExpr, groupExpr = "sku.sku_code AS key", "sku.sku_code"
+	case "asset_role", "":
+	default:
+		selectExpr, groupExpr = "rel.asset_role AS key", "rel.asset_role"
+	}
+	var rows []AssetLibraryStatRow
+	return rows, r.assetLibraryBaseQuery(scope, filter).
+		Select(selectExpr + ", COUNT(*) AS count").
+		Group(groupExpr).
+		Order("count DESC").
+		Scan(&rows).Error
+}
+
 // ==================== Listing Version ====================
 
 // ListListingVersions 列出商品的 Listing 版本
@@ -276,6 +438,52 @@ func (r *ProductCenterRepository) ListAllExportTasks(scope Scope) ([]models.Ecom
 		return nil, err
 	}
 	return items, nil
+}
+
+// ListExportTasksByPackage 列出导出包子任务
+func (r *ProductCenterRepository) ListExportTasksByPackage(scope Scope, packageID string) ([]models.EcomExportTask, error) {
+	var items []models.EcomExportTask
+	if err := r.db.Where("organization_id = ? AND package_id = ?", scope.OrgID, packageID).Order("created_at ASC").Find(&items).Error; err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+// ListExportPackages 列出组织下全部导出包
+func (r *ProductCenterRepository) ListExportPackages(scope Scope) ([]models.EcomExportPackage, error) {
+	var items []models.EcomExportPackage
+	if err := r.db.Where("organization_id = ?", scope.OrgID).Order("created_at DESC").Find(&items).Error; err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+// GetExportPackage 获取单个导出包
+func (r *ProductCenterRepository) GetExportPackage(scope Scope, packageID string) (*models.EcomExportPackage, error) {
+	var item models.EcomExportPackage
+	if err := r.db.Where("organization_id = ? AND id = ?", scope.OrgID, packageID).First(&item).Error; err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+// CreateExportPackage 创建导出包
+func (r *ProductCenterRepository) CreateExportPackage(scope Scope, item models.EcomExportPackage) (*models.EcomExportPackage, error) {
+	item.OrganizationID = scope.OrgID
+	item.CreatedBy = scope.UserID
+	if err := r.db.Create(&item).Error; err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+// UpdateExportPackage 更新导出包
+func (r *ProductCenterRepository) UpdateExportPackage(scope Scope, item models.EcomExportPackage) (*models.EcomExportPackage, error) {
+	item.OrganizationID = scope.OrgID
+	if err := r.db.Save(&item).Error; err != nil {
+		return nil, err
+	}
+	return &item, nil
 }
 
 // GetExportTask 获取单个导出任务

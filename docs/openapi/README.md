@@ -16,6 +16,9 @@ The first Swagger / OpenAPI scope focuses on frontend integration for the curren
 - `POST /api/v1/ecommerce/workflow/template-bridges`
 - `GET /api/v1/ecommerce/assets/linked-designs`
 - `POST /api/v1/ecommerce/assets/linked-designs`
+- `GET /api/v1/ecommerce/assets/library`
+- `GET /api/v1/ecommerce/assets/library/stats`
+- `PATCH /api/v1/ecommerce/assets/library/:relationId/governance`
 - `GET /api/v1/ecommerce/deliveries/linked`
 - `POST /api/v1/ecommerce/deliveries/linked`
 

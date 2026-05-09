@@ -18,6 +18,7 @@ import (
 	imageruntimemodule "ecommerce-service/internal/modules/imageruntime"
 	productcoremodule "ecommerce-service/internal/modules/productcore"
 	promotionmodule "ecommerce-service/internal/modules/promotion"
+	promptcentermodule "ecommerce-service/internal/modules/promptcenter"
 	templatecentermodule "ecommerce-service/internal/modules/templatecenter"
 	walletmodule "ecommerce-service/internal/modules/wallet"
 	"ecommerce-service/internal/modules/workspace"
@@ -31,7 +32,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func New(cfg config.Config, platformClient *platform.Client, db *gorm.DB, redisClient *redis.Client, authHandler *authmodule.Handler, accessHandler *accessmodule.Handler, imageRuntimeHandler *imageruntimemodule.Handler, workspaceHandler *workspace.Handler, auditHandler *auditmodule.Handler, templateCenterHandler *templatecentermodule.Handler, walletHandler *walletmodule.Handler, promotionHandler *promotionmodule.Handler, commissionHandler *commissionmodule.Handler, billingHandler *billingmodule.Handler, commercialHandler *commercialmodule.Handler, productcoreHandler *productcoremodule.Handler) *gin.Engine {
+func New(cfg config.Config, platformClient *platform.Client, db *gorm.DB, redisClient *redis.Client, authHandler *authmodule.Handler, accessHandler *accessmodule.Handler, imageRuntimeHandler *imageruntimemodule.Handler, workspaceHandler *workspace.Handler, auditHandler *auditmodule.Handler, templateCenterHandler *templatecentermodule.Handler, promptCenterHandler *promptcentermodule.Handler, walletHandler *walletmodule.Handler, promotionHandler *promotionmodule.Handler, commissionHandler *commissionmodule.Handler, billingHandler *billingmodule.Handler, commercialHandler *commercialmodule.Handler, productcoreHandler *productcoremodule.Handler) *gin.Engine {
 	gin.SetMode(cfg.GinMode)
 	r := gin.New()
 	serviceName := cfg.Monitoring.Tracing.ServiceName
@@ -113,7 +114,16 @@ func New(cfg config.Config, platformClient *platform.Client, db *gorm.DB, redisC
 			protected.GET("/commissions/me/channel/commissions", commissionHandler.ChannelCommissions)
 			protected.GET("/commissions/me/channel/settlements", commissionHandler.ChannelSettlements)
 			protected.POST("/assets/source", imageRuntimeHandler.RegisterSourceAsset)
+			protected.GET("/assets/library", productcoreHandler.ListAssetLibrary)
+			protected.GET("/assets/library/stats", productcoreHandler.AssetLibraryStats)
+			protected.PATCH("/assets/library/governance:batch", productcoreHandler.BatchUpdateAssetLibraryGovernance)
+			protected.PATCH("/assets/library/batch-governance", productcoreHandler.BatchUpdateAssetLibraryGovernance)
+			protected.GET("/assets/library/:relationId/lineage", productcoreHandler.GetAssetLibraryLineage)
+			protected.PATCH("/assets/library/:relationId/governance", productcoreHandler.UpdateAssetLibraryGovernance)
 			protected.GET("/assets/:assetID/content", imageRuntimeHandler.GetAssetContent)
+			protected.POST("/prompts/preview", promptCenterHandler.Preview)
+			protected.POST("/prompts/validate", promptCenterHandler.Preview)
+			protected.GET("/prompts/:promptId", promptCenterHandler.Get)
 			protected.GET("/image-jobs", imageRuntimeHandler.ListJobs)
 			protected.POST("/image-jobs", imageRuntimeHandler.CreateImageJob)
 			protected.GET("/image-jobs/:jobID", imageRuntimeHandler.GetJob)
@@ -144,6 +154,9 @@ func New(cfg config.Config, platformClient *platform.Client, db *gorm.DB, redisC
 			// Export Task APIs
 			protected.GET("/products/:product_id/export-tasks", productcoreHandler.ListExportTasks)
 			protected.POST("/products/:product_id/export-tasks", productcoreHandler.CreateExportTask)
+			protected.POST("/export-packages", productcoreHandler.CreateExportPackage)
+			protected.GET("/export-packages/:package_id", productcoreHandler.GetExportPackage)
+			protected.POST("/export-packages/:package_id/retry", productcoreHandler.RetryExportPackage)
 			protected.PATCH("/products/:product_id/export-tasks/status", productcoreHandler.UpdateExportTaskStatus)
 			protected.GET("/downloads", productcoreHandler.ListDownloads)
 			protected.GET("/downloads/:download_id/content", productcoreHandler.DownloadContent)

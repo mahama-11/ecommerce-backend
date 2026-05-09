@@ -10,9 +10,11 @@ import (
 	"strings"
 	"time"
 
+	"ecommerce-service/internal/billinggate"
 	"ecommerce-service/internal/config"
 	"ecommerce-service/internal/models"
 	auditmodule "ecommerce-service/internal/modules/audit"
+	"ecommerce-service/internal/modules/promptcenter"
 	"ecommerce-service/internal/platform"
 	"ecommerce-service/internal/repository"
 
@@ -23,6 +25,7 @@ type Service struct {
 	repo           *repository.ImageRuntimeRepository
 	commercialRepo *repository.CommercialRepository
 	templateRepo   *repository.TemplateCenterRepository
+	promptRepo     *repository.PromptCenterRepository
 	productRepo    *repository.ProductCenterRepository
 	audit          *auditmodule.Service
 	platform       *platform.Client
@@ -36,6 +39,8 @@ type UpdateJobRuntimeInput struct {
 	Progress      *int           `json:"progress"`
 	EtaSeconds    *int           `json:"eta_seconds"`
 	ProviderJobID string         `json:"provider_job_id"`
+	ErrorCode     string         `json:"error_code,omitempty"`
+	ErrorMessage  string         `json:"error_message,omitempty"`
 	Metadata      map[string]any `json:"metadata"`
 }
 
@@ -84,8 +89,9 @@ type CreateImageJobInput struct {
 	SKUCode            string   `json:"sku_code" binding:"required"`
 	SceneType          string   `json:"scene_type" binding:"required"`
 	InputMode          string   `json:"input_mode,omitempty"`
-	SourceAssetID      string   `json:"source_asset_id" binding:"required"`
-	Prompt             string   `json:"prompt" binding:"required"`
+	SourceAssetID      string   `json:"source_asset_id,omitempty"`
+	PromptID           string   `json:"prompt_id,omitempty"`
+	Prompt             string   `json:"prompt,omitempty"`
 	NegativePrompt     string   `json:"negative_prompt,omitempty"`
 	Objective          string   `json:"objective,omitempty"`
 	PreferredProviders []string `json:"preferred_providers,omitempty"`
@@ -118,6 +124,7 @@ type ImageJobSummary struct {
 	SceneType             string         `json:"scene_type"`
 	InputMode             string         `json:"input_mode"`
 	SourceAssetID         string         `json:"source_asset_id"`
+	PromptID              string         `json:"prompt_id,omitempty"`
 	RuntimeJobID          string         `json:"runtime_job_id"`
 	Status                string         `json:"status"`
 	Stage                 string         `json:"stage"`
@@ -142,16 +149,15 @@ type compiledPromptPlan struct {
 	L2Enabled            bool
 }
 
-type chargeContext struct {
-	ChargeSessionID  string
-	ReservationID    string
-	BillableItemCode string
-	ResourceType     string
-	UsageUnits       int64
-}
+type chargeContext = billinggate.Context
 
 func NewService(repo *repository.ImageRuntimeRepository, commercialRepo *repository.CommercialRepository, templateRepo *repository.TemplateCenterRepository, productRepo *repository.ProductCenterRepository, auditService *auditmodule.Service, platformClient *platform.Client, appCfg config.AppConfig) *Service {
 	return &Service{repo: repo, commercialRepo: commercialRepo, templateRepo: templateRepo, productRepo: productRepo, audit: auditService, platform: platformClient, appCfg: appCfg}
+}
+
+func (s *Service) WithPromptRepository(promptRepo *repository.PromptCenterRepository) *Service {
+	s.promptRepo = promptRepo
+	return s
 }
 
 func (s *Service) RegisterSourceAsset(userID, orgID string, input RegisterSourceAssetInput) (*AssetSummary, error) {
@@ -203,6 +209,10 @@ func (s *Service) CreateImageJob(userID, orgID string, input CreateImageJobInput
 	if err != nil {
 		return nil, err
 	}
+	promptContract, err := s.resolvePromptContract(orgID, product, &input)
+	if err != nil {
+		return nil, err
+	}
 	sourceAsset, err := s.repo.FindAssetByID(orgID, input.SourceAssetID)
 	if err != nil {
 		return nil, err
@@ -226,6 +236,7 @@ func (s *Service) CreateImageJob(userID, orgID string, input CreateImageJobInput
 		SceneType:      strings.TrimSpace(input.SceneType),
 		InputMode:      defaultInputMode(input.InputMode),
 		SourceAssetID:  sourceAsset.ID,
+		PromptID:       strings.TrimSpace(input.PromptID),
 		Status:         "queued",
 		Stage:          "queued",
 		StageMessage:   "Image job created and waiting for runtime dispatch",
@@ -252,6 +263,7 @@ func (s *Service) CreateImageJob(userID, orgID string, input CreateImageJobInput
 			"billable_item_code":      chargeCtx.BillableItemCode,
 			"resource_type":           chargeCtx.ResourceType,
 			"usage_units":             chargeCtx.UsageUnits,
+			"prompt_contract":         promptContract,
 		}),
 	}
 	err = s.repo.CreateJob(item)
@@ -281,6 +293,7 @@ func (s *Service) CreateImageJob(userID, orgID string, input CreateImageJobInput
 			"sku_code":    product.SKUCode,
 		}},
 		"requested_variants": defaultRequestedVariants(input.RequestedVariants),
+		"prompt_contract":    promptContract,
 	})
 	routeSnapshot := mustMarshal(map[string]any{
 		"objective":           normalizeObjective(input.Objective),
@@ -294,6 +307,7 @@ func (s *Service) CreateImageJob(userID, orgID string, input CreateImageJobInput
 		"resolved_template_name": promptPlan.ResolvedTemplateName,
 		"tool_slug":              promptPlan.ToolSlug,
 		"prompt_strategy":        promptPlan.PromptStrategy,
+		"prompt_contract":        promptContract,
 	})
 	idempotencyKey := strings.TrimSpace(input.IdempotencyKey)
 	if idempotencyKey == "" {
@@ -327,15 +341,20 @@ func (s *Service) CreateImageJob(userID, orgID string, input CreateImageJobInput
 		return nil, err
 	}
 	item.RuntimeJobID = runtimeJob.ID
-	item.Status = firstNonEmpty(runtimeJob.Status, "queued")
-	item.Stage = firstNonEmpty(runtimeJob.Stage, "queued")
-	item.StageMessage = firstNonEmpty(runtimeJob.StageMessage, "Runtime job queued")
 	item.ProviderJobID = runtimeJob.ProviderJobID
+	if latest, findErr := s.repo.FindJobByID(item.ID); findErr == nil && latest != nil {
+		item = latest
+		item.RuntimeJobID = runtimeJob.ID
+		item.ProviderJobID = firstNonEmpty(runtimeJob.ProviderJobID, item.ProviderJobID)
+	}
 	if err := s.bindChargeContext(item, chargeCtx, runtimeJob); err != nil {
 		return nil, err
 	}
-	if err := s.repo.SaveJob(item); err != nil {
+	if err := s.repo.UpdateJobRuntimeBinding(item.ID, item.RuntimeJobID, item.ProviderJobID, item.Metadata); err != nil {
 		return nil, err
+	}
+	if latest, findErr := s.repo.FindJobByID(item.ID); findErr == nil && latest != nil {
+		return mapImageJobSummary(latest), nil
 	}
 	return mapImageJobSummary(item), nil
 }
@@ -420,6 +439,12 @@ func (s *Service) UpdateJobRuntime(jobID string, input UpdateJobRuntimeInput) (*
 	if len(input.Metadata) > 0 {
 		item.Metadata = mergeJSON(item.Metadata, input.Metadata)
 	}
+	if input.ErrorCode != "" {
+		item.LastErrorCode = input.ErrorCode
+	}
+	if input.ErrorMessage != "" {
+		item.LastErrorMessage = input.ErrorMessage
+	}
 	now := time.Now()
 	switch item.Status {
 	case "completed":
@@ -431,6 +456,10 @@ func (s *Service) UpdateJobRuntime(jobID string, input UpdateJobRuntimeInput) (*
 		if item.Stage == "" {
 			item.Stage = "failed"
 		}
+		if item.LastErrorMessage == "" {
+			item.LastErrorMessage = item.StageMessage
+		}
+		_ = s.releaseChargeContext(chargeContextFromJob(item), "runtime_failed")
 	}
 	if err := s.repo.SaveJob(item); err != nil {
 		return nil, err
@@ -520,6 +549,61 @@ func validateSourceAssetBinding(asset *models.EcommerceAsset, productID string) 
 		return fmt.Errorf("source asset is not bound to the selected product")
 	}
 	return nil
+}
+
+func (s *Service) resolvePromptContract(orgID string, product *models.EcomProductSKU, input *CreateImageJobInput) (map[string]any, error) {
+	promptID := strings.TrimSpace(input.PromptID)
+	if promptID == "" {
+		return map[string]any{"mode": "legacy"}, nil
+	}
+	if s.promptRepo == nil {
+		return nil, fmt.Errorf("prompt repository is required")
+	}
+	promptRun, err := s.promptRepo.FindPromptRunByID(orgID, promptID)
+	if err != nil {
+		return nil, fmt.Errorf("prompt not found")
+	}
+	if promptRun.ProductID != product.ID || promptRun.SKUCode != product.SKUCode {
+		return nil, fmt.Errorf("prompt does not match selected product/SKU")
+	}
+	if promptRun.Status != "validated" && promptRun.Status != "bound" && promptRun.Status != "executed" {
+		return nil, fmt.Errorf("prompt is not validated")
+	}
+	var compiled promptcenter.CompiledPrompt
+	if err := json.Unmarshal([]byte(promptRun.CompiledPromptJSON), &compiled); err != nil {
+		return nil, fmt.Errorf("prompt compiled snapshot is invalid")
+	}
+	var bindings []promptcenter.SourceAssetBinding
+	_ = json.Unmarshal([]byte(promptRun.SourceAssetBindingsJSON), &bindings)
+	if strings.TrimSpace(input.SourceAssetID) == "" && len(bindings) > 0 {
+		input.SourceAssetID = bindings[0].AssetID
+	}
+	if strings.TrimSpace(input.SourceAssetID) == "" {
+		return nil, fmt.Errorf("source_asset_id is required")
+	}
+	matched := len(bindings) == 0
+	for _, binding := range bindings {
+		if binding.AssetID == strings.TrimSpace(input.SourceAssetID) {
+			matched = true
+			break
+		}
+	}
+	if !matched {
+		return nil, fmt.Errorf("source asset does not match prompt source bindings")
+	}
+	input.Prompt = compiled.FinalPrompt
+	input.NegativePrompt = compiled.FinalNegativePrompt
+	input.TemplateCode = firstNonEmpty(input.TemplateCode, promptRun.TemplateCode)
+	return map[string]any{
+		"mode":                "prompt_id",
+		"prompt_id":           promptRun.ID,
+		"template_id":         promptRun.TemplateID,
+		"template_version_id": promptRun.TemplateVersionID,
+		"template_code":       promptRun.TemplateCode,
+		"schema_version":      promptRun.SchemaVersion,
+		"content_hash":        promptRun.ContentHash,
+		"source_map_hash":     promptRun.SourceMapHash,
+	}, nil
 }
 
 func (s *Service) archiveGeneratedAssetToProduct(job *models.EcommerceImageJob, asset *models.EcommerceAsset, variant RecordResultVariantInput) error {
@@ -743,6 +827,18 @@ func (s *Service) productCode() string {
 }
 
 func (s *Service) buildCompiledPromptPlan(input CreateImageJobInput) (*compiledPromptPlan, error) {
+	if strings.TrimSpace(input.PromptID) != "" {
+		if strings.TrimSpace(input.Prompt) == "" {
+			return nil, fmt.Errorf("compiled prompt snapshot is required")
+		}
+		return &compiledPromptPlan{
+			ToolSlug:             normalizeToolSlug(input.SceneType),
+			PromptStrategy:       "prompt_center_snapshot_v1",
+			FinalPrompt:          strings.TrimSpace(input.Prompt),
+			FinalNegativePrompt:  strings.TrimSpace(input.NegativePrompt),
+			ResolvedTemplateCode: strings.TrimSpace(input.TemplateCode),
+		}, nil
+	}
 	userPrompt := strings.TrimSpace(input.Prompt)
 	if userPrompt == "" {
 		return nil, fmt.Errorf("prompt is required")
@@ -943,71 +1039,38 @@ func defaultDimension(value int) int {
 }
 
 func (s *Service) prepareChargeContext(jobID, userID, orgID string, input CreateImageJobInput) (*chargeContext, error) {
-	if s.platform == nil {
-		return &chargeContext{}, nil
-	}
 	sceneCode := normalizeSceneCode(input.SceneType)
-	billableItemCode := s.billableItemCodeForScene(sceneCode)
-	resourceType := "quota"
-	usageUnits := int64(1)
-	session, err := s.platform.CreateChargeSession(platform.CreateChargeSessionInput{
-		SourceType:         "ecommerce_image_job",
-		SourceID:           jobID,
-		ProductCode:        s.productCode(),
-		OrganizationID:     orgID,
-		UserID:             userID,
-		BillingSubjectType: "organization",
-		BillingSubjectID:   orgID,
-		BillableItemCode:   billableItemCode,
-		ResourceType:       resourceType,
-		ReservationKey:     firstNonEmpty(strings.TrimSpace(input.IdempotencyKey), fmt.Sprintf("reserve:%s", jobID)),
-		EstimatedUnits:     usageUnits,
-		RouteSnapshot:      mustMarshal(map[string]any{"scene_code": sceneCode, "input_mode": defaultInputMode(input.InputMode)}),
-		Metadata:           mustMarshal(map[string]any{"scene_type": input.SceneType}),
+	return billinggate.New(s.platform).Begin(billinggate.BeginInput{
+		Action:           billinggate.ActionGeneration,
+		SourceType:       billinggate.SourceTypeGenerationImageJob,
+		SourceID:         jobID,
+		ProductCode:      s.productCode(),
+		OrganizationID:   orgID,
+		UserID:           userID,
+		BillableItemCode: s.billableItemCodeForScene(sceneCode),
+		ResourceType:     billinggate.DefaultResourceType,
+		UsageUnits:       1,
+		IdempotencyKey:   strings.TrimSpace(input.IdempotencyKey),
+		RouteSnapshot:    map[string]any{"scene_code": sceneCode, "input_mode": defaultInputMode(input.InputMode)},
+		Metadata:         map[string]any{"scene_type": input.SceneType},
 	})
-	if err != nil {
-		return nil, err
-	}
-	reservation, reserveErr := s.platform.ReserveResources(platform.ReserveInput{
-		ResourceType:       resourceType,
-		BillingSubjectType: "organization",
-		BillingSubjectID:   orgID,
-		BillableItemCode:   billableItemCode,
-		ReservationKey:     fmt.Sprintf("reserve:%s", jobID),
-		ReferenceID:        session.ID,
-		Units:              usageUnits,
-		Metadata:           mustMarshal(map[string]any{"job_id": jobID, "charge_session_id": session.ID}),
-	})
-	if reserveErr != nil {
-		return nil, reserveErr
-	}
-	if reservation == nil || strings.TrimSpace(reservation.ID) == "" {
-		return nil, fmt.Errorf("resource reservation missing for job %s", jobID)
-	}
-	return &chargeContext{
-		ChargeSessionID:  session.ID,
-		ReservationID:    reservation.ID,
-		BillableItemCode: billableItemCode,
-		ResourceType:     resourceType,
-		UsageUnits:       usageUnits,
-	}, nil
 }
 
 func (s *Service) releaseChargeContext(chargeCtx *chargeContext, reason string) error {
-	if s.platform == nil || chargeCtx == nil {
+	return billinggate.New(s.platform).Release(billinggate.ReleaseInput{Context: chargeCtx, Reason: reason})
+}
+
+func chargeContextFromJob(item *models.EcommerceImageJob) *chargeContext {
+	if item == nil {
 		return nil
 	}
-	if chargeCtx.ReservationID != "" {
-		_, _ = s.platform.ReleaseReservation(chargeCtx.ReservationID)
+	return &chargeContext{
+		ChargeSessionID:  stringValueFromMeta(item.Metadata, "charge_session_id"),
+		ReservationID:    stringValueFromMeta(item.Metadata, "reservation_id"),
+		BillableItemCode: stringValueFromMeta(item.Metadata, "billable_item_code"),
+		ResourceType:     stringValueFromMeta(item.Metadata, "resource_type"),
+		UsageUnits:       int64ValueFromMeta(item.Metadata, "usage_units"),
 	}
-	if chargeCtx.ChargeSessionID != "" {
-		_, _ = s.platform.UpdateChargeSession(chargeCtx.ChargeSessionID, platform.UpdateChargeSessionInput{
-			Status:        "released",
-			ReservationID: chargeCtx.ReservationID,
-			Metadata:      mustMarshal(map[string]any{"release_reason": reason}),
-		})
-	}
-	return nil
 }
 
 func (s *Service) bindChargeContext(item *models.EcommerceImageJob, chargeCtx *chargeContext, _ *platform.RuntimeJob) error {
@@ -1023,11 +1086,7 @@ func (s *Service) bindChargeContext(item *models.EcommerceImageJob, chargeCtx *c
 	}
 	item.Metadata = mergeJSON(item.Metadata, metadata)
 	if chargeCtx.ChargeSessionID != "" {
-		_, _ = s.platform.UpdateChargeSession(chargeCtx.ChargeSessionID, platform.UpdateChargeSessionInput{
-			Status:        "reserved",
-			ReservationID: chargeCtx.ReservationID,
-			Metadata:      mustMarshal(map[string]any{"job_id": item.ID, "runtime_job_id": item.RuntimeJobID, "provider_job_id": item.ProviderJobID}),
-		})
+		_ = billinggate.New(s.platform).MarkReserved(chargeCtx, map[string]any{"job_id": item.ID, "runtime_job_id": item.RuntimeJobID, "provider_job_id": item.ProviderJobID})
 	}
 	return nil
 }
@@ -1048,17 +1107,31 @@ func normalizeSceneCode(sceneType string) string {
 }
 
 func (s *Service) findOrCreateResultAsset(item *models.EcommerceImageJob, input RecordJobResultsInput, variant RecordResultVariantInput) (*models.EcommerceAsset, error) {
+	if existing, err := s.repo.FindGeneratedAssetByJobVariant(item.OrganizationID, item.ID, variant.Index); err == nil && existing != nil {
+		return existing, nil
+	}
 	if strings.TrimSpace(variant.Asset.StorageKey) != "" {
 		existing, err := s.repo.FindAssetByStorageKey(item.OrganizationID, variant.Asset.StorageKey)
 		if err == nil && existing != nil {
 			return existing, nil
 		}
 	}
+	resultKey := fmt.Sprintf("%s:%d", item.ID, variant.Index)
 	assetMetadata := map[string]any{
-		"job_id":         item.ID,
-		"variant_index":  variant.Index,
-		"variant_status": variant.Status,
-		"is_selected":    variant.IsSelected,
+		"job_id":                item.ID,
+		"generation_task_id":    item.ID,
+		"variant_index":         variant.Index,
+		"result_index":          variant.Index,
+		"generation_result_key": resultKey,
+		"variant_status":        variant.Status,
+		"is_selected":           variant.IsSelected,
+	}
+	jobMetadata := decodeMap(item.Metadata)
+	if contract, ok := jobMetadata["prompt_contract"].(map[string]any); ok && stringValue(contract["prompt_id"]) != "" {
+		assetMetadata["prompt_id"] = stringValue(contract["prompt_id"])
+		assetMetadata["prompt_content_hash"] = stringValue(contract["content_hash"])
+		assetMetadata["template_id"] = stringValue(contract["template_id"])
+		assetMetadata["template_version_id"] = stringValue(contract["template_version_id"])
 	}
 	if len(input.Metadata) > 0 {
 		assetMetadata["runtime_metadata"] = input.Metadata
@@ -1100,54 +1173,35 @@ func (s *Service) finalizeChargeForJob(item *models.EcommerceImageJob, status st
 	if chargeSessionID == "" {
 		return nil
 	}
+	chargeCtx := &chargeContext{
+		Action:           billinggate.ActionGeneration,
+		SourceType:       billinggate.SourceTypeGenerationImageJob,
+		SourceID:         item.ID,
+		ProductCode:      s.productCode(),
+		OrganizationID:   item.OrganizationID,
+		UserID:           item.UserID,
+		ChargeSessionID:  chargeSessionID,
+		ReservationID:    reservationID,
+		BillableItemCode: billableItemCode,
+		ResourceType:     firstNonEmpty(stringValue(meta["resource_type"]), billinggate.DefaultResourceType),
+		UsageUnits:       usageUnits,
+	}
 	if status == "completed" {
 		eventID := fmt.Sprintf("evt_%s", item.ID)
-		result, err := s.platform.FinalizeMetering(platform.FinalizeInput{
-			FinalizationID: fmt.Sprintf("fin_%s", item.ID),
-			ReservationID:  reservationID,
-			IngestEventInput: platform.IngestEventInput{
-				EventID:            eventID,
-				SourceType:         "ecommerce_image_job",
-				SourceID:           item.ID,
-				SourceAction:       normalizeSceneCode(item.SceneType),
-				ProductCode:        s.productCode(),
-				OrgID:              item.OrganizationID,
-				UserID:             item.UserID,
-				BillableItemCode:   billableItemCode,
-				ChargeGroupID:      item.ID,
-				BillingSubjectType: "organization",
-				BillingSubjectID:   item.OrganizationID,
-				UsageUnits:         usageUnits,
-				Unit:               "action",
-				OccurredAt:         time.Now().UTC().Format(time.RFC3339),
-				Dimensions:         mustMarshal(map[string]any{"scene_code": normalizeSceneCode(item.SceneType)}),
-				Metadata:           mustMarshal(map[string]any{"job_id": item.ID, "charge_session_id": chargeSessionID}),
-			},
+		commit, err := billinggate.New(s.platform).Commit(billinggate.CommitInput{
+			Context:      chargeCtx,
+			SourceAction: normalizeSceneCode(item.SceneType),
+			EventID:      eventID,
+			Dimensions:   map[string]any{"scene_code": normalizeSceneCode(item.SceneType)},
+			Metadata:     map[string]any{"job_id": item.ID, "charge_session_id": chargeSessionID},
 		})
 		if err != nil {
 			return err
 		}
-		finalUnits := usageUnits
-		_, _ = s.platform.UpdateChargeSession(chargeSessionID, platform.UpdateChargeSessionInput{
-			Status:        "settled",
-			ReservationID: reservationID,
-			EventID:       eventID,
-			SettlementID:  result.Settlement.ID,
-			FinalUnits:    &finalUnits,
-			Metadata:      mustMarshal(map[string]any{"event_id": eventID}),
-		})
-		_ = s.persistBillingCharge(item, eventID, billableItemCode, usageUnits, result)
+		_ = s.persistBillingCharge(item, eventID, billableItemCode, usageUnits, commit.Result)
 		return nil
 	}
-	if reservationID != "" {
-		_, _ = s.platform.ReleaseReservation(reservationID)
-	}
-	_, _ = s.platform.UpdateChargeSession(chargeSessionID, platform.UpdateChargeSessionInput{
-		Status:        "released",
-		ReservationID: reservationID,
-		Metadata:      mustMarshal(map[string]any{"job_status": status}),
-	})
-	return nil
+	return billinggate.New(s.platform).Release(billinggate.ReleaseInput{Context: chargeCtx, Metadata: map[string]any{"job_status": status}})
 }
 
 func (s *Service) persistBillingCharge(item *models.EcommerceImageJob, eventID, billableItemCode string, usageUnits int64, result *platform.FinalizeResult) error {
@@ -1211,6 +1265,17 @@ func stringValueFromMeta(raw string, key string) string {
 	return stringValue(values[key])
 }
 
+func int64ValueFromMeta(raw string, key string) int64 {
+	if strings.TrimSpace(raw) == "" {
+		return 0
+	}
+	values := map[string]any{}
+	if err := json.Unmarshal([]byte(raw), &values); err != nil {
+		return 0
+	}
+	return int64Value(values[key])
+}
+
 func defaultCFG(value float64) float64 {
 	if value <= 0 {
 		return 1.0
@@ -1253,6 +1318,7 @@ func mapImageJobSummary(item *models.EcommerceImageJob) *ImageJobSummary {
 		SceneType:             item.SceneType,
 		InputMode:             item.InputMode,
 		SourceAssetID:         item.SourceAssetID,
+		PromptID:              item.PromptID,
 		RuntimeJobID:          item.RuntimeJobID,
 		Status:                item.Status,
 		Stage:                 item.Stage,

@@ -15,6 +15,7 @@ import (
 	imageruntimemodule "ecommerce-service/internal/modules/imageruntime"
 	productcoremodule "ecommerce-service/internal/modules/productcore"
 	promotionmodule "ecommerce-service/internal/modules/promotion"
+	promptcentermodule "ecommerce-service/internal/modules/promptcenter"
 	templatecentermodule "ecommerce-service/internal/modules/templatecenter"
 	walletmodule "ecommerce-service/internal/modules/wallet"
 	"ecommerce-service/internal/modules/workspace"
@@ -63,10 +64,11 @@ func New(configFile string) (*App, error) {
 	imageRuntimeRepo := repository.NewImageRuntimeRepository(db)
 	workspaceRepo := repository.NewWorkspaceRepository(db)
 	templateCenterRepo := repository.NewTemplateCenterRepository(db)
+	promptCenterRepo := repository.NewPromptCenterRepository(db)
 	commercialRepo := repository.NewCommercialRepository(db)
 	productcenterRepo := repository.NewProductCenterRepository(db)
 	auditService := auditmodule.NewService(auditRepo)
-	imageRuntimeService := imageruntimemodule.NewService(imageRuntimeRepo, commercialRepo, templateCenterRepo, productcenterRepo, auditService, platformClient, cfg.App)
+	imageRuntimeService := imageruntimemodule.NewService(imageRuntimeRepo, commercialRepo, templateCenterRepo, productcenterRepo, auditService, platformClient, cfg.App).WithPromptRepository(promptCenterRepo)
 	authzService := authz.NewService(platformClient)
 	promotionService := promotionmodule.NewService(platformClient, commercialRepo, cfg.App)
 	walletService := walletmodule.NewService(platformClient, commercialRepo, cfg.App)
@@ -76,6 +78,7 @@ func New(configFile string) (*App, error) {
 	authService := authmodule.NewService(platformClient, userRepo, authzService, promotionService, cfg.App)
 	workspaceService := workspace.NewService(workspaceRepo, redisClient)
 	templateCenterService := templatecentermodule.NewService(templateCenterRepo, auditService, platformClient)
+	promptCenterService := promptcentermodule.NewService(promptCenterRepo, templateCenterRepo, imageRuntimeRepo, productcenterRepo, cfg.App)
 	productcoreService := productcoremodule.NewService(productcenterRepo, imageRuntimeRepo, platformClient)
 	accessHandler := accessmodule.NewHandler(authzService)
 	authHandler := authmodule.NewHandler(authService, auditService)
@@ -87,6 +90,7 @@ func New(configFile string) (*App, error) {
 	workspaceHandler := workspace.NewHandler(workspaceService, auditService)
 	auditHandler := auditmodule.NewHandler(auditService)
 	templateCenterHandler := templatecentermodule.NewHandler(templateCenterService)
+	promptCenterHandler := promptcentermodule.NewHandler(promptCenterService)
 	walletHandler := walletmodule.NewHandler(walletService)
 	productcoreHandler := productcoremodule.NewHandler(productcoreService)
 
@@ -99,7 +103,7 @@ func New(configFile string) (*App, error) {
 	}
 
 	app := &App{Config: *cfg, DB: db, Redis: redisClient}
-	app.Router = router.New(*cfg, platformClient, db, redisClient, authHandler, accessHandler, imageRuntimeHandler, workspaceHandler, auditHandler, templateCenterHandler, walletHandler, promotionHandler, commissionHandler, billingHandler, commercialHandler, productcoreHandler)
+	app.Router = router.New(*cfg, platformClient, db, redisClient, authHandler, accessHandler, imageRuntimeHandler, workspaceHandler, auditHandler, templateCenterHandler, promptCenterHandler, walletHandler, promotionHandler, commissionHandler, billingHandler, commercialHandler, productcoreHandler)
 	app.Shutdown = func(ctx context.Context) error {
 		if shutdownTracing != nil {
 			return shutdownTracing(ctx)

@@ -424,6 +424,9 @@ func (s *Service) resolveOrderBundle(offerings *platform.OfferingsView, skuCode,
 		skuCodeFromPkg, _ := pkgMetadata["sku_code"].(string)
 		matchedSKU = findSKU(offerings.SKUs, skuCodeFromPkg)
 		if matchedSKU == nil {
+			matchedSKU = findSKUByPackageCode(offerings.SKUs, matchedPackage.Code)
+		}
+		if matchedSKU == nil {
 			return nil, fmt.Errorf("sku not found for package: %s", matchedPackage.Code)
 		}
 	}
@@ -542,6 +545,16 @@ func findCommercialPackage(items []platform.CommercialPackage, packageCode strin
 func findSKU(items []platform.SKU, skuCode string) *platform.SKU {
 	for i := range items {
 		if items[i].Code == skuCode {
+			return &items[i]
+		}
+	}
+	return nil
+}
+
+func findSKUByPackageCode(items []platform.SKU, packageCode string) *platform.SKU {
+	for i := range items {
+		metadata := decodeMap(items[i].Metadata)
+		if stringMapValue(metadata, "package_code") == packageCode {
 			return &items[i]
 		}
 	}

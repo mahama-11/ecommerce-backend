@@ -1,9 +1,13 @@
 package productcore
 
 import (
+	"archive/zip"
+	"bytes"
+	"ecommerce-service/internal/billinggate"
 	"ecommerce-service/internal/models"
 	"ecommerce-service/internal/platform"
 	"ecommerce-service/internal/repository"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,12 +17,25 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 type Service struct {
 	repo      *repository.ProductCenterRepository
 	assetRepo *repository.ImageRuntimeRepository
 	platform  *platform.Client
+}
+
+const (
+	listingTitleMaxRunes       = 200
+	listingBulletMaxCount      = 5
+	listingBulletMaxRunes      = 250
+	listingDescriptionMaxRunes = 2000
+)
+
+var baselineSensitiveWords = []string{
+	"counterfeit", "fake", "replica", "knockoff", "weapon", "gun", "drug", "cocaine", "heroin", "porn", "adult only",
+	"假货", "仿牌", "高仿", "违禁", "毒品", "枪支", "色情",
 }
 
 func NewService(repo *repository.ProductCenterRepository, assetRepo *repository.ImageRuntimeRepository, platformClient *platform.Client) *Service {
@@ -46,6 +63,20 @@ func sanitizeStringList(values []string) []string {
 		result = append(result, trimmed)
 	}
 	return result
+}
+
+func runeLen(value string) int { return len([]rune(value)) }
+
+func containsBaselineSensitiveWord(values ...string) string {
+	for _, value := range values {
+		lower := strings.ToLower(value)
+		for _, word := range baselineSensitiveWords {
+			if strings.Contains(lower, strings.ToLower(word)) {
+				return word
+			}
+		}
+	}
+	return ""
 }
 
 func isValidAssetRelationType(value string) bool {
@@ -158,7 +189,7 @@ type ProductDetail struct {
 	Assets          []ProductAssetWithDetail     `json:"assets"`
 	ListingVersions []models.EcomListingVersion  `json:"listing_versions"`
 	ProfitSnapshots []models.EcomProfitSnapshot  `json:"profit_snapshots"`
-	ExportTasks     []models.EcomExportTask      `json:"export_tasks"`
+	ExportTasks     []ExportTaskSummary          `json:"export_tasks"`
 	Activities      []models.EcomProductActivity `json:"activities"`
 }
 
@@ -168,22 +199,79 @@ type ProductAssetWithDetail struct {
 	Asset    *models.EcommerceAsset   `json:"asset,omitempty"`
 }
 
+type ExportTaskSummary struct {
+	ID                  string    `json:"id"`
+	ProductID           string    `json:"product_id"`
+	PackageID           string    `json:"package_id,omitempty"`
+	Status              string    `json:"status"`
+	Platform            string    `json:"platform"`
+	Site                string    `json:"site"`
+	Locale              string    `json:"locale"`
+	Format              string    `json:"format"`
+	ListingVersionID    string    `json:"listing_version_id,omitempty"`
+	ListingVersionLabel string    `json:"listing_version_label,omitempty"`
+	PrimaryAssetRole    string    `json:"primary_asset_role,omitempty"`
+	AssetCount          int       `json:"asset_count"`
+	AssetManifest       string    `json:"-"`
+	FileSize            string    `json:"file_size,omitempty"`
+	ContentURL          string    `json:"content_url"`
+	CreatedAt           time.Time `json:"created_at"`
+}
+
+func exportTaskSummary(task models.EcomExportTask) ExportTaskSummary {
+	return ExportTaskSummary{
+		ID:                  task.ID,
+		ProductID:           task.ProductID,
+		PackageID:           task.PackageID,
+		Status:              task.Status,
+		Platform:            task.Platform,
+		Site:                task.Site,
+		Locale:              task.Locale,
+		Format:              task.Format,
+		ListingVersionID:    task.ListingVersionID,
+		ListingVersionLabel: task.ListingVersionLabel,
+		PrimaryAssetRole:    task.PrimaryAssetRole,
+		AssetCount:          task.AssetCount,
+		AssetManifest:       task.AssetManifest,
+		FileSize:            task.FileSize,
+		ContentURL:          fmt.Sprintf("/api/v1/ecommerce/downloads/%s/content", task.ID),
+		CreatedAt:           task.CreatedAt,
+	}
+}
+
+func exportTaskSummaries(tasks []models.EcomExportTask) []ExportTaskSummary {
+	out := make([]ExportTaskSummary, 0, len(tasks))
+	for _, task := range tasks {
+		out = append(out, exportTaskSummary(task))
+	}
+	return out
+}
+
 // DownloadListItem 下载中心聚合项
 type DownloadListItem struct {
 	ID                  string              `json:"id"`
+	TaskID              string              `json:"task_id,omitempty"`
+	PackageID           string              `json:"package_id,omitempty"`
 	SourceType          string              `json:"source_type"`
-	ProductID           string              `json:"product_id"`
-	ProductTitle        string              `json:"product_title"`
-	ProductSKU          string              `json:"product_sku"`
-	ProductStatus       string              `json:"product_status"`
-	ProductPath         string              `json:"product_path"`
+	ProductID           string              `json:"product_id,omitempty"`
+	ProductTitle        string              `json:"product_title,omitempty"`
+	ProductSKU          string              `json:"product_sku,omitempty"`
+	ProductStatus       string              `json:"product_status,omitempty"`
+	ProductPath         string              `json:"product_path,omitempty"`
+	SKUCount            int                 `json:"sku_count,omitempty"`
+	SucceededCount      int                 `json:"succeeded_count,omitempty"`
+	FailedCount         int                 `json:"failed_count,omitempty"`
 	Platform            string              `json:"platform"`
 	Site                string              `json:"site"`
 	Locale              string              `json:"locale"`
+	Schema              string              `json:"schema,omitempty"`
 	Format              string              `json:"format"`
 	Status              string              `json:"status"`
 	FileSize            string              `json:"file_size,omitempty"`
-	PackageURL          string              `json:"package_url,omitempty"`
+	PackageURL          string              `json:"-"`
+	ContentURL          string              `json:"content_url"`
+	ManifestURL         string              `json:"manifest_url,omitempty"`
+	Package             DownloadPackage     `json:"package"`
 	ListingVersionID    string              `json:"listing_version_id,omitempty"`
 	ListingVersionLabel string              `json:"listing_version_label,omitempty"`
 	DownloadFileName    string              `json:"download_file_name"`
@@ -192,6 +280,13 @@ type DownloadListItem struct {
 	PrimaryAssetRole    string              `json:"primary_asset_role,omitempty"`
 	Assets              []DownloadAssetItem `json:"assets,omitempty"`
 	CreatedAt           time.Time           `json:"created_at"`
+}
+
+type DownloadPackage struct {
+	FileName          string `json:"file_name"`
+	FileSize          string `json:"file_size,omitempty"`
+	ContentType       string `json:"content_type"`
+	ManifestAvailable bool   `json:"manifest_available"`
 }
 
 type DownloadAssetItem struct {
@@ -317,6 +412,8 @@ func (s *Service) buildDownloadListItem(scope repository.Scope, task models.Ecom
 	task = s.ensureExportTaskSnapshot(scope, task)
 	item := DownloadListItem{
 		ID:                  task.ID,
+		TaskID:              task.ID,
+		PackageID:           task.PackageID,
 		SourceType:          "product_export",
 		ProductID:           task.ProductID,
 		ProductPath:         fmt.Sprintf("/products/%s", task.ProductID),
@@ -327,6 +424,7 @@ func (s *Service) buildDownloadListItem(scope repository.Scope, task models.Ecom
 		Status:              task.Status,
 		FileSize:            task.FileSize,
 		PackageURL:          task.PackageURL,
+		ContentURL:          fmt.Sprintf("/api/v1/ecommerce/downloads/%s/content", task.ID),
 		ListingVersionID:    task.ListingVersionID,
 		ListingVersionLabel: task.ListingVersionLabel,
 		Downloadable:        task.Status == models.ExportTaskStatusSucceeded && (strings.TrimSpace(task.PackageURL) != "" || strings.TrimSpace(task.StorageKey) != ""),
@@ -336,12 +434,17 @@ func (s *Service) buildDownloadListItem(scope repository.Scope, task models.Ecom
 		CreatedAt:           task.CreatedAt,
 	}
 
-	product, err := s.repo.GetProduct(scope, task.ProductID)
-	if err == nil && product != nil {
+	if product, err := s.repo.GetProduct(scope, task.ProductID); err == nil && product != nil {
 		item.ProductTitle = product.Title
 		item.ProductSKU = product.SKUCode
 		item.ProductStatus = product.Status
 		item.DownloadFileName = buildDownloadFileName(product, &task)
+	}
+	item.Package = DownloadPackage{
+		FileName:          item.DownloadFileName,
+		FileSize:          item.FileSize,
+		ContentType:       contentTypeForExportFormat(item.Format),
+		ManifestAvailable: strings.TrimSpace(task.AssetManifest) != "",
 	}
 
 	if manifest, err := decodeDownloadAssetManifest(task.AssetManifest); err == nil && manifest != nil {
@@ -356,6 +459,19 @@ func (s *Service) buildDownloadListItem(scope repository.Scope, task models.Ecom
 	}
 
 	return item
+}
+
+func contentTypeForExportFormat(format string) string {
+	switch strings.ToLower(strings.TrimSpace(format)) {
+	case "csv":
+		return "text/csv"
+	case "json":
+		return "application/json"
+	case "zip":
+		return "application/zip"
+	default:
+		return "application/octet-stream"
+	}
 }
 
 // GetProductDetail 获取完整的商品详情
@@ -376,6 +492,12 @@ func (s *Service) GetProductDetail(orgID string, productID string) (*ProductDeta
 	for _, rel := range relations {
 		var asset *models.EcommerceAsset
 		asset, _ = s.assetRepo.FindAssetByIDGlobal(rel.AssetID)
+		if asset != nil {
+			assetCopy := *asset
+			assetCopy.StorageKey = ""
+			assetCopy.Metadata = ""
+			asset = &assetCopy
+		}
 		assetsWithDetail = append(assetsWithDetail, ProductAssetWithDetail{
 			Relation: rel,
 			Asset:    asset,
@@ -407,7 +529,7 @@ func (s *Service) GetProductDetail(orgID string, productID string) (*ProductDeta
 		Assets:          assetsWithDetail,
 		ListingVersions: listings,
 		ProfitSnapshots: profits,
-		ExportTasks:     exports,
+		ExportTasks:     exportTaskSummaries(exports),
 		Activities:      activities,
 	}, nil
 }
@@ -473,7 +595,7 @@ func (s *Service) CreateProduct(orgID string, userID string, input CreateProduct
 		SPUID:         input.SPUID,
 		CategoryID:    input.CategoryID,
 		BrandID:       input.BrandID,
-		Tags:          input.Tags,
+		Tags:          pq.StringArray(input.Tags),
 		Status:        models.ProductStatusDraft,
 		AssetStatus:   models.AssetStatusMissing,
 		ListingStatus: models.ListingStatusMissing,
@@ -532,7 +654,7 @@ func (s *Service) UpdateProduct(orgID string, userID string, productID string, i
 		existing.CostCurrency = input.CostCurrency
 	}
 	if len(input.Tags) > 0 {
-		existing.Tags = input.Tags
+		existing.Tags = pq.StringArray(input.Tags)
 	}
 
 	updated, err := s.repo.UpdateProduct(scope, *existing)
@@ -785,39 +907,180 @@ func (s *Service) ListListingVersions(orgID string, productID string) ([]models.
 // CreateListingVersion 创建 Listing 版本
 func (s *Service) CreateListingVersion(orgID string, userID string, productID string, input CreateListingVersionInput) (*models.EcomListingVersion, error) {
 	scope := repository.Scope{UserID: userID, OrgID: orgID}
-	if _, err := s.repo.GetProduct(scope, productID); err != nil {
+	product, err := s.repo.GetProduct(scope, strings.TrimSpace(productID))
+	if err != nil {
 		return nil, err
 	}
+	return s.createListingVersionForProduct(scope, product, input, false)
+}
 
-	versionNo, _ := s.repo.GetNextListingVersionNo(scope, productID)
-
+func (s *Service) createListingVersionForProduct(scope repository.Scope, product *models.EcomProductSKU, input CreateListingVersionInput, preview bool) (*models.EcomListingVersion, error) {
+	if product == nil {
+		return nil, fmt.Errorf("product not found")
+	}
+	input = normalizeCreateListingInput(input)
+	assetReady := product.AssetStatus == models.AssetStatusReady
+	if !assetReady {
+		if relations, relErr := s.repo.ListProductAssets(scope, product.ID); relErr == nil && len(relations) > 0 {
+			assetReady = true
+		}
+	}
+	if err := validateListingInput(product, input, assetReady); err != nil {
+		return nil, err
+	}
+	versionNo, _ := s.repo.GetNextListingVersionNo(scope, product.ID)
+	versionID := uuid.New().String()
 	item := models.EcomListingVersion{
-		ID:           uuid.New().String(),
-		ProductID:    productID,
+		ID:           versionID,
+		ProductID:    product.ID,
 		VersionNo:    versionNo,
 		VersionLabel: input.VersionLabel,
 		Status:       models.ListingVersionStatusDraft,
 		Title:        input.Title,
 		Description:  input.Description,
-		BulletPoints: input.BulletPoints,
-		Keywords:     input.Keywords,
+		BulletPoints: pq.StringArray(input.BulletPoints),
+		Keywords:     pq.StringArray(input.Keywords),
 		Platform:     input.Platform,
 		Site:         input.Site,
 		Locale:       input.Locale,
 	}
-	listing, err := s.repo.CreateListingVersion(scope, item)
+	if preview {
+		item.OrganizationID = scope.OrgID
+		item.CreatedBy = scope.UserID
+		return &item, nil
+	}
+
+	chargeCtx, err := s.prepareListingChargeContext(scope, product, item)
 	if err != nil {
 		return nil, err
 	}
+	listing, err := s.repo.CreateListingVersion(scope, item)
+	if err != nil {
+		_ = billinggate.New(s.platform).Release(billinggate.ReleaseInput{Context: chargeCtx, Reason: "listing_create_failed"})
+		return nil, err
+	}
+	gate := billinggate.New(s.platform)
+	if err := gate.MarkReserved(chargeCtx, map[string]any{"listing_version_id": listing.ID, "product_id": product.ID}); err != nil {
+		_ = gate.Release(billinggate.ReleaseInput{Context: chargeCtx, Reason: "listing_mark_reserved_failed"})
+		return nil, err
+	}
+	if _, err := gate.Commit(billinggate.CommitInput{
+		Context:      chargeCtx,
+		SourceAction: "listing_version_created",
+		EventID:      fmt.Sprintf("evt_%s", listing.ID),
+		Dimensions: map[string]any{"platform": listing.Platform, "site": listing.Site, "locale": listing.Locale,
+			"sku_code": product.SKUCode},
+		Metadata: map[string]any{"listing_version_id": listing.ID, "product_id": product.ID},
+	}); err != nil {
+		_ = gate.Release(billinggate.ReleaseInput{Context: chargeCtx, Reason: "listing_commit_failed"})
+		return nil, err
+	}
 
-	s.logActivity(scope, productID, models.ProductActivityTypeListingGenerated,
+	s.logActivity(scope, product.ID, models.ProductActivityTypeListingGenerated,
 		"Listing Created", "Listing version "+input.VersionLabel+" created for "+input.Platform, nil)
 
 	// 新建版本后至少应进入 partial，避免商品状态与实际版本数不一致。
-	s.updateProductListingStatus(scope, productID)
-	s.updateProductMainStatus(scope, productID)
+	s.updateProductListingStatus(scope, product.ID)
+	s.updateProductMainStatus(scope, product.ID)
 
 	return listing, nil
+}
+
+func normalizeCreateListingInput(input CreateListingVersionInput) CreateListingVersionInput {
+	input.VersionLabel = strings.TrimSpace(input.VersionLabel)
+	input.Title = strings.TrimSpace(input.Title)
+	input.Description = strings.TrimSpace(input.Description)
+	input.Platform = strings.TrimSpace(input.Platform)
+	input.Site = strings.TrimSpace(input.Site)
+	input.Locale = strings.TrimSpace(input.Locale)
+	input.BulletPoints = sanitizeStringList(input.BulletPoints)
+	input.Keywords = sanitizeStringList(input.Keywords)
+	return input
+}
+
+func validateListingInput(product *models.EcomProductSKU, input CreateListingVersionInput, assetReady bool) error {
+	if strings.TrimSpace(input.VersionLabel) == "" {
+		return fmt.Errorf("version label is required")
+	}
+	if input.Title == "" {
+		return fmt.Errorf("title is required")
+	}
+	if runeLen(input.Title) > listingTitleMaxRunes {
+		return fmt.Errorf("title length must be <= %d characters", listingTitleMaxRunes)
+	}
+	if runeLen(input.Description) > listingDescriptionMaxRunes {
+		return fmt.Errorf("description length must be <= %d characters", listingDescriptionMaxRunes)
+	}
+	if len(input.BulletPoints) > listingBulletMaxCount {
+		return fmt.Errorf("bullet point count must be <= %d", listingBulletMaxCount)
+	}
+	for i, bullet := range input.BulletPoints {
+		if runeLen(bullet) > listingBulletMaxRunes {
+			return fmt.Errorf("bullet point %d length must be <= %d characters", i+1, listingBulletMaxRunes)
+		}
+	}
+	if input.Platform == "" {
+		return fmt.Errorf("platform is required")
+	}
+	if input.Site == "" {
+		return fmt.Errorf("site is required")
+	}
+	if input.Locale == "" {
+		return fmt.Errorf("locale is required")
+	}
+	if product == nil || strings.TrimSpace(product.SKUCode) == "" {
+		return fmt.Errorf("sku_code is required")
+	}
+	if !assetReady {
+		return fmt.Errorf("assets are not ready for sku %s", product.SKUCode)
+	}
+	allText := []string{input.Title, input.Description}
+	allText = append(allText, input.BulletPoints...)
+	allText = append(allText, input.Keywords...)
+	if word := containsBaselineSensitiveWord(allText...); word != "" {
+		return fmt.Errorf("sensitive word detected: %s", word)
+	}
+	return nil
+}
+
+func (s *Service) prepareListingChargeContext(scope repository.Scope, product *models.EcomProductSKU, item models.EcomListingVersion) (*billinggate.Context, error) {
+	if s == nil || s.platform == nil {
+		return nil, fmt.Errorf("billing platform client is required for listing generation")
+	}
+	return billinggate.New(s.platform).Begin(billinggate.BeginInput{
+		Action:           billinggate.ActionListing,
+		SourceType:       billinggate.SourceTypeListingVersion,
+		SourceID:         item.ID,
+		ProductCode:      billinggate.DefaultProductCode,
+		OrganizationID:   scope.OrgID,
+		UserID:           scope.UserID,
+		BillableItemCode: billinggate.BillableItemListingGenerate,
+		ResourceType:     billinggate.DefaultResourceType,
+		UsageUnits:       1,
+		IdempotencyKey:   billinggate.IdempotencyKeyForAction(billinggate.ActionListing, item.ID),
+		RouteSnapshot:    map[string]any{"platform": item.Platform, "site": item.Site, "locale": item.Locale},
+		Metadata:         map[string]any{"product_id": product.ID, "sku_code": product.SKUCode, "version_no": item.VersionNo},
+	})
+}
+
+func (s *Service) prepareExportChargeContext(scope repository.Scope, productID string, exportID string, input CreateExportTaskInput) (*billinggate.Context, error) {
+	if s == nil || s.platform == nil {
+		return nil, fmt.Errorf("billing platform client is required for export generation")
+	}
+	return billinggate.New(s.platform).Begin(billinggate.BeginInput{
+		Action:           billinggate.ActionExport,
+		SourceType:       billinggate.SourceTypeExportTask,
+		SourceID:         exportID,
+		ProductCode:      billinggate.DefaultProductCode,
+		OrganizationID:   scope.OrgID,
+		UserID:           scope.UserID,
+		BillableItemCode: billinggate.BillableItemExportGenerate,
+		ResourceType:     billinggate.DefaultResourceType,
+		UsageUnits:       1,
+		IdempotencyKey:   billinggate.IdempotencyKeyForAction(billinggate.ActionExport, exportID),
+		RouteSnapshot:    map[string]any{"platform": input.Platform, "site": input.Site, "locale": input.Locale, "format": input.Format},
+		Metadata:         map[string]any{"product_id": productID},
+	})
 }
 
 func (s *Service) BatchCreateListingVersions(orgID string, userID string, input BatchCreateListingVersionsInput) (*BatchListingMutationResult, error) {
@@ -827,59 +1090,62 @@ func (s *Service) BatchCreateListingVersions(orgID string, userID string, input 
 	}
 
 	result := &BatchListingMutationResult{
-		Total: len(input.Items),
-		Items: make([]BatchListingMutationItem, 0, len(input.Items)),
+		Total:   len(input.Items),
+		Preview: input.Preview,
+		Items:   make([]BatchListingMutationItem, 0, len(input.Items)),
 	}
 	seenProductIDs := make(map[string]struct{}, len(input.Items))
 
 	for _, entry := range input.Items {
+		entry.ProductID = strings.TrimSpace(entry.ProductID)
+		entry.SKUCode = strings.TrimSpace(entry.SKUCode)
 		item := BatchListingMutationItem{
 			ProductID:    entry.ProductID,
+			SKUCode:      entry.SKUCode,
 			VersionLabel: strings.TrimSpace(entry.VersionLabel),
+			Preview:      input.Preview,
 		}
 
-		product, err := s.repo.GetProduct(scope, entry.ProductID)
+		product, err := s.productForBatchListingEntry(scope, entry)
 		if err == nil && product != nil {
+			item.ProductID = product.ID
 			item.SKUCode = product.SKUCode
 			item.ProductTitle = product.Title
 		}
 
 		switch {
-		case strings.TrimSpace(entry.ProductID) == "":
-			item.Message = "product_id is required"
-		case strings.TrimSpace(entry.VersionLabel) == "":
-			item.Message = "version_label is required"
-		case strings.TrimSpace(entry.Title) == "":
-			item.Message = "title is required"
-		case strings.TrimSpace(entry.Platform) == "":
-			item.Message = "platform is required"
-		case strings.TrimSpace(entry.Site) == "":
-			item.Message = "site is required"
-		case strings.TrimSpace(entry.Locale) == "":
-			item.Message = "locale is required"
+		case entry.ProductID == "" && entry.SKUCode == "":
+			item.Message = "product_id or sku_code is required"
+		case entry.ProductID != "" && entry.SKUCode != "" && product != nil && !strings.EqualFold(product.SKUCode, entry.SKUCode):
+			item.Message = "sku_code does not match product_id"
 		case err != nil:
 			item.Message = "product not found"
 		default:
-			if _, exists := seenProductIDs[entry.ProductID]; exists {
+			if _, exists := seenProductIDs[product.ID]; exists {
 				item.Message = "duplicate product in batch request"
 			} else {
-				seenProductIDs[entry.ProductID] = struct{}{}
-				listing, createErr := s.CreateListingVersion(orgID, userID, entry.ProductID, CreateListingVersionInput{
-					VersionLabel: strings.TrimSpace(entry.VersionLabel),
-					Title:        strings.TrimSpace(entry.Title),
-					Description:  strings.TrimSpace(entry.Description),
+				seenProductIDs[product.ID] = struct{}{}
+				listing, createErr := s.createListingVersionForProduct(scope, product, CreateListingVersionInput{
+					VersionLabel: entry.VersionLabel,
+					Title:        entry.Title,
+					Description:  entry.Description,
 					BulletPoints: entry.BulletPoints,
 					Keywords:     entry.Keywords,
-					Platform:     strings.TrimSpace(entry.Platform),
-					Site:         strings.TrimSpace(entry.Site),
-					Locale:       strings.TrimSpace(entry.Locale),
-				})
+					Platform:     entry.Platform,
+					Site:         entry.Site,
+					Locale:       entry.Locale,
+				}, input.Preview)
 				if createErr != nil {
 					item.Message = createErr.Error()
 				} else {
 					item.Success = true
-					item.Message = "listing version created"
+					if input.Preview {
+						item.Message = "listing version preview valid"
+					} else {
+						item.Message = "listing version created"
+					}
 					item.VersionID = listing.ID
+					item.VersionLabel = listing.VersionLabel
 					item.Listing = listing
 					result.Succeeded++
 				}
@@ -893,6 +1159,13 @@ func (s *Service) BatchCreateListingVersions(orgID string, userID string, input 
 	}
 
 	return result, nil
+}
+
+func (s *Service) productForBatchListingEntry(scope repository.Scope, entry BatchCreateListingVersionItemInput) (*models.EcomProductSKU, error) {
+	if strings.TrimSpace(entry.ProductID) != "" {
+		return s.repo.GetProduct(scope, strings.TrimSpace(entry.ProductID))
+	}
+	return s.repo.GetProductBySKUCode(scope, strings.TrimSpace(entry.SKUCode))
 }
 
 // AdoptListingVersion 采用 Listing 版本
@@ -1005,7 +1278,8 @@ func (s *Service) BatchAdoptListingVersions(orgID string, userID string, input B
 
 func (s *Service) UpdateListingVersion(orgID string, userID string, productID string, versionID string, input UpdateListingVersionInput) (*models.EcomListingVersion, error) {
 	scope := repository.Scope{UserID: userID, OrgID: orgID}
-	if _, err := s.repo.GetProduct(scope, productID); err != nil {
+	product, err := s.repo.GetProduct(scope, productID)
+	if err != nil {
 		return nil, err
 	}
 
@@ -1026,59 +1300,57 @@ func (s *Service) UpdateListingVersion(orgID string, userID string, productID st
 		return nil, fmt.Errorf("listing version not found")
 	}
 
+	inputVersionLabel := target.VersionLabel
+	inputTitle := target.Title
+	inputDescription := target.Description
+	inputBulletPoints := []string(target.BulletPoints)
+	inputKeywords := []string(target.Keywords)
+	inputPlatform := target.Platform
+	inputSite := target.Site
+	inputLocale := target.Locale
 	if input.VersionLabel != nil {
-		target.VersionLabel = strings.TrimSpace(*input.VersionLabel)
+		inputVersionLabel = strings.TrimSpace(*input.VersionLabel)
 	}
 	if input.Title != nil {
-		target.Title = strings.TrimSpace(*input.Title)
+		inputTitle = strings.TrimSpace(*input.Title)
 	}
 	if input.Description != nil {
-		target.Description = strings.TrimSpace(*input.Description)
+		inputDescription = strings.TrimSpace(*input.Description)
 	}
 	if input.BulletPoints != nil {
-		target.BulletPoints = sanitizeStringList(*input.BulletPoints)
+		inputBulletPoints = sanitizeStringList(*input.BulletPoints)
 	}
 	if input.Keywords != nil {
-		target.Keywords = sanitizeStringList(*input.Keywords)
+		inputKeywords = sanitizeStringList(*input.Keywords)
 	}
 	if input.Platform != nil {
-		target.Platform = strings.TrimSpace(*input.Platform)
+		inputPlatform = strings.TrimSpace(*input.Platform)
 	}
 	if input.Site != nil {
-		target.Site = strings.TrimSpace(*input.Site)
+		inputSite = strings.TrimSpace(*input.Site)
 	}
 	if input.Locale != nil {
-		target.Locale = strings.TrimSpace(*input.Locale)
+		inputLocale = strings.TrimSpace(*input.Locale)
 	}
 
-	if target.VersionLabel == "" {
-		return nil, fmt.Errorf("version label is required")
-	}
-	if target.Title == "" {
-		return nil, fmt.Errorf("title is required")
-	}
-	if target.Platform == "" {
-		return nil, fmt.Errorf("platform is required")
-	}
-	if target.Site == "" {
-		return nil, fmt.Errorf("site is required")
-	}
-	if target.Locale == "" {
-		return nil, fmt.Errorf("locale is required")
-	}
-
-	updated, err := s.repo.UpdateListingVersion(scope, *target)
+	created, err := s.createListingVersionForProduct(scope, product, CreateListingVersionInput{
+		VersionLabel: inputVersionLabel,
+		Title:        inputTitle,
+		Description:  inputDescription,
+		BulletPoints: inputBulletPoints,
+		Keywords:     inputKeywords,
+		Platform:     inputPlatform,
+		Site:         inputSite,
+		Locale:       inputLocale,
+	}, false)
 	if err != nil {
 		return nil, err
 	}
 
 	s.logActivity(scope, productID, models.ProductActivityTypeListingGenerated,
-		"Listing Updated", "Listing version "+target.VersionLabel+" updated", nil)
+		"Listing Edited", "New listing version "+created.VersionLabel+" created from "+target.VersionLabel, nil)
 
-	s.updateProductListingStatus(scope, productID)
-	s.updateProductMainStatus(scope, productID)
-
-	return updated, nil
+	return created, nil
 }
 
 // DeleteListingVersion 删除 Listing 版本
@@ -1092,11 +1364,16 @@ func (s *Service) DeleteListingVersion(orgID string, userID string, productID st
 	}
 
 	var versionLabel string
+	var versionStatus string
 	for _, v := range versions {
 		if v.ID == versionID {
 			versionLabel = v.VersionLabel
+			versionStatus = v.Status
 			break
 		}
+	}
+	if versionStatus == models.ListingVersionStatusAdopted {
+		return fmt.Errorf("adopted listing version is immutable")
 	}
 
 	// 删除版本
@@ -1270,15 +1547,23 @@ func (s *Service) CreateExportTask(orgID string, userID string, productID string
 
 	var listingVersionID string
 	var listingVersionLabel string
-	if adopted, adoptedErr := s.repo.GetAdoptedListingVersion(scope, productID, input.Platform, input.Site, input.Locale); adoptedErr == nil && adopted != nil {
-		listingVersionID = adopted.ID
-		listingVersionLabel = adopted.VersionLabel
+	adopted, adoptedErr := s.repo.GetAdoptedListingVersion(scope, productID, input.Platform, input.Site, input.Locale)
+	if adoptedErr != nil || adopted == nil {
+		return nil, fmt.Errorf("adopted listing version is required before export")
+	}
+	listingVersionID = adopted.ID
+	listingVersionLabel = adopted.VersionLabel
+
+	exportID := uuid.New().String()
+	chargeCtx, err := s.prepareExportChargeContext(scope, productID, exportID, input)
+	if err != nil {
+		return nil, err
 	}
 
 	item := models.EcomExportTask{
-		ID:                  uuid.New().String(),
+		ID:                  exportID,
 		ProductID:           productID,
-		Status:              models.ExportTaskStatusPending,
+		Status:              models.ExportTaskStatusSucceeded,
 		Platform:            input.Platform,
 		Site:                input.Site,
 		Locale:              input.Locale,
@@ -1288,10 +1573,28 @@ func (s *Service) CreateExportTask(orgID string, userID string, productID string
 		PrimaryAssetRole:    primaryAssetRole,
 		AssetCount:          len(manifest),
 		AssetManifest:       string(manifestJSON),
+		StorageKey:          fmt.Sprintf("local-dev/ecommerce/exports/%s.%s", exportID, strings.ToLower(input.Format)),
+		FileSize:            fmt.Sprintf("%d", len(string(manifestJSON))),
 	}
 
 	task, err := s.repo.CreateExportTask(scope, item)
 	if err != nil {
+		_ = billinggate.New(s.platform).Release(billinggate.ReleaseInput{Context: chargeCtx, Reason: "export_create_failed"})
+		return nil, err
+	}
+	gate := billinggate.New(s.platform)
+	if err := gate.MarkReserved(chargeCtx, map[string]any{"export_task_id": task.ID, "product_id": productID}); err != nil {
+		_ = gate.Release(billinggate.ReleaseInput{Context: chargeCtx, Reason: "export_mark_reserved_failed"})
+		return nil, err
+	}
+	if _, err := gate.Commit(billinggate.CommitInput{
+		Context:      chargeCtx,
+		SourceAction: "export_task_created",
+		EventID:      fmt.Sprintf("evt_%s", task.ID),
+		Dimensions:   map[string]any{"platform": task.Platform, "site": task.Site, "locale": task.Locale, "format": task.Format},
+		Metadata:     map[string]any{"export_task_id": task.ID, "product_id": productID, "listing_version_id": listingVersionID},
+	}); err != nil {
+		_ = gate.Release(billinggate.ReleaseInput{Context: chargeCtx, Reason: "export_commit_failed"})
 		return nil, err
 	}
 
@@ -1301,12 +1604,260 @@ func (s *Service) CreateExportTask(orgID string, userID string, productID string
 	// 更新商品的 export 状态
 	product, _ := s.repo.GetProduct(scope, productID)
 	if product != nil {
-		product.ExportStatus = models.ExportStatusPending
+		product.ExportStatus = models.ExportStatusReady
 		s.repo.UpdateProduct(scope, *product)
 		s.updateProductMainStatus(scope, productID)
 	}
 
 	return task, nil
+}
+
+func exportPackageSchema(platformCode, site, format string) string {
+	platformCode = strings.ToLower(strings.TrimSpace(platformCode))
+	site = strings.ToLower(strings.TrimSpace(site))
+	format = strings.ToLower(strings.TrimSpace(format))
+	if platformCode == "" {
+		platformCode = "marketplace"
+	}
+	if site == "" {
+		site = "site"
+	}
+	if format == "" {
+		format = "csv"
+	}
+	return fmt.Sprintf("%s/%s/%s/v1", platformCode, site, format)
+}
+
+func packageFileName(packageID string) string {
+	return fmt.Sprintf("%s_export_package.zip", packageID)
+}
+
+func (s *Service) resolveExportPackageProduct(scope repository.Scope, item CreateExportPackageItemInput) (*models.EcomProductSKU, []ExportPackageBlocker) {
+	productID := strings.TrimSpace(item.ProductID)
+	skuCode := strings.TrimSpace(item.SKUCode)
+	if productID == "" && skuCode == "" {
+		return nil, []ExportPackageBlocker{{Code: "product_required", Message: "product_id or sku_code is required"}}
+	}
+	var product *models.EcomProductSKU
+	var err error
+	if productID != "" {
+		product, err = s.repo.GetProduct(scope, productID)
+	} else {
+		product, err = s.repo.GetProductBySKUCode(scope, skuCode)
+	}
+	if err != nil || product == nil {
+		return nil, []ExportPackageBlocker{{Code: "product_not_found", Message: "product not found in current organization"}}
+	}
+	return product, nil
+}
+
+func (s *Service) precheckExportPackageProduct(scope repository.Scope, product *models.EcomProductSKU, input CreateExportPackageInput) []ExportPackageBlocker {
+	blockers := make([]ExportPackageBlocker, 0, 2)
+	if _, _, err := s.buildProductAssetManifest(scope, product.ID, nil); err != nil {
+		blockers = append(blockers, ExportPackageBlocker{Code: "asset_missing", Message: "at least 1 product asset is required"})
+	}
+	if adopted, err := s.repo.GetAdoptedListingVersion(scope, product.ID, input.Platform, input.Site, input.Locale); err != nil || adopted == nil {
+		blockers = append(blockers, ExportPackageBlocker{Code: "listing_missing", Message: "adopted listing version is required"})
+	}
+	return blockers
+}
+
+func (s *Service) buildExportPackageManifest(scope repository.Scope, pkg models.EcomExportPackage, tasks []models.EcomExportTask, results []ExportPackageItemResult) ExportPackageManifest {
+	contentURL := fmt.Sprintf("/api/v1/ecommerce/downloads/%s/content", pkg.ID)
+	manifestURL := fmt.Sprintf("/api/v1/ecommerce/downloads/%s/content?file=manifest", pkg.ID)
+	csvURL := fmt.Sprintf("/api/v1/ecommerce/downloads/%s/content?file=listing_csv", pkg.ID)
+	manifest := ExportPackageManifest{
+		ManifestVersion: "ecommerce.export.package.v1",
+		PackageID:       pkg.ID,
+		GroupID:         pkg.ID,
+		Marketplace:     pkg.Platform,
+		Site:            pkg.Site,
+		Locale:          pkg.Locale,
+		Schema:          pkg.Schema,
+		Format:          pkg.Format,
+		Status:          pkg.Status,
+		CreatedAt:       pkg.CreatedAt,
+		Total:           pkg.TotalCount,
+		Succeeded:       pkg.SucceededCount,
+		Failed:          pkg.FailedCount,
+		Files: []ExportPackageManifestFile{
+			{Role: "manifest", FileName: "manifest.json", ContentType: "application/json", ContentURL: manifestURL},
+			{Role: "listing_csv", FileName: "listing.csv", ContentType: "text/csv", ContentURL: csvURL},
+			{Role: "bundle", FileName: packageFileName(pkg.ID), ContentType: "application/zip", ContentURL: contentURL},
+		},
+		Products: make([]ExportPackageManifestProduct, 0, len(tasks)),
+	}
+	for _, task := range tasks {
+		item := s.buildDownloadListItem(scope, task)
+		manifest.Products = append(manifest.Products, ExportPackageManifestProduct{
+			ProductID:            item.ProductID,
+			SKUCode:              item.ProductSKU,
+			TaskID:               item.TaskID,
+			ListingVersionID:     item.ListingVersionID,
+			ListingVersionLabel:  item.ListingVersionLabel,
+			AssetCount:           item.AssetCount,
+			ListingCSVContentURL: fmt.Sprintf("/api/v1/ecommerce/downloads/%s/content", item.ID),
+		})
+	}
+	for _, result := range results {
+		if !result.Success && len(result.Blockers) > 0 {
+			manifest.Blockers = append(manifest.Blockers, ExportPackageManifestBlocker{ProductID: result.ProductID, SKUCode: result.SKUCode, Blockers: result.Blockers})
+		}
+	}
+	return manifest
+}
+
+func (s *Service) GetExportPackage(orgID string, packageID string) (*ExportPackageResponse, error) {
+	scope := repository.Scope{OrgID: orgID}
+	pkg, err := s.repo.GetExportPackage(scope, packageID)
+	if err != nil {
+		return nil, err
+	}
+	tasks, err := s.repo.ListExportTasksByPackage(scope, pkg.ID)
+	if err != nil {
+		return nil, err
+	}
+	results := make([]ExportPackageItemResult, 0, len(tasks))
+	for _, task := range tasks {
+		item := s.buildDownloadListItem(scope, task)
+		results = append(results, ExportPackageItemResult{
+			ProductID:  item.ProductID,
+			SKUCode:    item.ProductSKU,
+			Success:    task.Status == models.ExportTaskStatusSucceeded,
+			TaskID:     task.ID,
+			DownloadID: task.ID,
+			ContentURL: item.ContentURL,
+		})
+	}
+	manifest := s.buildExportPackageManifest(scope, *pkg, tasks, nil)
+	if strings.TrimSpace(pkg.PackageManifest) != "" {
+		_ = json.Unmarshal([]byte(pkg.PackageManifest), &manifest)
+	}
+	return &ExportPackageResponse{
+		PackageID:   pkg.ID,
+		GroupID:     pkg.ID,
+		Status:      pkg.Status,
+		Total:       pkg.TotalCount,
+		Succeeded:   pkg.SucceededCount,
+		Failed:      pkg.FailedCount,
+		ContentURL:  fmt.Sprintf("/api/v1/ecommerce/downloads/%s/content", pkg.ID),
+		ManifestURL: fmt.Sprintf("/api/v1/ecommerce/downloads/%s/content?file=manifest", pkg.ID),
+		Package: DownloadPackage{
+			FileName:          packageFileName(pkg.ID),
+			FileSize:          pkg.FileSize,
+			ContentType:       "application/zip",
+			ManifestAvailable: strings.TrimSpace(pkg.PackageManifest) != "",
+		},
+		Manifest: manifest,
+		Items:    results,
+	}, nil
+}
+
+func (s *Service) CreateExportPackage(orgID string, userID string, input CreateExportPackageInput) (*ExportPackageResponse, error) {
+	scope := repository.Scope{UserID: userID, OrgID: orgID}
+	if len(input.Items) == 0 {
+		return nil, fmt.Errorf("at least one export package item is required")
+	}
+	packageID := uuid.New().String()
+	pkg := models.EcomExportPackage{
+		ID:         packageID,
+		Status:     models.ExportPackageStatusFailed,
+		Platform:   input.Platform,
+		Site:       input.Site,
+		Locale:     input.Locale,
+		Format:     input.Format,
+		Schema:     exportPackageSchema(input.Platform, input.Site, input.Format),
+		TotalCount: len(input.Items),
+	}
+	createdPkg, err := s.repo.CreateExportPackage(scope, pkg)
+	if err != nil {
+		return nil, err
+	}
+	pkg = *createdPkg
+
+	results := make([]ExportPackageItemResult, 0, len(input.Items))
+	createdTasks := make([]models.EcomExportTask, 0, len(input.Items))
+	seen := map[string]struct{}{}
+	for _, requestItem := range input.Items {
+		product, blockers := s.resolveExportPackageProduct(scope, requestItem)
+		result := ExportPackageItemResult{ProductID: strings.TrimSpace(requestItem.ProductID), SKUCode: strings.TrimSpace(requestItem.SKUCode)}
+		if product != nil {
+			result.ProductID = product.ID
+			result.SKUCode = product.SKUCode
+		}
+		if product != nil {
+			if _, ok := seen[product.ID]; ok {
+				blockers = append(blockers, ExportPackageBlocker{Code: "duplicate_product", Message: "product appears more than once in package request"})
+			} else {
+				seen[product.ID] = struct{}{}
+			}
+		}
+		if product != nil && len(blockers) == 0 {
+			blockers = s.precheckExportPackageProduct(scope, product, input)
+		}
+		if len(blockers) > 0 {
+			result.Blockers = blockers
+			results = append(results, result)
+			continue
+		}
+
+		task, createErr := s.CreateExportTask(orgID, userID, product.ID, CreateExportTaskInput{Platform: input.Platform, Site: input.Site, Locale: input.Locale, Format: input.Format})
+		if createErr != nil {
+			result.Blockers = []ExportPackageBlocker{{Code: "export_create_failed", Message: createErr.Error()}}
+			results = append(results, result)
+			continue
+		}
+		task.PackageID = packageID
+		if updated, updateErr := s.repo.UpdateExportTask(scope, *task); updateErr == nil && updated != nil {
+			task = updated
+		}
+		result.Success = true
+		result.TaskID = task.ID
+		result.DownloadID = task.ID
+		result.ContentURL = fmt.Sprintf("/api/v1/ecommerce/downloads/%s/content", task.ID)
+		results = append(results, result)
+		createdTasks = append(createdTasks, *task)
+	}
+
+	pkg.SucceededCount = len(createdTasks)
+	pkg.FailedCount = len(input.Items) - len(createdTasks)
+	switch {
+	case pkg.SucceededCount == 0:
+		pkg.Status = models.ExportPackageStatusFailed
+	case pkg.FailedCount > 0:
+		pkg.Status = models.ExportPackageStatusPartialSucceeded
+	default:
+		pkg.Status = models.ExportPackageStatusSucceeded
+	}
+	manifest := s.buildExportPackageManifest(scope, pkg, createdTasks, results)
+	manifestBytes, err := json.Marshal(manifest)
+	if err != nil {
+		return nil, err
+	}
+	pkg.PackageManifest = string(manifestBytes)
+	pkg.FileSize = fmt.Sprintf("%d", len(manifestBytes))
+	if updatedPkg, updateErr := s.repo.UpdateExportPackage(scope, pkg); updateErr == nil && updatedPkg != nil {
+		pkg = *updatedPkg
+	}
+
+	return &ExportPackageResponse{
+		PackageID:   pkg.ID,
+		GroupID:     pkg.ID,
+		Status:      pkg.Status,
+		Total:       pkg.TotalCount,
+		Succeeded:   pkg.SucceededCount,
+		Failed:      pkg.FailedCount,
+		ContentURL:  fmt.Sprintf("/api/v1/ecommerce/downloads/%s/content", pkg.ID),
+		ManifestURL: fmt.Sprintf("/api/v1/ecommerce/downloads/%s/content?file=manifest", pkg.ID),
+		Package: DownloadPackage{
+			FileName:          packageFileName(pkg.ID),
+			FileSize:          pkg.FileSize,
+			ContentType:       "application/zip",
+			ManifestAvailable: true,
+		},
+		Manifest: manifest,
+		Items:    results,
+	}, nil
 }
 
 // UpdateExportTaskStatus 更新导出任务状态
@@ -1365,21 +1916,62 @@ func (s *Service) UpdateExportTaskStatus(orgID string, userID string, productID 
 // ListDownloads 列出组织下的下载中心聚合记录
 func (s *Service) ListDownloads(orgID string) ([]DownloadListItem, error) {
 	scope := repository.Scope{OrgID: orgID}
+	packages, err := s.repo.ListExportPackages(scope)
+	if err != nil {
+		return nil, err
+	}
 	tasks, err := s.repo.ListAllExportTasks(scope)
 	if err != nil {
 		return nil, err
 	}
 
-	items := make([]DownloadListItem, 0, len(tasks))
+	items := make([]DownloadListItem, 0, len(packages)+len(tasks))
+	for _, pkg := range packages {
+		items = append(items, s.buildExportPackageListItem(pkg))
+	}
 	for _, task := range tasks {
 		items = append(items, s.buildDownloadListItem(scope, task))
 	}
 	return items, nil
 }
 
+func (s *Service) buildExportPackageListItem(pkg models.EcomExportPackage) DownloadListItem {
+	contentURL := fmt.Sprintf("/api/v1/ecommerce/downloads/%s/content", pkg.ID)
+	manifestURL := fmt.Sprintf("/api/v1/ecommerce/downloads/%s/content?file=manifest", pkg.ID)
+	item := DownloadListItem{
+		ID:               pkg.ID,
+		PackageID:        pkg.ID,
+		SourceType:       "export_package",
+		SKUCount:         pkg.TotalCount,
+		SucceededCount:   pkg.SucceededCount,
+		FailedCount:      pkg.FailedCount,
+		Platform:         pkg.Platform,
+		Site:             pkg.Site,
+		Locale:           pkg.Locale,
+		Schema:           pkg.Schema,
+		Format:           pkg.Format,
+		Status:           pkg.Status,
+		FileSize:         pkg.FileSize,
+		ContentURL:       contentURL,
+		ManifestURL:      manifestURL,
+		DownloadFileName: packageFileName(pkg.ID),
+		Downloadable:     pkg.SucceededCount > 0 && strings.TrimSpace(pkg.PackageManifest) != "",
+		CreatedAt:        pkg.CreatedAt,
+	}
+	item.Package = DownloadPackage{FileName: item.DownloadFileName, FileSize: pkg.FileSize, ContentType: "application/zip", ManifestAvailable: strings.TrimSpace(pkg.PackageManifest) != ""}
+	return item
+}
+
 // GetDownloadContent 获取导出包下载内容
-func (s *Service) GetDownloadContent(orgID string, downloadID string) (*DownloadListItem, io.ReadCloser, http.Header, error) {
+func (s *Service) GetDownloadContent(orgID string, downloadID string, fileRole ...string) (*DownloadListItem, io.ReadCloser, http.Header, error) {
 	scope := repository.Scope{OrgID: orgID}
+	role := ""
+	if len(fileRole) > 0 {
+		role = strings.TrimSpace(fileRole[0])
+	}
+	if pkg, err := s.repo.GetExportPackage(scope, downloadID); err == nil && pkg != nil {
+		return s.getExportPackageContent(scope, *pkg, role)
+	}
 	task, err := s.repo.GetExportTask(scope, downloadID)
 	if err != nil {
 		return nil, nil, nil, err
@@ -1388,6 +1980,17 @@ func (s *Service) GetDownloadContent(orgID string, downloadID string) (*Download
 	item := s.buildDownloadListItem(scope, *task)
 	if !item.Downloadable {
 		return &item, nil, nil, fmt.Errorf("download is not ready")
+	}
+
+	if strings.TrimSpace(task.StorageKey) != "" && strings.HasPrefix(task.StorageKey, "local-dev/") {
+		content, err := buildExportCSVContent(item)
+		if err != nil {
+			return &item, nil, nil, err
+		}
+		headers := http.Header{}
+		headers.Set("Content-Type", "text/csv; charset=utf-8")
+		headers.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", item.DownloadFileName))
+		return &item, io.NopCloser(bytes.NewReader(content)), headers, nil
 	}
 
 	if strings.TrimSpace(task.StorageKey) != "" {
@@ -1406,6 +2009,111 @@ func (s *Service) GetDownloadContent(orgID string, downloadID string) (*Download
 	}
 
 	return &item, nil, nil, fmt.Errorf("download content is not available")
+}
+
+func (s *Service) getExportPackageContent(scope repository.Scope, pkg models.EcomExportPackage, fileRole string) (*DownloadListItem, io.ReadCloser, http.Header, error) {
+	item := s.buildExportPackageListItem(pkg)
+	if !item.Downloadable {
+		return &item, nil, nil, fmt.Errorf("download package is not ready")
+	}
+	tasks, err := s.repo.ListExportTasksByPackage(scope, pkg.ID)
+	if err != nil {
+		return &item, nil, nil, err
+	}
+	manifestJSON := strings.TrimSpace(pkg.PackageManifest)
+	if manifestJSON == "" {
+		manifest := s.buildExportPackageManifest(scope, pkg, tasks, nil)
+		manifestBytes, marshalErr := json.Marshal(manifest)
+		if marshalErr != nil {
+			return &item, nil, nil, marshalErr
+		}
+		manifestJSON = string(manifestBytes)
+	}
+
+	switch strings.ToLower(strings.TrimSpace(fileRole)) {
+	case "manifest", "manifest.json":
+		headers := http.Header{}
+		headers.Set("Content-Type", "application/json; charset=utf-8")
+		headers.Set("Content-Disposition", `attachment; filename="manifest.json"`)
+		return &item, io.NopCloser(strings.NewReader(manifestJSON)), headers, nil
+	case "listing_csv", "csv", "listing.csv":
+		csvContent, csvErr := s.buildExportPackageCSVContent(scope, tasks)
+		if csvErr != nil {
+			return &item, nil, nil, csvErr
+		}
+		headers := http.Header{}
+		headers.Set("Content-Type", "text/csv; charset=utf-8")
+		headers.Set("Content-Disposition", `attachment; filename="listing.csv"`)
+		return &item, io.NopCloser(bytes.NewReader(csvContent)), headers, nil
+	default:
+		csvContent, csvErr := s.buildExportPackageCSVContent(scope, tasks)
+		if csvErr != nil {
+			return &item, nil, nil, csvErr
+		}
+		var buf bytes.Buffer
+		zipWriter := zip.NewWriter(&buf)
+		manifestFile, err := zipWriter.Create("manifest.json")
+		if err != nil {
+			return &item, nil, nil, err
+		}
+		if _, err := manifestFile.Write([]byte(manifestJSON)); err != nil {
+			return &item, nil, nil, err
+		}
+		csvFile, err := zipWriter.Create("listing.csv")
+		if err != nil {
+			return &item, nil, nil, err
+		}
+		if _, err := csvFile.Write(csvContent); err != nil {
+			return &item, nil, nil, err
+		}
+		if err := zipWriter.Close(); err != nil {
+			return &item, nil, nil, err
+		}
+		headers := http.Header{}
+		headers.Set("Content-Type", "application/zip")
+		headers.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", item.DownloadFileName))
+		return &item, io.NopCloser(bytes.NewReader(buf.Bytes())), headers, nil
+	}
+}
+
+func (s *Service) buildExportPackageCSVContent(scope repository.Scope, tasks []models.EcomExportTask) ([]byte, error) {
+	var buf bytes.Buffer
+	writer := csv.NewWriter(&buf)
+	if err := writer.Write([]string{"marketplace", "site", "locale", "schema_version", "sku", "title", "listing_version_id", "listing_version_label", "asset_count", "primary_asset_role", "download_task_id", "package_id"}); err != nil {
+		return nil, err
+	}
+	for _, task := range tasks {
+		item := s.buildDownloadListItem(scope, task)
+		if err := writer.Write([]string{item.Platform, item.Site, item.Locale, exportPackageSchema(item.Platform, item.Site, item.Format), item.ProductSKU, item.ProductTitle, item.ListingVersionID, item.ListingVersionLabel, fmt.Sprintf("%d", item.AssetCount), item.PrimaryAssetRole, item.ID, task.PackageID}); err != nil {
+			return nil, err
+		}
+	}
+	writer.Flush()
+	if err := writer.Error(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func buildExportCSVContent(item DownloadListItem) ([]byte, error) {
+	var buf bytes.Buffer
+	writer := csv.NewWriter(&buf)
+	if err := writer.Write([]string{"marketplace", "site", "locale", "schema_version", "product_sku", "product_title", "listing_version_id", "listing_version_label", "asset_count", "primary_asset_role", "download_task_id"}); err != nil {
+		return nil, err
+	}
+	if err := writer.Write([]string{item.Platform, item.Site, item.Locale, exportPackageSchema(item.Platform, item.Site, item.Format), item.ProductSKU, item.ProductTitle, item.ListingVersionID, item.ListingVersionLabel, fmt.Sprintf("%d", item.AssetCount), item.PrimaryAssetRole, item.ID}); err != nil {
+		return nil, err
+	}
+	for _, asset := range item.Assets {
+		if err := writer.Write([]string{item.Platform, item.Site, item.Locale, exportPackageSchema(item.Platform, item.Site, item.Format), "asset", asset.FileName, asset.AssetRole, asset.AssetID, asset.RelationID, asset.ContentURL, item.ID}); err != nil {
+			return nil, err
+		}
+	}
+	writer.Flush()
+	if err := writer.Error(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 // ==================== 活动记录 ====================
@@ -1471,6 +2179,7 @@ type UpdateProductAssetInput struct {
 
 type BatchCreateListingVersionItemInput struct {
 	ProductID    string   `json:"product_id"`
+	SKUCode      string   `json:"sku_code"`
 	VersionLabel string   `json:"version_label"`
 	Title        string   `json:"title"`
 	Description  string   `json:"description"`
@@ -1482,7 +2191,8 @@ type BatchCreateListingVersionItemInput struct {
 }
 
 type BatchCreateListingVersionsInput struct {
-	Items []BatchCreateListingVersionItemInput `json:"items" binding:"required"`
+	Preview bool                                 `json:"preview"`
+	Items   []BatchCreateListingVersionItemInput `json:"items" binding:"required"`
 }
 
 type BatchAdoptListingVersionItemInput struct {
@@ -1501,6 +2211,7 @@ type BatchListingMutationItem struct {
 	VersionID    string                     `json:"version_id,omitempty"`
 	VersionLabel string                     `json:"version_label,omitempty"`
 	Success      bool                       `json:"success"`
+	Preview      bool                       `json:"preview,omitempty"`
 	Message      string                     `json:"message,omitempty"`
 	Listing      *models.EcomListingVersion `json:"listing,omitempty"`
 }
@@ -1509,6 +2220,7 @@ type BatchListingMutationResult struct {
 	Total     int                        `json:"total"`
 	Succeeded int                        `json:"succeeded"`
 	Failed    int                        `json:"failed"`
+	Preview   bool                       `json:"preview,omitempty"`
 	Items     []BatchListingMutationItem `json:"items"`
 }
 
@@ -1550,4 +2262,90 @@ type CreateExportTaskInput struct {
 	Locale           string   `json:"locale" binding:"required"`
 	Format           string   `json:"format" binding:"required"`
 	AssetRelationIDs []string `json:"asset_relation_ids,omitempty"`
+}
+
+type CreateExportPackageInput struct {
+	Items    []CreateExportPackageItemInput `json:"items" binding:"required"`
+	Platform string                         `json:"platform" binding:"required"`
+	Site     string                         `json:"site" binding:"required"`
+	Locale   string                         `json:"locale" binding:"required"`
+	Format   string                         `json:"format" binding:"required"`
+	Mode     string                         `json:"mode,omitempty"`
+}
+
+type CreateExportPackageItemInput struct {
+	ProductID string `json:"product_id,omitempty"`
+	SKUCode   string `json:"sku_code,omitempty"`
+}
+
+type ExportPackageBlocker struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+type ExportPackageItemResult struct {
+	ProductID  string                 `json:"product_id,omitempty"`
+	SKUCode    string                 `json:"sku_code,omitempty"`
+	Success    bool                   `json:"success"`
+	TaskID     string                 `json:"task_id,omitempty"`
+	DownloadID string                 `json:"download_id,omitempty"`
+	ContentURL string                 `json:"content_url,omitempty"`
+	Blockers   []ExportPackageBlocker `json:"blockers,omitempty"`
+}
+
+type ExportPackageResponse struct {
+	PackageID   string                    `json:"package_id"`
+	GroupID     string                    `json:"group_id"`
+	Status      string                    `json:"status"`
+	Total       int                       `json:"total"`
+	Succeeded   int                       `json:"succeeded"`
+	Failed      int                       `json:"failed"`
+	ContentURL  string                    `json:"content_url"`
+	ManifestURL string                    `json:"manifest_url"`
+	Package     DownloadPackage           `json:"package"`
+	Manifest    ExportPackageManifest     `json:"manifest"`
+	Items       []ExportPackageItemResult `json:"items"`
+}
+
+type ExportPackageManifest struct {
+	ManifestVersion string                         `json:"manifest_version"`
+	PackageID       string                         `json:"package_id"`
+	GroupID         string                         `json:"group_id"`
+	Marketplace     string                         `json:"marketplace"`
+	Site            string                         `json:"site"`
+	Locale          string                         `json:"locale"`
+	Schema          string                         `json:"schema"`
+	Format          string                         `json:"format"`
+	Status          string                         `json:"status"`
+	CreatedAt       time.Time                      `json:"created_at"`
+	Total           int                            `json:"total"`
+	Succeeded       int                            `json:"succeeded"`
+	Failed          int                            `json:"failed"`
+	Files           []ExportPackageManifestFile    `json:"files"`
+	Products        []ExportPackageManifestProduct `json:"products"`
+	Blockers        []ExportPackageManifestBlocker `json:"blockers,omitempty"`
+}
+
+type ExportPackageManifestFile struct {
+	Role        string `json:"role"`
+	FileName    string `json:"file_name"`
+	ContentType string `json:"content_type"`
+	Size        int    `json:"size,omitempty"`
+	ContentURL  string `json:"content_url"`
+}
+
+type ExportPackageManifestProduct struct {
+	ProductID            string `json:"product_id"`
+	SKUCode              string `json:"sku_code"`
+	TaskID               string `json:"task_id"`
+	ListingVersionID     string `json:"listing_version_id,omitempty"`
+	ListingVersionLabel  string `json:"listing_version_label,omitempty"`
+	AssetCount           int    `json:"asset_count"`
+	ListingCSVContentURL string `json:"listing_csv_content_url"`
+}
+
+type ExportPackageManifestBlocker struct {
+	ProductID string                 `json:"product_id,omitempty"`
+	SKUCode   string                 `json:"sku_code,omitempty"`
+	Blockers  []ExportPackageBlocker `json:"blockers"`
 }

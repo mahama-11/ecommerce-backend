@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/lib/pq"
+)
 
 // ProductStatus 枚举
 const (
@@ -48,6 +52,13 @@ const (
 	ExportTaskStatusFailed     = "failed"
 )
 
+// ExportPackageStatus 枚举
+const (
+	ExportPackageStatusSucceeded        = "succeeded"
+	ExportPackageStatusPartialSucceeded = "partial_succeeded"
+	ExportPackageStatusFailed           = "failed"
+)
+
 // AssetRelationOwnerType 枚举
 const (
 	AssetRelationOwnerTypeProduct    = "product"
@@ -75,25 +86,25 @@ const (
 
 // EcomProductSKU 商品 SKU 表
 type EcomProductSKU struct {
-	ID             string    `gorm:"type:varchar(64);primaryKey" json:"id"`
-	OrganizationID string    `gorm:"type:varchar(64);index;not null" json:"organization_id"`
-	SPUID          string    `gorm:"type:varchar(64);index" json:"spu_id,omitempty"`
-	SKUCode        string    `gorm:"type:varchar(128);index;not null" json:"sku_code"`
-	Title          string    `gorm:"type:varchar(256);not null" json:"title"`
-	CategoryID     string    `gorm:"type:varchar(64);index" json:"category_id,omitempty"`
-	BrandID        string    `gorm:"type:varchar(64);index" json:"brand_id,omitempty"`
-	SpecJSON       string    `gorm:"type:text" json:"spec_json,omitempty"`
-	CostJSON       string    `gorm:"type:text" json:"cost_json,omitempty"`
-	CostCurrency   string    `gorm:"type:varchar(16);default:'USD'" json:"cost_currency,omitempty"`
-	Tags           []string  `gorm:"type:text[]" json:"tags,omitempty"`
-	Status         string    `gorm:"type:varchar(32);index;not null" json:"status"`
-	AssetStatus    string    `gorm:"type:varchar(32);index;not null" json:"asset_status"`
-	ListingStatus  string    `gorm:"type:varchar(32);index;not null" json:"listing_status"`
-	ExportStatus   string    `gorm:"type:varchar(32);index;not null" json:"export_status"`
-	CreatedBy      string    `gorm:"type:varchar(64)" json:"created_by,omitempty"`
-	UpdatedBy      string    `gorm:"type:varchar(64)" json:"updated_by,omitempty"`
-	CreatedAt      time.Time `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt      time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+	ID             string         `gorm:"type:varchar(64);primaryKey" json:"id"`
+	OrganizationID string         `gorm:"type:varchar(64);index;not null" json:"organization_id"`
+	SPUID          string         `gorm:"type:varchar(64);index" json:"spu_id,omitempty"`
+	SKUCode        string         `gorm:"type:varchar(128);index;not null" json:"sku_code"`
+	Title          string         `gorm:"type:varchar(256);not null" json:"title"`
+	CategoryID     string         `gorm:"type:varchar(64);index" json:"category_id,omitempty"`
+	BrandID        string         `gorm:"type:varchar(64);index" json:"brand_id,omitempty"`
+	SpecJSON       string         `gorm:"type:text" json:"spec_json,omitempty"`
+	CostJSON       string         `gorm:"type:text" json:"cost_json,omitempty"`
+	CostCurrency   string         `gorm:"type:varchar(16);default:'USD'" json:"cost_currency,omitempty"`
+	Tags           pq.StringArray `gorm:"type:text[]" json:"tags,omitempty"`
+	Status         string         `gorm:"type:varchar(32);index;not null" json:"status"`
+	AssetStatus    string         `gorm:"type:varchar(32);index;not null" json:"asset_status"`
+	ListingStatus  string         `gorm:"type:varchar(32);index;not null" json:"listing_status"`
+	ExportStatus   string         `gorm:"type:varchar(32);index;not null" json:"export_status"`
+	CreatedBy      string         `gorm:"type:varchar(64)" json:"created_by,omitempty"`
+	UpdatedBy      string         `gorm:"type:varchar(64)" json:"updated_by,omitempty"`
+	CreatedAt      time.Time      `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt      time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
 }
 
 // TableName 显式指定表名
@@ -115,7 +126,10 @@ type EcomAssetRelation struct {
 	SiteCode       string    `gorm:"type:varchar(32);index" json:"site_code,omitempty"`
 	LocaleCode     string    `gorm:"type:varchar(16)" json:"locale_code,omitempty"`
 	SortOrder      int       `gorm:"default:0;not null" json:"sort_order"`
+	Visibility     string    `gorm:"type:varchar(32);index;default:'library';not null" json:"visibility"`
+	Metadata       string    `gorm:"type:text" json:"metadata,omitempty"`
 	CreatedAt      time.Time `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt      time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 }
 
 // TableName 显式指定表名
@@ -137,22 +151,22 @@ const (
 
 // EcomListingVersion Listing 版本表
 type EcomListingVersion struct {
-	ID             string     `gorm:"type:varchar(64);primaryKey" json:"id"`
-	OrganizationID string     `gorm:"type:varchar(64);index;not null" json:"organization_id"`
-	ProductID      string     `gorm:"type:varchar(64);index;not null" json:"product_id"`
-	VersionNo      int        `gorm:"type:int;not null;default:1" json:"version_no"`
-	VersionLabel   string     `gorm:"type:varchar(128)" json:"version_label,omitempty"`
-	Status         string     `gorm:"type:varchar(32);index;not null" json:"status"`
-	Title          string     `gorm:"type:varchar(512)" json:"title"`
-	Description    string     `gorm:"type:text" json:"description,omitempty"`
-	BulletPoints   []string   `gorm:"type:text[]" json:"bullet_points,omitempty"`
-	Keywords       []string   `gorm:"type:text[]" json:"keywords,omitempty"`
-	Platform       string     `gorm:"type:varchar(32);index;not null" json:"platform"`
-	Site           string     `gorm:"type:varchar(32);index;not null" json:"site"`
-	Locale         string     `gorm:"type:varchar(16);index;not null" json:"locale"`
-	AdoptedAt      *time.Time `json:"adopted_at,omitempty"`
-	CreatedBy      string     `gorm:"type:varchar(64)" json:"created_by,omitempty"`
-	CreatedAt      time.Time  `gorm:"autoCreateTime" json:"created_at"`
+	ID             string         `gorm:"type:varchar(64);primaryKey" json:"id"`
+	OrganizationID string         `gorm:"type:varchar(64);index;not null" json:"organization_id"`
+	ProductID      string         `gorm:"type:varchar(64);index;not null" json:"product_id"`
+	VersionNo      int            `gorm:"type:int;not null;default:1" json:"version_no"`
+	VersionLabel   string         `gorm:"type:varchar(128)" json:"version_label,omitempty"`
+	Status         string         `gorm:"type:varchar(32);index;not null" json:"status"`
+	Title          string         `gorm:"type:varchar(512)" json:"title"`
+	Description    string         `gorm:"type:text" json:"description,omitempty"`
+	BulletPoints   pq.StringArray `gorm:"type:text[]" json:"bullet_points,omitempty"`
+	Keywords       pq.StringArray `gorm:"type:text[]" json:"keywords,omitempty"`
+	Platform       string         `gorm:"type:varchar(32);index;not null" json:"platform"`
+	Site           string         `gorm:"type:varchar(32);index;not null" json:"site"`
+	Locale         string         `gorm:"type:varchar(16);index;not null" json:"locale"`
+	AdoptedAt      *time.Time     `json:"adopted_at,omitempty"`
+	CreatedBy      string         `gorm:"type:varchar(64)" json:"created_by,omitempty"`
+	CreatedAt      time.Time      `gorm:"autoCreateTime" json:"created_at"`
 }
 
 // TableName 显式指定表名
@@ -191,6 +205,7 @@ type EcomExportTask struct {
 	ID                  string    `gorm:"type:varchar(64);primaryKey" json:"id"`
 	OrganizationID      string    `gorm:"type:varchar(64);index;not null" json:"organization_id"`
 	ProductID           string    `gorm:"type:varchar(64);index;not null" json:"product_id"`
+	PackageID           string    `gorm:"type:varchar(64);index" json:"package_id,omitempty"`
 	Status              string    `gorm:"type:varchar(32);index;not null" json:"status"`
 	Platform            string    `gorm:"type:varchar(32);index;not null" json:"platform"`
 	Site                string    `gorm:"type:varchar(32);index;not null" json:"site"`
@@ -211,6 +226,32 @@ type EcomExportTask struct {
 // TableName 显式指定表名
 func (EcomExportTask) TableName() string {
 	return "ecom_export_task"
+}
+
+// EcomExportPackage 导出包/多 SKU 任务组表
+// PackageManifest stores the public package manifest JSON; internal storage keys stay on child tasks.
+type EcomExportPackage struct {
+	ID              string    `gorm:"type:varchar(64);primaryKey" json:"id"`
+	OrganizationID  string    `gorm:"type:varchar(64);index;not null" json:"organization_id"`
+	Status          string    `gorm:"type:varchar(32);index;not null" json:"status"`
+	Platform        string    `gorm:"type:varchar(32);index;not null" json:"platform"`
+	Site            string    `gorm:"type:varchar(32);index;not null" json:"site"`
+	Locale          string    `gorm:"type:varchar(16);index;not null" json:"locale"`
+	Format          string    `gorm:"type:varchar(16);not null" json:"format"`
+	Schema          string    `gorm:"type:varchar(64);not null" json:"schema"`
+	TotalCount      int       `gorm:"default:0;not null" json:"total_count"`
+	SucceededCount  int       `gorm:"default:0;not null" json:"succeeded_count"`
+	FailedCount     int       `gorm:"default:0;not null" json:"failed_count"`
+	PackageManifest string    `gorm:"type:text" json:"package_manifest,omitempty"`
+	FileSize        string    `gorm:"type:varchar(32)" json:"file_size,omitempty"`
+	CreatedBy       string    `gorm:"type:varchar(64)" json:"created_by,omitempty"`
+	CreatedAt       time.Time `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt       time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+}
+
+// TableName 显式指定表名
+func (EcomExportPackage) TableName() string {
+	return "ecom_export_package"
 }
 
 // EcomProductActivity 商品活动表

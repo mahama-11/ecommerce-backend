@@ -131,8 +131,30 @@ func Steps(cfg config.DatabaseConfig) []Step {
 				&models.EcomListingVersion{},
 				&models.EcomProfitSnapshot{},
 				&models.EcomExportTask{},
+				&models.EcomExportPackage{},
 				&models.EcomProductActivity{},
 			)
+		},
+	}, {
+		Version: 202604300001,
+		Name:    "prompt_center_schema_bootstrap",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(
+				&models.EcommercePromptRun{},
+				&models.EcommerceImageJob{},
+			)
+		},
+	}, {
+		Version: 202605080001,
+		Name:    "asset_library_relation_governance_fields",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(&models.EcomAssetRelation{})
+		},
+	}, {
+		Version: 202605080002,
+		Name:    "export_package_group_schema",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(&models.EcomExportTask{}, &models.EcomExportPackage{})
 		},
 	}}
 	sort.Slice(steps, func(i, j int) bool { return steps[i].Version < steps[j].Version })

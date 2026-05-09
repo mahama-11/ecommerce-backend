@@ -73,16 +73,22 @@ For product image generation, use the platform runtime as the execution layer an
 - internal service authentication is available under `/internal/v1/ecommerce/*`
 - template center API success-path tests now cover catalog, detail, favorite, copy, and use flows
 - first image runtime integration slice is active with product-owned `ecommerce_image_jobs` and `ecommerce_assets`
+- first Prompt Center vertical slice is active with product-owned `ecommerce_prompt_runs`, immutable preview snapshots, source maps, content hashes, schema versioning, compiled final prompts, and prompt-bound image job metadata/runtime manifests
+- first public Prompt Center routes are available under:
+  - `POST /api/v1/ecommerce/prompts/preview`
+  - `GET /api/v1/ecommerce/prompts/:promptId`
 - first public image runtime routes are available under:
   - `POST /api/v1/ecommerce/assets/source`
   - `GET /api/v1/ecommerce/image-jobs`
   - `POST /api/v1/ecommerce/image-jobs`
   - `GET /api/v1/ecommerce/image-jobs/:jobID`
   - source asset registration now requires `product_id` and `sku_code`
-  - image job creation now requires `product_id` and `sku_code`
+  - image job creation now requires `product_id` and `sku_code`; the formal path accepts `prompt_id` and uses the persisted Prompt Center snapshot before legacy prompt/template fields
   - source assets are validated against the bound product before job creation
   - generated result assets are automatically archived into the bound product asset set
   - `GET /api/v1/ecommerce/image-jobs` can be filtered by `productID` for product-scoped tool history
+  - Asset Library governance routes are available under `GET /api/v1/ecommerce/assets/library`, `GET /api/v1/ecommerce/assets/library/stats`, `GET /api/v1/ecommerce/assets/library/:relationId/lineage`, `PATCH /api/v1/ecommerce/assets/library/:relationId/governance`, and `PATCH /api/v1/ecommerce/assets/library/batch-governance`
+  - Asset Library list supports server-side filters for `source_type`, `product_id`, `sku_code`, `asset_role`/`role`, `visibility`, `status`, `tag`, and `q`; list responses expose asset content proxy/reference URLs instead of internal storage keys
 - commerce routes are available under:
   - `GET /api/v1/ecommerce/commercial/offerings`
   - `POST /api/v1/ecommerce/commercial/orders`
@@ -141,6 +147,7 @@ For product image generation, use the platform runtime as the execution layer an
   - `POST /api/v1/ecommerce/products/:product_id/profit-snapshots/calculate`
   - `GET /api/v1/ecommerce/products/:product_id/export-tasks`
   - `POST /api/v1/ecommerce/products/:product_id/export-tasks`
+  - `POST /api/v1/ecommerce/export-packages`
   - `PATCH /api/v1/ecommerce/products/:product_id/export-tasks/status`
 - product-owned download center routes are available under:
   - `GET /api/v1/ecommerce/downloads`
@@ -153,12 +160,13 @@ For product image generation, use the platform runtime as the execution layer an
 - startup now logs a template center seed summary and warns when built-in example assets are missing
 - automated validation currently covers package compilation, workspace module tests, and template center API success paths
 - billing, template center, and image runtime paths now have targeted handler/service validation in the backend test suite
-- download center currently aggregates product export tasks at organization scope and exposes authenticated download streaming when `storage_key` is available, with `package_url` kept as a direct-download fallback
-- download-center payloads now include linked asset manifest snippets so frontend pages can trace package records back to product assets
+- download center currently aggregates product export tasks and multi-SKU export package rows at organization scope and exposes authenticated download streaming when `storage_key` is available, with `package_url` kept as a direct-download fallback
+- download-center payloads now include linked asset manifest snippets and package metadata/content URLs so frontend pages can trace package records back to product assets
+- multi-SKU export package creation supports per-SKU partial success/blockers, creates child export tasks for ready SKUs, persists a package manifest, and serves a zip bundle with `manifest.json` and `listing.csv` through `/downloads/:download_id/content`
 - image-runtime tests now also cover product-bound source registration, product-bound job creation, and automatic result archival into product assets
-- batch listing now has real bulk create/adopt endpoints that accept per-product listing payloads and return per-item success/failure details
-- listing version creation now validates that the target product exists before writing data and immediately syncs product `listing_status` / main status after a new version is created
-- listing versions can now be edited in place through a dedicated patch route, preserving existing adoption status while updating title, description, platform/site/locale, and other editable fields
+- batch listing now has real bulk draft/preview create and adopt endpoints that accept per-product or per-`sku_code` listing payloads and return per-item success/failure details
+- listing version creation now validates that the target SKU exists and is asset-ready before writing data, applies field-level listing validation, and immediately syncs product `listing_status` / main status after a new version is created
+- listing version edits are immutable: the patch route creates a new draft version from the selected version plus edits; historical adopted versions are not patched, and adopted versions cannot be deleted
 
 ## 6. Runtime Configuration
 

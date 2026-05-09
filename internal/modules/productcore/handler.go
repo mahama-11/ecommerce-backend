@@ -1,17 +1,67 @@
 package productcore
 
 import (
+	"ecommerce-service/internal/models"
 	"ecommerce-service/internal/modules/moduleutil"
 	"ecommerce-service/internal/telemetry"
 	"ecommerce-service/pkg/response"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
 	service *Service
+}
+
+type exportTaskPublicResponse struct {
+	ID                  string    `json:"id"`
+	ProductID           string    `json:"product_id"`
+	PackageID           string    `json:"package_id,omitempty"`
+	Status              string    `json:"status"`
+	Platform            string    `json:"platform"`
+	Site                string    `json:"site"`
+	Locale              string    `json:"locale"`
+	Format              string    `json:"format"`
+	ListingVersionID    string    `json:"listing_version_id,omitempty"`
+	ListingVersionLabel string    `json:"listing_version_label,omitempty"`
+	PrimaryAssetRole    string    `json:"primary_asset_role,omitempty"`
+	AssetCount          int       `json:"asset_count"`
+	AssetManifest       string    `json:"asset_manifest,omitempty"`
+	FileSize            string    `json:"file_size,omitempty"`
+	ContentURL          string    `json:"content_url"`
+	CreatedAt           time.Time `json:"created_at"`
+}
+
+func exportTaskPublic(task models.EcomExportTask) exportTaskPublicResponse {
+	return exportTaskPublicResponse{
+		ID:                  task.ID,
+		ProductID:           task.ProductID,
+		PackageID:           task.PackageID,
+		Status:              task.Status,
+		Platform:            task.Platform,
+		Site:                task.Site,
+		Locale:              task.Locale,
+		Format:              task.Format,
+		ListingVersionID:    task.ListingVersionID,
+		ListingVersionLabel: task.ListingVersionLabel,
+		PrimaryAssetRole:    task.PrimaryAssetRole,
+		AssetCount:          task.AssetCount,
+		AssetManifest:       task.AssetManifest,
+		FileSize:            task.FileSize,
+		ContentURL:          "/api/v1/ecommerce/downloads/" + task.ID + "/content",
+		CreatedAt:           task.CreatedAt,
+	}
+}
+
+func exportTasksPublic(tasks []models.EcomExportTask) []exportTaskPublicResponse {
+	out := make([]exportTaskPublicResponse, 0, len(tasks))
+	for _, task := range tasks {
+		out = append(out, exportTaskPublic(task))
+	}
+	return out
 }
 
 func NewHandler(service *Service) *Handler {
@@ -359,7 +409,7 @@ func (h *Handler) ListExportTasks(c *gin.Context) {
 		moduleutil.WritePlatformError(c, err, "list export tasks failed")
 		return
 	}
-	response.JSONSuccess(c, items)
+	response.JSONSuccess(c, exportTasksPublic(items))
 }
 
 func (h *Handler) CreateExportTask(c *gin.Context) {
@@ -378,7 +428,54 @@ func (h *Handler) CreateExportTask(c *gin.Context) {
 		moduleutil.WritePlatformError(c, err, "create export task failed")
 		return
 	}
+	response.JSONSuccess(c, exportTaskPublic(*item))
+}
+
+func (h *Handler) CreateExportPackage(c *gin.Context) {
+	span := telemetry.StartGinSpan(c, "ecommerce-service/productcore-handler", "ecommerce.productcore.create_export_package")
+	defer span.End()
+
+	var input CreateExportPackageInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		response.JSONBindError(c, err, "invalid create export package request")
+		return
+	}
+
+	orgID, userID := scopeFromGin(c)
+	item, err := h.service.CreateExportPackage(orgID, userID, input)
+	if err != nil {
+		moduleutil.WritePlatformError(c, err, "create export package failed")
+		return
+	}
 	response.JSONSuccess(c, item)
+}
+
+func (h *Handler) GetExportPackage(c *gin.Context) {
+	span := telemetry.StartGinSpan(c, "ecommerce-service/productcore-handler", "ecommerce.productcore.get_export_package")
+	defer span.End()
+
+	orgID, _ := scopeFromGin(c)
+	item, err := h.service.GetExportPackage(orgID, c.Param("package_id"))
+	if err != nil {
+		moduleutil.WritePlatformError(c, err, "get export package failed")
+		return
+	}
+	response.JSONSuccess(c, item)
+}
+
+func (h *Handler) RetryExportPackage(c *gin.Context) {
+	span := telemetry.StartGinSpan(c, "ecommerce-service/productcore-handler", "ecommerce.productcore.retry_export_package")
+	defer span.End()
+
+	orgID, _ := scopeFromGin(c)
+	item, err := h.service.GetExportPackage(orgID, c.Param("package_id"))
+	if err != nil {
+		moduleutil.WritePlatformError(c, err, "retry export package failed")
+		return
+	}
+	// Retry foundation: expose deterministic blockers/current child rows without creating duplicate tasks.
+	// A future worker can submit only failed items from this snapshot with an explicit idempotency key.
+	response.JSONSuccess(c, gin.H{"retry_supported": false, "retry_contract": "resubmit failed items with POST /api/v1/ecommerce/export-packages", "package": item})
 }
 
 func (h *Handler) UpdateExportTaskStatus(c *gin.Context) {
@@ -396,6 +493,12 @@ func (h *Handler) UpdateExportTaskStatus(c *gin.Context) {
 		response.JSONBindError(c, err, "invalid update export task request")
 		return
 	}
+	// User-facing status updates must not accept arbitrary storage keys or external package URLs.
+	// Package/file materialization is generated server-side and delivered through /downloads/:id/content.
+	if input.StorageKey != "" || input.PackageURL != "" {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "storage_key and package_url are managed by server-side export packaging"})
+		return
+	}
 
 	orgID, userID := scopeFromGin(c)
 	item, err := h.service.UpdateExportTaskStatus(
@@ -405,7 +508,7 @@ func (h *Handler) UpdateExportTaskStatus(c *gin.Context) {
 		moduleutil.WritePlatformError(c, err, "update export task failed")
 		return
 	}
-	response.JSONSuccess(c, item)
+	response.JSONSuccess(c, exportTaskPublic(*item))
 }
 
 func (h *Handler) ListDownloads(c *gin.Context) {
@@ -426,12 +529,8 @@ func (h *Handler) DownloadContent(c *gin.Context) {
 	defer span.End()
 
 	orgID, _ := scopeFromGin(c)
-	item, body, headers, err := h.service.GetDownloadContent(orgID, c.Param("download_id"))
+	_, body, headers, err := h.service.GetDownloadContent(orgID, c.Param("download_id"), c.Query("file"))
 	if err != nil {
-		if item != nil && item.PackageURL != "" {
-			c.Redirect(http.StatusTemporaryRedirect, item.PackageURL)
-			return
-		}
 		moduleutil.WritePlatformError(c, err, "download content failed")
 		return
 	}

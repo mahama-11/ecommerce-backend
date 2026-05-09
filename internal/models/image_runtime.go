@@ -9,6 +9,7 @@ type EcommerceImageJob struct {
 	SceneType             string     `gorm:"type:varchar(64);index;not null" json:"scene_type"`
 	InputMode             string     `gorm:"type:varchar(32);index;not null" json:"input_mode"`
 	SourceAssetID         string     `gorm:"type:varchar(64);index" json:"source_asset_id"`
+	PromptID              string     `gorm:"type:varchar(64);index" json:"prompt_id"`
 	RuntimeJobID          string     `gorm:"type:varchar(64);index" json:"runtime_job_id"`
 	Status                string     `gorm:"type:varchar(16);index;not null" json:"status"`
 	Stage                 string     `gorm:"type:varchar(64);index" json:"stage"`
@@ -31,7 +32,7 @@ type EcommerceAsset struct {
 	UserID         string    `gorm:"type:varchar(64);index" json:"user_id"`
 	AssetType      string    `gorm:"type:varchar(32);index;not null" json:"asset_type"`
 	SourceType     string    `gorm:"type:varchar(32);index;not null" json:"source_type"`
-	StorageKey     string    `gorm:"type:varchar(255);index" json:"storage_key"`
+	StorageKey     string    `gorm:"type:varchar(255);index" json:"storage_key,omitempty"`
 	MimeType       string    `gorm:"type:varchar(128)" json:"mime_type"`
 	Width          int       `json:"width"`
 	Height         int       `json:"height"`

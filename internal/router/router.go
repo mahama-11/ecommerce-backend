@@ -82,6 +82,7 @@ func New(cfg config.Config, platformClient *platform.Client, db *gorm.DB, redisC
 			authAPI.GET("/session", middleware.PlatformJWTAuth(cfg.Platform.JWTSecret), authHandler.Session)
 		}
 		v1.GET("/promotions/codes/:code/resolve", promotionHandler.ResolveCode)
+		v1.GET("/commercial/offerings", commercialHandler.GetOfferings)
 		v1.GET("/health", func(c *gin.Context) {
 			response.JSONSuccess(c, gin.H{"service": "ecommerce-api", "status": "ok", "product": cfg.App.ProductName})
 		})
@@ -93,7 +94,6 @@ func New(cfg config.Config, platformClient *platform.Client, db *gorm.DB, redisC
 			protected.GET("/user/audit-history", auditHandler.History)
 			protected.GET("/wallet/summary", walletHandler.Summary)
 			protected.GET("/wallet/history", walletHandler.History)
-			protected.GET("/commercial/offerings", commercialHandler.GetOfferings)
 			protected.POST("/commercial/orders", commercialHandler.CreateOrder)
 			protected.GET("/commercial/orders", commercialHandler.ListOrders)
 			protected.GET("/commercial/orders/:orderID", commercialHandler.GetOrder)

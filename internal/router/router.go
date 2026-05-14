@@ -20,6 +20,7 @@ import (
 	promotionmodule "ecommerce-service/internal/modules/promotion"
 	promptcentermodule "ecommerce-service/internal/modules/promptcenter"
 	templatecentermodule "ecommerce-service/internal/modules/templatecenter"
+	visualworkflowmodule "ecommerce-service/internal/modules/visualworkflow"
 	walletmodule "ecommerce-service/internal/modules/wallet"
 	"ecommerce-service/internal/modules/workspace"
 	"ecommerce-service/internal/platform"
@@ -32,7 +33,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func New(cfg config.Config, platformClient *platform.Client, db *gorm.DB, redisClient *redis.Client, authHandler *authmodule.Handler, accessHandler *accessmodule.Handler, imageRuntimeHandler *imageruntimemodule.Handler, workspaceHandler *workspace.Handler, auditHandler *auditmodule.Handler, templateCenterHandler *templatecentermodule.Handler, promptCenterHandler *promptcentermodule.Handler, walletHandler *walletmodule.Handler, promotionHandler *promotionmodule.Handler, commissionHandler *commissionmodule.Handler, billingHandler *billingmodule.Handler, commercialHandler *commercialmodule.Handler, productcoreHandler *productcoremodule.Handler) *gin.Engine {
+func New(cfg config.Config, platformClient *platform.Client, db *gorm.DB, redisClient *redis.Client, authHandler *authmodule.Handler, accessHandler *accessmodule.Handler, imageRuntimeHandler *imageruntimemodule.Handler, workspaceHandler *workspace.Handler, auditHandler *auditmodule.Handler, templateCenterHandler *templatecentermodule.Handler, promptCenterHandler *promptcentermodule.Handler, walletHandler *walletmodule.Handler, promotionHandler *promotionmodule.Handler, commissionHandler *commissionmodule.Handler, billingHandler *billingmodule.Handler, commercialHandler *commercialmodule.Handler, productcoreHandler *productcoremodule.Handler, visualWorkflowHandler *visualworkflowmodule.Handler) *gin.Engine {
 	gin.SetMode(cfg.GinMode)
 	r := gin.New()
 	serviceName := cfg.Monitoring.Tracing.ServiceName
@@ -160,6 +161,30 @@ func New(cfg config.Config, platformClient *platform.Client, db *gorm.DB, redisC
 			protected.PATCH("/products/:product_id/export-tasks/status", productcoreHandler.UpdateExportTaskStatus)
 			protected.GET("/downloads", productcoreHandler.ListDownloads)
 			protected.GET("/downloads/:download_id/content", productcoreHandler.DownloadContent)
+
+			// Visual Workflow V2 APIs
+			protected.POST("/products/:product_id/v2/visual-sessions", visualWorkflowHandler.CreateProductSession)
+			protected.POST("/v2/visual-workflows/sessions", visualWorkflowHandler.CreateSession)
+			protected.GET("/v2/visual-workflows/sessions", visualWorkflowHandler.ListSessions)
+			protected.GET("/v2/visual-workflows/:session_id", visualWorkflowHandler.GetSession)
+			protected.PATCH("/v2/visual-workflows/:session_id", visualWorkflowHandler.UpdateSession)
+			protected.POST("/v2/visual-workflows/:session_id/cancel", visualWorkflowHandler.CancelSession)
+			protected.GET("/v2/visual-workflows/:session_id/stage-view", visualWorkflowHandler.StageView)
+			protected.POST("/v2/visual-workflows/:session_id/generation-versions", visualWorkflowHandler.CreateGenerationVersion)
+			protected.GET("/v2/visual-workflows/:session_id/generation-versions", visualWorkflowHandler.ListGenerationVersions)
+			protected.GET("/v2/visual-workflows/:session_id/generation-versions/:version_id", visualWorkflowHandler.GetGenerationVersion)
+			protected.PATCH("/v2/visual-workflows/:session_id/generation-versions/:version_id", visualWorkflowHandler.UpdateGenerationVersion)
+			protected.POST("/v2/visual-workflows/:session_id/generation-versions/:version_id/select", visualWorkflowHandler.SelectGenerationVersion)
+			protected.POST("/v2/visual-workflows/:session_id/generation-versions/:version_id/writeback-selected-asset", visualWorkflowHandler.WritebackSelectedGenerationAsset)
+			protected.POST("/v2/visual-workflows/:session_id/generation-versions/:version_id/writeback", visualWorkflowHandler.WritebackSelectedGenerationAsset)
+			protected.POST("/v2/visual-workflows/:session_id/source-references", visualWorkflowHandler.CreateSourceReference)
+			protected.GET("/v2/visual-workflows/:session_id/source-references", visualWorkflowHandler.ListSourceReferences)
+			protected.PATCH("/v2/visual-workflows/:session_id/source-references/:source_reference_id", visualWorkflowHandler.UpdateSourceReference)
+			protected.POST("/v2/visual-workflows/:session_id/deconstruction-jobs", visualWorkflowHandler.CreateDeconstructionJob)
+			protected.GET("/v2/visual-workflows/:session_id/deconstruction-jobs/:job_id", visualWorkflowHandler.GetDeconstructionJob)
+			protected.GET("/v2/visual-workflows/:session_id/deconstruction-elements", visualWorkflowHandler.ListElements)
+			protected.PATCH("/v2/visual-workflows/:session_id/deconstruction-elements/:element_id", visualWorkflowHandler.UpdateElement)
+			protected.POST("/v2/visual-workflows/:session_id/deconstruction-elements:confirm", visualWorkflowHandler.ConfirmSelection)
 		}
 
 		workspaceGroup := v1.Group("")

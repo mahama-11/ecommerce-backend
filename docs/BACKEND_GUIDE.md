@@ -82,7 +82,23 @@ For product image generation, use the platform runtime as the execution layer an
   - `GET /api/v1/ecommerce/image-jobs`
   - `POST /api/v1/ecommerce/image-jobs`
   - `GET /api/v1/ecommerce/image-jobs/:jobID`
+- first Visual Workflow V2 S1+S2 foundation is available under:
+  - `POST /api/v1/ecommerce/products/:product_id/v2/visual-sessions`
+  - `POST /api/v1/ecommerce/v2/visual-workflows/sessions`
+  - `GET/PATCH /api/v1/ecommerce/v2/visual-workflows/:session_id`
+  - `GET /api/v1/ecommerce/v2/visual-workflows/:session_id/stage-view`
+  - `POST/GET/PATCH /api/v1/ecommerce/v2/visual-workflows/:session_id/generation-versions[...]`, `POST /api/v1/ecommerce/v2/visual-workflows/:session_id/generation-versions/:version_id/select`, and `POST /api/v1/ecommerce/v2/visual-workflows/:session_id/generation-versions/:version_id/writeback-selected-asset`
+  - `POST/GET/PATCH /api/v1/ecommerce/v2/visual-workflows/:session_id/source-references[...]`
+  - `POST/GET /api/v1/ecommerce/v2/visual-workflows/:session_id/deconstruction-jobs[...]`
+  - `GET/PATCH /api/v1/ecommerce/v2/visual-workflows/:session_id/deconstruction-elements[...]`
+  - `POST /api/v1/ecommerce/v2/visual-workflows/:session_id/deconstruction-elements:confirm`
+  - visual sessions validate `product_id` + `sku_code` against Product Center; source references persist `product_asset` / `platform_source_ref` metadata, while URL/video analysis stays `contract_needed` until a source-analysis runtime contract exists. Deconstruction now uses a capability-gated Platform runtime path: Ecommerce checks the `ecommerce` / `image_understanding` capability matrix, creates a Platform runtime job only when capability and contract state are ready, and otherwise records a sanitized `contract_needed` / capability blocker without making provider calls.
+  - stage-view returns the shared V2 vocabulary (`session_id`, `product_id`, `sku_code`, `current_stage`, `status`, `readiness`, `source_reference`, `deconstruction_job`, `deconstruction_elements`, `intent_spec`, `prompt_plan`, `generation_versions`) plus sanitized Platform runtime capability readiness (`runtime_capabilities`, `runtime_capability_error`) without provider/storage-key leakage.
+  - public deconstruction create/get/stage-view responses use a sanitized DTO (status/stage/progress/runtime reference only) and never expose raw manifests, stored metadata, client idempotency keys, provider payloads, storage keys, or billing truth; request metadata is allowlist-scrubbed before persistence.
+  - deconstruction element selection/confirmation is persisted on product-owned rows.
   - source asset registration now requires `product_id` and `sku_code`
+  - visual workflow generation versions persist typed product-owned version/refinement state in the session JSON projection via session-scoped create/list/get/update/select routes; create is idempotency-key aware, snapshots prompt/intent references, rejects provider/runtime artifacts, and keeps stage-view generation readiness blocked with `CONTRACT_NEEDED` until the real Platform runtime execution contract exists
+  - selected generation asset writeback is available through `POST /api/v1/ecommerce/v2/visual-workflows/:session_id/generation-versions/:version_id/writeback-selected-asset`; it validates the current org/session/product/SKU, requires the selected asset to exist in `ecommerce_assets` and belong to that generation version's `result_assets`, then creates or updates the Product Center `ecom_asset_relation` with `relation_type=result`, default `asset_role=hero`, optional primary clearing, idempotent replay by key or product+asset, and a sanitized generation-version `metadata.writeback` projection. It does not call providers, Platform runtime, Prompt Center execution, billing, listing/export mutation, or expose storage keys.
   - image job creation now requires `product_id` and `sku_code`; the formal path accepts `prompt_id` and uses the persisted Prompt Center snapshot before legacy prompt/template fields
   - source assets are validated against the bound product before job creation
   - generated result assets are automatically archived into the bound product asset set

@@ -17,6 +17,7 @@ import (
 	promotionmodule "ecommerce-service/internal/modules/promotion"
 	promptcentermodule "ecommerce-service/internal/modules/promptcenter"
 	templatecentermodule "ecommerce-service/internal/modules/templatecenter"
+	visualworkflowmodule "ecommerce-service/internal/modules/visualworkflow"
 	walletmodule "ecommerce-service/internal/modules/wallet"
 	"ecommerce-service/internal/modules/workspace"
 	"ecommerce-service/internal/platform"
@@ -67,6 +68,7 @@ func New(configFile string) (*App, error) {
 	promptCenterRepo := repository.NewPromptCenterRepository(db)
 	commercialRepo := repository.NewCommercialRepository(db)
 	productcenterRepo := repository.NewProductCenterRepository(db)
+	visualWorkflowRepo := repository.NewVisualWorkflowRepository(db)
 	auditService := auditmodule.NewService(auditRepo)
 	imageRuntimeService := imageruntimemodule.NewService(imageRuntimeRepo, commercialRepo, templateCenterRepo, productcenterRepo, auditService, platformClient, cfg.App).WithPromptRepository(promptCenterRepo)
 	authzService := authz.NewService(platformClient)
@@ -80,12 +82,13 @@ func New(configFile string) (*App, error) {
 	templateCenterService := templatecentermodule.NewService(templateCenterRepo, auditService, platformClient)
 	promptCenterService := promptcentermodule.NewService(promptCenterRepo, templateCenterRepo, imageRuntimeRepo, productcenterRepo, cfg.App)
 	productcoreService := productcoremodule.NewService(productcenterRepo, imageRuntimeRepo, platformClient)
+	visualWorkflowService := visualworkflowmodule.NewService(visualWorkflowRepo, productcenterRepo, imageRuntimeRepo).WithPromptRepository(promptCenterRepo).WithRuntimeOrchestrator(platformClient)
 	accessHandler := accessmodule.NewHandler(authzService)
 	authHandler := authmodule.NewHandler(authService, auditService)
 	billingHandler := billingmodule.NewHandler(billingService)
 	commissionHandler := commissionmodule.NewHandler(commissionService, auditService)
 	commercialHandler := commercialmodule.NewHandler(commercialService)
-	imageRuntimeHandler := imageruntimemodule.NewHandler(imageRuntimeService)
+	imageRuntimeHandler := imageruntimemodule.NewHandler(imageRuntimeService).WithVisualWorkflowService(visualWorkflowService)
 	promotionHandler := promotionmodule.NewHandler(promotionService, auditService)
 	workspaceHandler := workspace.NewHandler(workspaceService, auditService)
 	auditHandler := auditmodule.NewHandler(auditService)
@@ -93,6 +96,7 @@ func New(configFile string) (*App, error) {
 	promptCenterHandler := promptcentermodule.NewHandler(promptCenterService)
 	walletHandler := walletmodule.NewHandler(walletService)
 	productcoreHandler := productcoremodule.NewHandler(productcoreService)
+	visualWorkflowHandler := visualworkflowmodule.NewHandler(visualWorkflowService)
 
 	if err := promotionService.Bootstrap(); err != nil {
 		return nil, fmt.Errorf("bootstrap ecommerce promotion: %w", err)
@@ -103,7 +107,7 @@ func New(configFile string) (*App, error) {
 	}
 
 	app := &App{Config: *cfg, DB: db, Redis: redisClient}
-	app.Router = router.New(*cfg, platformClient, db, redisClient, authHandler, accessHandler, imageRuntimeHandler, workspaceHandler, auditHandler, templateCenterHandler, promptCenterHandler, walletHandler, promotionHandler, commissionHandler, billingHandler, commercialHandler, productcoreHandler)
+	app.Router = router.New(*cfg, platformClient, db, redisClient, authHandler, accessHandler, imageRuntimeHandler, workspaceHandler, auditHandler, templateCenterHandler, promptCenterHandler, walletHandler, promotionHandler, commissionHandler, billingHandler, commercialHandler, productcoreHandler, visualWorkflowHandler)
 	app.Shutdown = func(ctx context.Context) error {
 		if shutdownTracing != nil {
 			return shutdownTracing(ctx)

@@ -1,23 +1,32 @@
 package imageruntime
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"strconv"
 
 	"ecommerce-service/internal/modules/moduleutil"
+	visualworkflowmodule "ecommerce-service/internal/modules/visualworkflow"
 	"ecommerce-service/internal/telemetry"
 	"ecommerce-service/pkg/response"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type Handler struct {
-	service *Service
+	service        *Service
+	visualWorkflow *visualworkflowmodule.Service
 }
 
 func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
+}
+
+func (h *Handler) WithVisualWorkflowService(service *visualworkflowmodule.Service) *Handler {
+	h.visualWorkflow = service
+	return h
 }
 
 func (h *Handler) RegisterSourceAsset(c *gin.Context) {
@@ -96,6 +105,38 @@ func (h *Handler) ListJobs(c *gin.Context) {
 func (h *Handler) InternalUpdateJobRuntime(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/image-runtime-handler", "ecommerce.image_runtime.internal.update")
 	defer span.End()
+	if h.shouldRouteVisualDeconstructionCallback(c) {
+		var req visualworkflowmodule.InternalRuntimeUpdateRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			span.RecordError(err)
+			response.JSONBindError(c, err, "invalid ecommerce visual workflow runtime update request")
+			return
+		}
+		item, err := h.visualWorkflow.InternalUpdateDeconstructionRuntime(c.Param("jobID"), req)
+		if err != nil {
+			span.RecordError(err)
+			h.writeVisualCallbackError(c, err, "Failed to update visual deconstruction runtime", "ECOMMERCE_VISUAL_DECONSTRUCTION_RUNTIME_UPDATE_FAILED")
+			return
+		}
+		response.JSONSuccess(c, item)
+		return
+	}
+	if h.shouldRouteVisualGenerationCallback(c) {
+		var req visualworkflowmodule.InternalRuntimeUpdateRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			span.RecordError(err)
+			response.JSONBindError(c, err, "invalid ecommerce visual generation runtime update request")
+			return
+		}
+		item, err := h.visualWorkflow.InternalUpdateGenerationRuntime(c.Param("jobID"), req)
+		if err != nil {
+			span.RecordError(err)
+			h.writeVisualCallbackError(c, err, "Failed to update visual generation runtime", "ECOMMERCE_VISUAL_GENERATION_RUNTIME_UPDATE_FAILED")
+			return
+		}
+		response.JSONSuccess(c, item)
+		return
+	}
 	var req UpdateJobRuntimeInput
 	if err := c.ShouldBindJSON(&req); err != nil {
 		span.RecordError(err)
@@ -114,6 +155,38 @@ func (h *Handler) InternalUpdateJobRuntime(c *gin.Context) {
 func (h *Handler) InternalRecordJobResults(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/image-runtime-handler", "ecommerce.image_runtime.internal.results")
 	defer span.End()
+	if h.shouldRouteVisualDeconstructionCallback(c) {
+		var req visualworkflowmodule.InternalRecordResultsRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			span.RecordError(err)
+			response.JSONBindError(c, err, "invalid ecommerce visual workflow result callback request")
+			return
+		}
+		item, err := h.visualWorkflow.InternalRecordDeconstructionResults(c.Param("jobID"), req)
+		if err != nil {
+			span.RecordError(err)
+			h.writeVisualCallbackError(c, err, "Failed to record visual deconstruction results", "ECOMMERCE_VISUAL_DECONSTRUCTION_RESULT_RECORD_FAILED")
+			return
+		}
+		response.JSONSuccess(c, item)
+		return
+	}
+	if h.shouldRouteVisualGenerationCallback(c) {
+		var req visualworkflowmodule.InternalRecordResultsRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			span.RecordError(err)
+			response.JSONBindError(c, err, "invalid ecommerce visual generation result callback request")
+			return
+		}
+		item, err := h.visualWorkflow.InternalRecordGenerationResults(c.Param("jobID"), req)
+		if err != nil {
+			span.RecordError(err)
+			h.writeVisualCallbackError(c, err, "Failed to record visual generation results", "ECOMMERCE_VISUAL_GENERATION_RESULT_RECORD_FAILED")
+			return
+		}
+		response.JSONSuccess(c, item)
+		return
+	}
 	var req RecordJobResultsInput
 	if err := c.ShouldBindJSON(&req); err != nil {
 		span.RecordError(err)
@@ -147,5 +220,36 @@ func (h *Handler) GetAssetContent(c *gin.Context) {
 	c.Status(http.StatusOK)
 	if _, copyErr := io.Copy(c.Writer, body); copyErr != nil {
 		span.RecordError(copyErr)
+	}
+}
+
+func (h *Handler) shouldRouteVisualDeconstructionCallback(c *gin.Context) bool {
+	if h.visualWorkflow == nil {
+		return false
+	}
+	if c.Query("source_type") == "visual_deconstruction" {
+		return true
+	}
+	return h.visualWorkflow.HasDeconstructionJob(c.Param("jobID"))
+}
+
+func (h *Handler) shouldRouteVisualGenerationCallback(c *gin.Context) bool {
+	if h.visualWorkflow == nil {
+		return false
+	}
+	if c.Query("source_type") == "visual_generation" {
+		return true
+	}
+	return h.visualWorkflow.HasGenerationVersion(c.Param("jobID"))
+}
+
+func (h *Handler) writeVisualCallbackError(c *gin.Context, err error, message, fallbackCode string) {
+	switch {
+	case visualworkflowmodule.IsInternalCallbackInvalid(err):
+		response.JSONErrorSemantic(c, response.CodeInvalidParameter, message, "ECOMMERCE_VISUAL_DECONSTRUCTION_CALLBACK_INVALID", "Callback payload is a permanent contract error; fix the normalized runtime result payload before retrying.")
+	case visualworkflowmodule.IsInternalCallbackNotFound(err) || errors.Is(err, gorm.ErrRecordNotFound):
+		response.JSONErrorSemantic(c, response.CodeNotFound, message, "ECOMMERCE_VISUAL_DECONSTRUCTION_JOB_NOT_FOUND", "Verify source_id/runtime job mapping; retrying with the same missing job id will not succeed.")
+	default:
+		response.JSONErrorSemantic(c, response.CodeInternalError, message, fallbackCode, "Check internal runtime payload and persistence state; retry may succeed after transient service recovery.")
 	}
 }

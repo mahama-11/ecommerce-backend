@@ -14,6 +14,7 @@ import (
 	"ecommerce-service/internal/config"
 	"ecommerce-service/internal/middleware"
 	"ecommerce-service/internal/models"
+	visualworkflowmodule "ecommerce-service/internal/modules/visualworkflow"
 	"ecommerce-service/internal/platform"
 	"ecommerce-service/internal/repository"
 
@@ -124,6 +125,76 @@ func TestImageRuntimeInternalCallbacksAndAssetDownload(t *testing.T) {
 	}
 	if string(payload) != "mock-image" {
 		t.Fatalf("asset content = %s, want mock-image", string(payload))
+	}
+}
+
+func TestInternalCallbackMultiplexerRoutesVisualWorkflowAndPreservesLegacyImage(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := newImageRuntimeTestDB(t)
+	if err := db.AutoMigrate(&models.EcommerceVisualWorkflowSession{}, &models.EcommerceVisualSourceReference{}, &models.EcommerceVisualDeconstructionJob{}, &models.EcommerceVisualDeconstructionElement{}); err != nil {
+		t.Fatalf("migrate visual workflow: %v", err)
+	}
+	imageRepo := repository.NewImageRuntimeRepository(db)
+	productRepo := repository.NewProductCenterRepository(db)
+	imageService := NewService(imageRepo, repository.NewCommercialRepository(db), nil, productRepo, nil, nil, testImageRuntimeAppConfig())
+	visualService := visualworkflowmodule.NewService(repository.NewVisualWorkflowRepository(db), productRepo, imageRepo)
+	handler := NewHandler(imageService).WithVisualWorkflowService(visualService)
+	if err := imageRepo.CreateJob(&models.EcommerceImageJob{ID: "job-legacy", OrganizationID: "org-1", UserID: "user-1", SceneType: "ai_posture", InputMode: "image_to_image", Status: "queued", Stage: "queued"}); err != nil {
+		t.Fatalf("create legacy image job: %v", err)
+	}
+	if err := db.Create(&models.EcommerceVisualWorkflowSession{ID: "vws-route", OrganizationID: "org-1", UserID: "user-1", ProductID: "prod-route", SKUCode: "SKU-ROUTE", CurrentStage: models.VisualWorkflowStageDeconstruction, Status: models.VisualWorkflowStatusProcessing, ReadinessJSON: `{}`, IntentSpecJSON: `{}`, PromptPlanJSON: `{}`, GenerationVersionsJSON: `[]`, Metadata: `{}`}).Error; err != nil {
+		t.Fatalf("create visual session: %v", err)
+	}
+	if err := db.Create(&models.EcommerceVisualDeconstructionJob{ID: "visual-route-no-prefix", OrganizationID: "org-1", UserID: "user-1", SessionID: "vws-route", ProductID: "prod-route", SKUCode: "SKU-ROUTE", Status: models.VisualDeconstructionStatusQueued, Stage: "queued", InputManifestJSON: `{}`, OutputManifestJSON: `{}`, Metadata: `{}`}).Error; err != nil {
+		t.Fatalf("create visual job: %v", err)
+	}
+	router := gin.New()
+	router.POST("/internal/v1/ecommerce/jobs/:jobID/runtime", handler.InternalUpdateJobRuntime)
+	router.POST("/internal/v1/ecommerce/jobs/:jobID/results", handler.InternalRecordJobResults)
+	req := httptest.NewRequest(http.MethodPost, "/internal/v1/ecommerce/jobs/visual-route-no-prefix/runtime", bytes.NewBufferString(`{"status":"running","progress":42,"stage":"analyzing","runtime_job_id":"runtime-visual"}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("visual runtime route status=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var visualJob models.EcommerceVisualDeconstructionJob
+	if err := db.First(&visualJob, "id = ?", "visual-route-no-prefix").Error; err != nil || visualJob.RuntimeJobID != "runtime-visual" || visualJob.Progress != 42 {
+		t.Fatalf("visual route did not update visual job: job=%+v err=%v", visualJob, err)
+	}
+	req = httptest.NewRequest(http.MethodPost, "/internal/v1/ecommerce/jobs/job-legacy/runtime", bytes.NewBufferString(`{"status":"processing","progress":13,"provider_job_id":"provider-legacy"}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp = httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("legacy runtime route status=%d body=%s", resp.Code, resp.Body.String())
+	}
+
+	if err := db.Create(&models.EcommerceVisualWorkflowSession{ID: "vws-gen-route", OrganizationID: "org-1", UserID: "user-1", ProductID: "prod-gen-route", SKUCode: "SKU-GEN-ROUTE", CurrentStage: models.VisualWorkflowStageGeneration, Status: models.VisualWorkflowStatusProcessing, ReadinessJSON: `{}`, IntentSpecJSON: `{}`, PromptPlanJSON: `{}`, GenerationVersionsJSON: `[{"version_id":"gv-route","status":"processing","stage":"running","created_at":"2026-05-14T00:00:00Z","updated_at":"2026-05-14T00:00:00Z"}]`, Metadata: `{}`}).Error; err != nil {
+		t.Fatalf("create visual generation session: %v", err)
+	}
+	req = httptest.NewRequest(http.MethodPost, "/internal/v1/ecommerce/jobs/gv-route/runtime?source_type=visual_generation", bytes.NewBufferString(`{"status":"processing","progress":55,"stage":"provider_running","runtime_job_id":"runtime-generation"}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp = httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("visual generation runtime route status=%d body=%s", resp.Code, resp.Body.String())
+	}
+	req = httptest.NewRequest(http.MethodPost, "/internal/v1/ecommerce/jobs/gv-route/results?source_type=visual_generation", bytes.NewBufferString(`{"status":"completed","progress":100,"stage":"completed","variants":[{"status":"completed","is_selected":true,"asset":{"storage_key":"generated/gv-route.png","mime_type":"image/png","file_name":"gv-route.png"}}]}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp = httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+	if resp.Code != http.StatusOK || strings.Contains(resp.Body.String(), "storage_key") {
+		t.Fatalf("visual generation result route status=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var generatedAsset models.EcommerceAsset
+	if err := db.Where("organization_id = ? AND storage_key = ?", "org-1", "generated/gv-route.png").First(&generatedAsset).Error; err != nil {
+		t.Fatalf("visual generation result did not create asset: %v", err)
+	}
+
+	legacy, err := imageRepo.FindJobByID("job-legacy")
+	if err != nil || legacy.ProviderJobID != "provider-legacy" || legacy.Progress != 13 {
+		t.Fatalf("legacy route did not preserve image callback: job=%+v err=%v", legacy, err)
 	}
 }
 

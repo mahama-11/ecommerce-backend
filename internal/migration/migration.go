@@ -156,6 +156,23 @@ func Steps(cfg config.DatabaseConfig) []Step {
 		Up: func(db *gorm.DB) error {
 			return db.AutoMigrate(&models.EcomExportTask{}, &models.EcomExportPackage{})
 		},
+	}, {
+		Version: 202605140001,
+		Name:    "visual_workflow_schema_bootstrap",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(
+				&models.EcommerceVisualWorkflowSession{},
+				&models.EcommerceVisualSourceReference{},
+				&models.EcommerceVisualDeconstructionJob{},
+				&models.EcommerceVisualDeconstructionElement{},
+			)
+		},
+	}, {
+		Version: 202605140002,
+		Name:    "visual_workflow_intent_prompt_plan_columns",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(&models.EcommerceVisualWorkflowSession{})
+		},
 	}}
 	sort.Slice(steps, func(i, j int) bool { return steps[i].Version < steps[j].Version })
 	return steps

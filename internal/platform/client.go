@@ -342,6 +342,56 @@ type RuntimeJob struct {
 	Metadata       string `json:"metadata"`
 }
 
+type RuntimeCapabilityMatrix struct {
+	ProductCode string                  `json:"product_code"`
+	Items       []RuntimeCapabilityItem `json:"items"`
+}
+
+type RuntimeCapabilityItem struct {
+	TaskType          string                    `json:"task_type"`
+	Status            string                    `json:"status"`
+	Available         bool                      `json:"available"`
+	UnavailableReason string                    `json:"unavailable_reason"`
+	ContractStatus    string                    `json:"contract_status"`
+	ProviderBindings  []RuntimeProviderBinding  `json:"provider_bindings"`
+	Callback          RuntimeCallbackCapability `json:"callback"`
+	Storage           RuntimeStorageCapability  `json:"storage"`
+	Billing           RuntimeBillingCapability  `json:"billing"`
+	Reasons           []RuntimeCapabilityReason `json:"reasons"`
+}
+
+type RuntimeProviderBinding struct {
+	ProviderCode string         `json:"provider_code"`
+	Enabled      bool           `json:"enabled"`
+	Registered   bool           `json:"registered"`
+	Status       string         `json:"status"`
+	Priority     int            `json:"priority"`
+	Model        string         `json:"model"`
+	Metadata     map[string]any `json:"metadata,omitempty"`
+}
+
+type RuntimeCallbackCapability struct {
+	Configured   bool   `json:"configured"`
+	CallbackKind string `json:"callback_kind"`
+}
+
+type RuntimeStorageCapability struct {
+	OutputCategory    string `json:"output_category"`
+	BindingConfigured bool   `json:"binding_configured"`
+}
+
+type RuntimeBillingCapability struct {
+	BillableItemCode string `json:"billable_item_code"`
+	MeterUnit        string `json:"meter_unit"`
+	SettlementMode   string `json:"settlement_mode"`
+	Configured       bool   `json:"configured"`
+}
+
+type RuntimeCapabilityReason struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
 type ChargeSession struct {
 	ID                 string `json:"id"`
 	SourceType         string `json:"source_type"`
@@ -615,6 +665,12 @@ func (c *Client) GrantCycleAllowance(input GrantCycleAllowanceInput) (*WalletBuc
 }
 func (c *Client) CreateRuntimeJob(input CreateRuntimeJobInput) (*RuntimeJob, error) {
 	return doInternalPost[CreateRuntimeJobInput, RuntimeJob](c, "/runtime/jobs", input)
+}
+func (c *Client) ListRuntimeCapabilities(productCode, taskType string) (*RuntimeCapabilityMatrix, error) {
+	return doInternalGet[RuntimeCapabilityMatrix](c, withQuery("/runtime/capabilities", map[string]string{
+		"product_code": productCode,
+		"task_type":    taskType,
+	}))
 }
 func (c *Client) ListQuotaGrantPolicies(productCode, packageCode string) ([]QuotaGrantPolicy, error) {
 	out, err := doInternalGet[platformItemsResponse[QuotaGrantPolicy]](c, withQuery("/controls/quota/policies", map[string]string{

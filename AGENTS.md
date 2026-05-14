@@ -26,6 +26,7 @@ It should not host:
 - [Backend Guide](docs/BACKEND_GUIDE.md)
 - [Service Boundary](docs/architecture/SERVICE_BOUNDARY.md)
 - [Image Generation Runtime Integration](docs/architecture/IMAGE_GENERATION_RUNTIME_INTEGRATION.md)
+- [Visual Workflow V2 Frontend Contract](docs/architecture/VISUAL_WORKFLOW_FRONTEND_CONTRACT.md)
 - [OpenAPI Guide](docs/openapi/README.md)
 - [Template Center Design](../docs/architecture/AGENT_ECOMMERCE_TEMPLATE_CENTER_DESIGN.md)
 - [Template Center Evolution Plan](../docs/architecture/AGENT_ECOMMERCE_TEMPLATE_CENTER_EVOLUTION_PLAN.md)

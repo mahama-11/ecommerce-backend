@@ -312,7 +312,7 @@ func TestCreateSessionValidatesSKU(t *testing.T) {
 	}
 }
 
-func TestURLSourceReferenceReturnsContractNeeded(t *testing.T) {
+func TestURLSourceReferenceResolvesOpenGraphMetadata(t *testing.T) {
 	service, _, db := setupVisualWorkflowTest(t)
 	product := models.EcomProductSKU{ID: "prod_1", OrganizationID: "org_1", SKUCode: "SKU-1", Title: "Test", Status: models.ProductStatusDraft, AssetStatus: models.AssetStatusMissing, ListingStatus: models.ListingStatusMissing, ExportStatus: models.ExportStatusPending}
 	if err := db.Create(&product).Error; err != nil {
@@ -322,12 +322,24 @@ func TestURLSourceReferenceReturnsContractNeeded(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create session: %v", err)
 	}
-	source, err := service.CreateSourceReference("user_1", "org_1", session.ID, CreateSourceReferenceRequest{SourceKind: models.VisualSourceKindURL, SourceURL: "https://example.com/item"})
+	allowPrivateSourceResolverHosts = true
+	defer func() { allowPrivateSourceResolverHosts = false }()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<html><head><title>Example Product</title><meta property="og:title" content="OG Product"><meta name="description" content="Source description"><meta property="og:image" content="https://cdn.example/img.jpg"></head><body>ok</body></html>`))
+	}))
+	defer server.Close()
+	source, err := service.CreateSourceReference("user_1", "org_1", session.ID, CreateSourceReferenceRequest{SourceKind: models.VisualSourceKindURL, SourceURL: server.URL + "/item"})
 	if err != nil {
 		t.Fatalf("create url source: %v", err)
 	}
-	if source.Status != models.VisualSourceStatusContractNeeded || source.ErrorCode != "CONTRACT_NEEDED" {
-		t.Fatalf("expected contract-needed source, got %+v", source)
+	if source.Status != models.VisualSourceStatusReady || source.ResolveStatus != models.VisualSourceStatusReady {
+		t.Fatalf("expected ready resolved source, got %+v", source)
+	}
+	metadata := decodeObject(source.Metadata)
+	urlMetadata := metadata["url_metadata"].(map[string]any)
+	if urlMetadata["title"] != "Example Product" {
+		t.Fatalf("expected title metadata, got %+v", urlMetadata)
 	}
 }
 

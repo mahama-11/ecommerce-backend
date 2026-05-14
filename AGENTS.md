@@ -23,13 +23,13 @@ It should not host:
 
 ## 2. Key Documents
 
+- [Current Code Alignment](../docs/ecommerce/current-code-alignment.md)
 - [Backend Guide](docs/BACKEND_GUIDE.md)
 - [Service Boundary](docs/architecture/SERVICE_BOUNDARY.md)
+- [Visual Workflow AI Requirement Contract](docs/architecture/VISUAL_WORKFLOW_AI_REQUIREMENT_CONTRACT.md)
+- [Visual Workflow Frontend Contract](docs/architecture/VISUAL_WORKFLOW_FRONTEND_CONTRACT.md)
 - [Image Generation Runtime Integration](docs/architecture/IMAGE_GENERATION_RUNTIME_INTEGRATION.md)
-- [Visual Workflow V2 Frontend Contract](docs/architecture/VISUAL_WORKFLOW_FRONTEND_CONTRACT.md)
 - [OpenAPI Guide](docs/openapi/README.md)
-- [Template Center Design](../docs/architecture/AGENT_ECOMMERCE_TEMPLATE_CENTER_DESIGN.md)
-- [Template Center Evolution Plan](../docs/architecture/AGENT_ECOMMERCE_TEMPLATE_CENTER_EVOLUTION_PLAN.md)
 - [Template Center Data Model](docs/architecture/TEMPLATE_CENTER_DATA_MODEL.md)
 
 ## 3. Commands

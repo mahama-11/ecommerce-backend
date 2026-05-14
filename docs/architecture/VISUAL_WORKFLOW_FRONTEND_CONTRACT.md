@@ -2,7 +2,7 @@
 
 Status: active draft for Ecommerce PR #5 (`feat/ecommerce-v2-visualworkflow-s1-s2`).
 
-This document is the frontend handoff contract for the V2 SKU visual workflow. Frontend should consume the product backend only; it must not call Platform runtime/provider APIs or carry provider/runtime/storage/billing internals.
+This document is the frontend handoff contract for the V2 SKU visual workflow. It should be read together with `VISUAL_WORKFLOW_AI_REQUIREMENT_CONTRACT.md`, which maps the language-model/runtime work back to the product requirement. Frontend should consume the product backend only; it must not call Platform runtime/provider APIs or carry provider/runtime/storage/billing internals.
 
 ## Contract principles
 

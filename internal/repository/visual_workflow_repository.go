@@ -37,6 +37,14 @@ func (r *VisualWorkflowRepository) GetSession(orgID, sessionID string) (*models.
 	return &item, nil
 }
 
+func (r *VisualWorkflowRepository) FindSessionByID(sessionID string) (*models.EcommerceVisualWorkflowSession, error) {
+	var item models.EcommerceVisualWorkflowSession
+	if err := r.db.Where("id = ?", sessionID).First(&item).Error; err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
 func (r *VisualWorkflowRepository) FindSessionByIdempotencyKey(orgID, key string) (*models.EcommerceVisualWorkflowSession, error) {
 	var item models.EcommerceVisualWorkflowSession
 	if err := r.db.Where("organization_id = ? AND idempotency_key = ?", orgID, key).First(&item).Error; err != nil {

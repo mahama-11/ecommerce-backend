@@ -185,6 +185,7 @@ func New(cfg config.Config, platformClient *platform.Client, db *gorm.DB, redisC
 			protected.GET("/v2/visual-workflows/:session_id/deconstruction-elements", visualWorkflowHandler.ListElements)
 			protected.PATCH("/v2/visual-workflows/:session_id/deconstruction-elements/:element_id", visualWorkflowHandler.UpdateElement)
 			protected.POST("/v2/visual-workflows/:session_id/deconstruction-elements:confirm", visualWorkflowHandler.ConfirmSelection)
+			protected.POST("/v2/visual-workflows/:session_id/intent-planner-jobs", visualWorkflowHandler.CreateIntentPlannerJob)
 		}
 
 		workspaceGroup := v1.Group("")

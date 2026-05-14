@@ -1912,8 +1912,57 @@ func TestCreateGenerationVersionWithInvalidPromptIDFailsClosed(t *testing.T) {
 	}
 }
 
+func TestCreateIntentPlannerJobCreatesPlatformTextRuntime(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_intent", "org_intent", "SKU-I")
+	session, err := service.CreateSession("user_intent", "org_intent", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	element := models.EcommerceVisualDeconstructionElement{ID: "vde_1", OrganizationID: "org_intent", SessionID: session.ID, JobID: "vdj_1", ElementType: "style", ElementKey: "background", Label: "clean studio", Selected: true, Confirmed: true, Readiness: models.VisualReadinessReady, ValueJSON: toJSONForTest(map[string]any{"color": "white"}), Metadata: toJSONForTest(map[string]any{"decision": "keep"})}
+	if err := db.Create(&element).Error; err != nil {
+		t.Fatalf("seed element: %v", err)
+	}
+	fake := &fakeRuntimeCapabilityReader{matrix: readyIntentPlanningMatrix(), runtimeJob: &platform.RuntimeJob{ID: "runtime-intent-1", ProductCode: "ecommerce", TaskType: "intent_planning", Status: "queued", Stage: "queued"}}
+	service.WithRuntimeOrchestrator(fake)
+	resp, err := service.CreateIntentPlannerJob("org_intent", session.ID, CreateIntentPlannerJobRequest{Marketplace: "amazon", Locale: "en-US", DriftControls: map[string]any{"reference_weight": 0.7}, IdempotencyKey: "intent-1"})
+	if err != nil {
+		t.Fatalf("create intent planner: %v", err)
+	}
+	if resp.RuntimeJobID != "runtime-intent-1" || len(fake.createInputs) != 1 {
+		t.Fatalf("expected runtime job creation, resp=%+v inputs=%d", resp, len(fake.createInputs))
+	}
+	input := fake.createInputs[0]
+	if input.TaskType != "intent_planning" || input.SourceType != "visual_intent_planning" || input.SourceID != session.ID {
+		t.Fatalf("unexpected runtime input: %+v", input)
+	}
+	if strings.Contains(input.InputManifest, "provider_job_id") || strings.Contains(input.InputManifest, "storage_key") {
+		t.Fatalf("intent planner manifest leaked forbidden execution metadata: %s", input.InputManifest)
+	}
+}
+
+func TestIntentPlannerResultUpdatesIntentSpecFromTrustedCallback(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_intent_result", "org_intent_result", "SKU-R")
+	session, err := service.CreateSession("user_intent_result", "org_intent_result", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	result, err := service.InternalRecordIntentPlannerResults(session.ID, InternalRecordResultsRequest{Status: "completed", Progress: 100, Stage: "completed", Variants: []map[string]any{{"inline_data": toJSONForTest(IntentSpecDTO{SchemaVersion: intentSpecSchemaVersion, SceneType: "hero", Requirements: map[string]any{"marketplace": "amazon"}, Selections: []IntentElementDTO{{ElementID: "vde_1", Decision: "keep", Label: "clean studio"}}})}}})
+	if err != nil {
+		t.Fatalf("record intent planner result: %v", err)
+	}
+	if result.IntentSpec.SceneType != "hero" || len(result.IntentSpec.Selections) != 1 || result.IntentSpec.Selections[0].Decision != "keep" {
+		t.Fatalf("intent spec not updated from planner result: %+v", result.IntentSpec)
+	}
+}
+
 func readyVisualGenerationMatrix() *platform.RuntimeCapabilityMatrix {
 	return &platform.RuntimeCapabilityMatrix{ProductCode: "ecommerce", Items: []platform.RuntimeCapabilityItem{{TaskType: "image_generation", Status: "ready", Available: true, ContractStatus: "ready"}}}
+}
+
+func readyIntentPlanningMatrix() *platform.RuntimeCapabilityMatrix {
+	return &platform.RuntimeCapabilityMatrix{ProductCode: "ecommerce", Items: []platform.RuntimeCapabilityItem{{TaskType: "intent_planning", Status: "ready", Available: true, ContractStatus: "ready"}}}
 }
 
 func toJSONForTest(v any) string {

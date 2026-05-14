@@ -273,6 +273,7 @@ type InternalRecordResultsRequest struct {
 
 type UpdateElementRequest struct {
 	Selected    *bool          `json:"selected"`
+	Decision    string         `json:"decision"`
 	Confirmed   *bool          `json:"confirmed"`
 	Readiness   string         `json:"readiness"`
 	Label       string         `json:"label"`
@@ -283,6 +284,26 @@ type UpdateElementRequest struct {
 
 type ConfirmSelectionRequest struct {
 	ElementIDs []string `json:"element_ids" binding:"required"`
+}
+
+type CreateIntentPlannerJobRequest struct {
+	SourceReferenceID string         `json:"source_reference_id"`
+	ElementIDs        []string       `json:"element_ids"`
+	Marketplace       string         `json:"marketplace"`
+	Locale            string         `json:"locale"`
+	DriftControls     map[string]any `json:"drift_controls"`
+	IdempotencyKey    string         `json:"idempotency_key"`
+	Metadata          map[string]any `json:"metadata"`
+}
+
+type IntentPlannerJobResponse struct {
+	SessionID      string             `json:"session_id"`
+	RuntimeJobID   string             `json:"runtime_job_id,omitempty"`
+	Status         string             `json:"status"`
+	Stage          string             `json:"stage"`
+	Progress       int                `json:"progress"`
+	Blockers       []ReadinessBlocker `json:"blockers,omitempty"`
+	IdempotencyKey string             `json:"idempotency_key,omitempty"`
 }
 
 type ReadinessBlocker struct {
@@ -322,12 +343,15 @@ type IntentSourceDTO struct {
 }
 
 type IntentElementDTO struct {
-	ElementID   string         `json:"element_id,omitempty"`
-	ElementType string         `json:"element_type,omitempty"`
-	ElementKey  string         `json:"element_key,omitempty"`
-	Label       string         `json:"label,omitempty"`
-	Value       map[string]any `json:"value,omitempty"`
-	Metadata    map[string]any `json:"metadata,omitempty"`
+	ElementID     string         `json:"element_id,omitempty"`
+	ElementType   string         `json:"element_type,omitempty"`
+	Decision      string         `json:"decision,omitempty"`
+	GroupPath     []string       `json:"group_path,omitempty"`
+	TargetAssetID string         `json:"target_asset_id,omitempty"`
+	ElementKey    string         `json:"element_key,omitempty"`
+	Label         string         `json:"label,omitempty"`
+	Value         map[string]any `json:"value,omitempty"`
+	Metadata      map[string]any `json:"metadata,omitempty"`
 }
 
 type PromptPlanDTO struct {

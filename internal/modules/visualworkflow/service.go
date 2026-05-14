@@ -748,6 +748,223 @@ func mapGenerationRuntimeStage(stage, status string) string {
 	}
 }
 
+func (s *Service) CreateIntentPlannerJob(orgID, sessionID string, req CreateIntentPlannerJobRequest) (*IntentPlannerJobResponse, error) {
+	session, err := s.repo.GetSession(orgID, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	if s.capabilityReader == nil || s.runtimeCreator == nil {
+		return s.persistIntentPlannerBlocked(session, "PLATFORM_CAPABILITY_UNAVAILABLE", "Platform text runtime is not configured")
+	}
+	matrix, err := s.capabilityReader.ListRuntimeCapabilities("ecommerce", "intent_planning")
+	if err != nil {
+		return s.persistIntentPlannerBlocked(session, "PLATFORM_CAPABILITY_CHECK_FAILED", safePlatformCapabilityErrorMessage)
+	}
+	capability, ok := runtimeCapabilityForTask(matrix, "intent_planning")
+	if !ok || !runtimeCapabilityIsReady(capability) {
+		return s.persistIntentPlannerBlocked(session, "PLATFORM_CAPABILITY_UNAVAILABLE", "Platform intent_planning runtime is not ready")
+	}
+	elements, err := s.repo.ListDeconstructionElements(orgID, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	selected := selectPlannerElements(elements, req.ElementIDs)
+	if len(selected) == 0 {
+		return s.persistIntentPlannerBlocked(session, "DECONSTRUCTION_SELECTION_REQUIRED", "Select or confirm deconstruction elements before intent planning")
+	}
+	manifest := map[string]any{
+		"input_mode": "ecommerce_visual_intent_planning",
+		"prompt_snapshot": map[string]any{
+			"provider":    "minimax_text",
+			"user_prompt": buildIntentPlannerPrompt(session, selected, req),
+		},
+		"params_snapshot": map[string]any{
+			"response_format": "json",
+			"marketplace":     strings.TrimSpace(req.Marketplace),
+			"locale":          strings.TrimSpace(req.Locale),
+			"drift_controls":  sanitizeGenerationManifestValue(req.DriftControls),
+		},
+		"ecommerce_snapshot": map[string]any{
+			"contract":            "ecommerce.visual_intent_planner.v1",
+			"session_id":          session.ID,
+			"product_id":          session.ProductID,
+			"sku_code":            session.SKUCode,
+			"source_reference_id": strings.TrimSpace(req.SourceReferenceID),
+			"elements":            intentPlannerElementSnapshots(selected),
+		},
+	}
+	idempotencyKey := strings.TrimSpace(req.IdempotencyKey)
+	if idempotencyKey == "" {
+		idempotencyKey = fmt.Sprintf("intent-planner:%s:%x", session.ID, sha256.Sum256([]byte(mustJSON(manifest))))
+	}
+	runtimeJob, err := s.runtimeCreator.CreateRuntimeJob(platform.CreateRuntimeJobInput{
+		ProductCode:    "ecommerce",
+		TaskType:       "intent_planning",
+		ProviderMode:   "async",
+		OrganizationID: session.OrganizationID,
+		UserID:         session.UserID,
+		SourceType:     "visual_intent_planning",
+		SourceID:       session.ID,
+		IdempotencyKey: "ecommerce:visual_intent_planning:" + idempotencyKey,
+		InputManifest:  mustJSON(sanitizeGenerationManifestValue(manifest)),
+		Metadata:       mustJSON(map[string]any{"product_id": session.ProductID, "sku_code": session.SKUCode, "session_id": session.ID}),
+		Priority:       80,
+		MaxAttempts:    2,
+		TimeoutSeconds: 300,
+	})
+	if err != nil {
+		return s.persistIntentPlannerBlocked(session, "PLATFORM_RUNTIME_CREATE_FAILED", safePlatformRuntimeJobCreateErrorMessage)
+	}
+	metadata := decodeObject(session.Metadata)
+	metadata["intent_planner"] = map[string]any{"runtime_job_id": runtimeJob.ID, "status": runtimeJob.Status, "stage": runtimeJob.Stage, "progress": 5, "idempotency_key": idempotencyKey}
+	session.Metadata = mustJSON(sanitizeGenerationManifestValue(metadata))
+	session.CurrentStage = models.VisualWorkflowStagePrompt
+	session.Status = models.VisualWorkflowStatusProcessing
+	if err := s.repo.SaveSession(session); err != nil {
+		return nil, err
+	}
+	return &IntentPlannerJobResponse{SessionID: session.ID, RuntimeJobID: runtimeJob.ID, Status: runtimeJob.Status, Stage: runtimeJob.Stage, Progress: 5, IdempotencyKey: idempotencyKey}, nil
+}
+
+func (s *Service) persistIntentPlannerBlocked(session *models.EcommerceVisualWorkflowSession, code, message string) (*IntentPlannerJobResponse, error) {
+	metadata := decodeObject(session.Metadata)
+	metadata["intent_planner"] = map[string]any{"status": "contract_needed", "blocker_code": code, "message": message}
+	session.Metadata = mustJSON(sanitizeGenerationManifestValue(metadata))
+	session.CurrentStage = models.VisualWorkflowStagePrompt
+	session.Status = models.VisualWorkflowStatusBlocked
+	if err := s.repo.SaveSession(session); err != nil {
+		return nil, err
+	}
+	return &IntentPlannerJobResponse{SessionID: session.ID, Status: "contract_needed", Stage: "contract_needed", Blockers: []ReadinessBlocker{{Code: code, Target: "intent_planner", Message: message}}}, nil
+}
+
+func (s *Service) InternalUpdateIntentPlannerRuntime(sessionID string, req InternalRuntimeUpdateRequest) (*IntentPlannerJobResponse, error) {
+	session, err := s.repo.FindSessionByID(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	status := normalizeGenerationRuntimeCallbackStatus(req.Status)
+	if status == "" {
+		return nil, fmt.Errorf("%w: unsupported intent planner runtime status %q", ErrInternalCallbackInvalid, req.Status)
+	}
+	progress := 0
+	if req.Progress != nil {
+		progress = *req.Progress
+	}
+	metadata := decodeObject(session.Metadata)
+	metadata["intent_planner"] = map[string]any{"runtime_job_id": req.RuntimeJobID, "status": status, "stage": req.Stage, "progress": progress, "error_code": req.ErrorCode, "error_message": req.ErrorMessage}
+	session.Metadata = mustJSON(sanitizeGenerationManifestValue(metadata))
+	session.CurrentStage = models.VisualWorkflowStagePrompt
+	if status == "failed" || status == "canceled" {
+		session.Status = status
+	} else {
+		session.Status = models.VisualWorkflowStatusProcessing
+	}
+	if err := s.repo.SaveSession(session); err != nil {
+		return nil, err
+	}
+	return &IntentPlannerJobResponse{SessionID: session.ID, RuntimeJobID: req.RuntimeJobID, Status: status, Stage: req.Stage, Progress: progress}, nil
+}
+
+func (s *Service) InternalRecordIntentPlannerResults(sessionID string, req InternalRecordResultsRequest) (*SessionDTO, error) {
+	session, err := s.repo.FindSessionByID(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	status := normalizeGenerationRuntimeCallbackStatus(req.Status)
+	if status == "" {
+		return nil, fmt.Errorf("%w: unsupported intent planner result status %q", ErrInternalCallbackInvalid, req.Status)
+	}
+	if status != "completed" {
+		_, err := s.InternalUpdateIntentPlannerRuntime(sessionID, InternalRuntimeUpdateRequest{Status: status, Stage: req.Stage, StageMessage: req.StageMessage, Progress: &req.Progress, ErrorCode: req.ErrorCode, ErrorMessage: req.ErrorMessage})
+		if err != nil {
+			return nil, err
+		}
+		dto := sessionDTO(session)
+		return dto, nil
+	}
+	content := firstPlannerVariantText(req.Variants)
+	if strings.TrimSpace(content) == "" {
+		return nil, fmt.Errorf("%w: intent planner result text is required", ErrInternalCallbackInvalid)
+	}
+	var spec IntentSpecDTO
+	if err := json.Unmarshal([]byte(content), &spec); err != nil {
+		return nil, fmt.Errorf("%w: intent planner result must be valid intent JSON", ErrInternalCallbackInvalid)
+	}
+	applyIntentSpecDefaults(&spec, session)
+	if err := validateIntentSpec(&spec); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrInternalCallbackInvalid, err)
+	}
+	session.IntentSpecJSON = encodeIntentSpec(&spec)
+	session.CurrentStage = models.VisualWorkflowStagePrompt
+	session.Status = models.VisualWorkflowStatusReady
+	metadata := decodeObject(session.Metadata)
+	metadata["intent_planner"] = map[string]any{"status": "completed", "stage": req.Stage, "progress": req.Progress}
+	session.Metadata = mustJSON(sanitizeGenerationManifestValue(metadata))
+	if err := s.repo.SaveSession(session); err != nil {
+		return nil, err
+	}
+	return sessionDTO(session), nil
+}
+
+func (s *Service) HasIntentPlannerSession(sessionID string) bool {
+	_, err := s.repo.FindSessionByID(sessionID)
+	return err == nil
+}
+
+func selectPlannerElements(elements []models.EcommerceVisualDeconstructionElement, ids []string) []models.EcommerceVisualDeconstructionElement {
+	want := map[string]bool{}
+	for _, id := range ids {
+		if strings.TrimSpace(id) != "" {
+			want[strings.TrimSpace(id)] = true
+		}
+	}
+	out := make([]models.EcommerceVisualDeconstructionElement, 0, len(elements))
+	for _, item := range elements {
+		if len(want) > 0 && !want[item.ID] {
+			continue
+		}
+		if len(want) == 0 && !item.Selected && !item.Confirmed {
+			continue
+		}
+		out = append(out, item)
+	}
+	return out
+}
+
+func intentPlannerElementSnapshots(elements []models.EcommerceVisualDeconstructionElement) []map[string]any {
+	out := make([]map[string]any, 0, len(elements))
+	for _, item := range elements {
+		value := decodeObject(item.ValueJSON)
+		metadata := decodeObject(item.Metadata)
+		out = append(out, map[string]any{"element_id": item.ID, "element_type": item.ElementType, "element_key": item.ElementKey, "label": item.Label, "value": sanitizeGenerationManifestValue(value), "decision": metadataString(metadata, "decision"), "group_path": metadata["group_path"], "target_asset_id": metadataString(metadata, "target_asset_id")})
+	}
+	return out
+}
+
+func buildIntentPlannerPrompt(session *models.EcommerceVisualWorkflowSession, elements []models.EcommerceVisualDeconstructionElement, req CreateIntentPlannerJobRequest) string {
+	payload := map[string]any{"instruction": "Return a strict JSON visual_intent_spec.v1 for ecommerce SKU visual generation. Use keep/replace/drop decisions and drift controls. Do not include provider, storage, billing, runtime, or credential fields.", "product_id": session.ProductID, "sku_code": session.SKUCode, "marketplace": req.Marketplace, "locale": req.Locale, "drift_controls": req.DriftControls, "elements": intentPlannerElementSnapshots(elements)}
+	return mustJSON(payload)
+}
+
+func firstPlannerVariantText(variants []map[string]any) string {
+	for _, variant := range variants {
+		for _, key := range []string{"inline_data", "text", "content", "body"} {
+			if value, ok := variant[key].(string); ok && strings.TrimSpace(value) != "" {
+				return value
+			}
+		}
+		if asset, ok := variant["asset"].(map[string]any); ok {
+			for _, key := range []string{"inline_data", "text", "content", "body"} {
+				if value, ok := asset[key].(string); ok && strings.TrimSpace(value) != "" {
+					return value
+				}
+			}
+		}
+	}
+	return ""
+}
+
 func (s *Service) createPlatformDeconstructionRuntimeJob(item *models.EcommerceVisualDeconstructionJob, manifest map[string]any) error {
 	if item == nil || s.runtimeCreator == nil {
 		return nil

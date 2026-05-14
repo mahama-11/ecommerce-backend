@@ -1938,10 +1938,82 @@ func (s *Service) UpdateElement(orgID, sessionID, elementID string, req UpdateEl
 	if req.BoundingBox != nil {
 		item.BoundingBoxJSON = mustJSON(req.BoundingBox)
 	}
-	if req.Metadata != nil {
-		item.Metadata = mustJSON(req.Metadata)
+	if err := applyAttentionDecisionToElement(item, req.Decision, req.GroupPath, req.TargetAssetID, req.Rationale, req.Confidence, req.Metadata); err != nil {
+		return nil, err
 	}
 	return item, s.repo.UpdateDeconstructionElement(item)
+}
+
+func (s *Service) ApplyAttentionTree(orgID, sessionID string, req ApplyAttentionTreeRequest) ([]models.EcommerceVisualDeconstructionElement, error) {
+	if len(req.Decisions) == 0 {
+		return nil, fmt.Errorf("attention decisions are required")
+	}
+	if _, err := s.repo.GetSession(orgID, sessionID); err != nil {
+		return nil, err
+	}
+	out := make([]models.EcommerceVisualDeconstructionElement, 0, len(req.Decisions))
+	for _, decision := range req.Decisions {
+		item, err := s.repo.GetDeconstructionElement(orgID, sessionID, strings.TrimSpace(decision.ElementID))
+		if err != nil {
+			return nil, err
+		}
+		selected := decision.Decision == "keep" || decision.Decision == "replace"
+		item.Selected = selected
+		item.Confirmed = decision.Decision != "needs_review"
+		if decision.Decision == "needs_review" {
+			item.Readiness = models.VisualReadinessNeedsReview
+		} else {
+			item.Readiness = models.VisualReadinessReady
+		}
+		if err := applyAttentionDecisionToElement(item, decision.Decision, decision.GroupPath, decision.TargetAssetID, decision.Rationale, decision.Confidence, decision.Metadata); err != nil {
+			return nil, err
+		}
+		if err := s.repo.UpdateDeconstructionElement(item); err != nil {
+			return nil, err
+		}
+		out = append(out, *item)
+	}
+	return out, nil
+}
+
+func applyAttentionDecisionToElement(item *models.EcommerceVisualDeconstructionElement, decision string, groupPath []string, targetAssetID, rationale string, confidence *float64, extra map[string]any) error {
+	metadata := decodeObject(item.Metadata)
+	if extra != nil {
+		metadata = mergeObjectMaps(metadata, sanitizeGenerationManifestValue(extra).(map[string]any))
+	}
+	decision = strings.TrimSpace(decision)
+	if decision != "" {
+		if !validAttentionDecision(decision) {
+			return fmt.Errorf("invalid attention decision: %s", decision)
+		}
+		metadata["decision"] = decision
+	}
+	if len(groupPath) > 0 {
+		metadata["group_path"] = groupPath
+	}
+	if strings.TrimSpace(targetAssetID) != "" {
+		metadata["target_asset_id"] = strings.TrimSpace(targetAssetID)
+	}
+	if strings.TrimSpace(rationale) != "" {
+		metadata["rationale"] = strings.TrimSpace(rationale)
+	}
+	if confidence != nil {
+		if *confidence < 0 || *confidence > 1 {
+			return fmt.Errorf("attention confidence must be 0..1")
+		}
+		metadata["confidence"] = *confidence
+	}
+	item.Metadata = mustJSON(sanitizeGenerationManifestValue(metadata))
+	return nil
+}
+
+func validAttentionDecision(v string) bool {
+	switch strings.TrimSpace(v) {
+	case "keep", "replace", "drop", "needs_review":
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *Service) ConfirmSelection(orgID, sessionID string, elementIDs []string) ([]models.EcommerceVisualDeconstructionElement, error) {

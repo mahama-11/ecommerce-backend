@@ -272,14 +272,33 @@ type InternalRecordResultsRequest struct {
 }
 
 type UpdateElementRequest struct {
-	Selected    *bool          `json:"selected"`
-	Decision    string         `json:"decision"`
-	Confirmed   *bool          `json:"confirmed"`
-	Readiness   string         `json:"readiness"`
-	Label       string         `json:"label"`
-	Value       map[string]any `json:"value"`
-	Metadata    map[string]any `json:"metadata"`
-	BoundingBox map[string]any `json:"bounding_box"`
+	Selected      *bool          `json:"selected"`
+	Decision      string         `json:"decision"`
+	GroupPath     []string       `json:"group_path"`
+	TargetAssetID string         `json:"target_asset_id"`
+	Rationale     string         `json:"rationale"`
+	Confidence    *float64       `json:"confidence"`
+	Confirmed     *bool          `json:"confirmed"`
+	Readiness     string         `json:"readiness"`
+	Label         string         `json:"label"`
+	Value         map[string]any `json:"value"`
+	Metadata      map[string]any `json:"metadata"`
+	BoundingBox   map[string]any `json:"bounding_box"`
+}
+
+type AttentionDecisionInput struct {
+	ElementID     string         `json:"element_id" binding:"required"`
+	Decision      string         `json:"decision" binding:"required"`
+	GroupPath     []string       `json:"group_path"`
+	TargetAssetID string         `json:"target_asset_id"`
+	Rationale     string         `json:"rationale"`
+	Confidence    *float64       `json:"confidence"`
+	Metadata      map[string]any `json:"metadata"`
+}
+
+type ApplyAttentionTreeRequest struct {
+	Decisions     []AttentionDecisionInput `json:"decisions" binding:"required"`
+	DriftControls map[string]any           `json:"drift_controls"`
 }
 
 type ConfirmSelectionRequest struct {

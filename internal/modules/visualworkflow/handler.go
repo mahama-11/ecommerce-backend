@@ -190,6 +190,20 @@ func (h *Handler) ConfirmSelection(c *gin.Context) {
 	response.JSONSuccess(c, gin.H{"items": items})
 }
 
+func (h *Handler) ApplyAttentionTree(c *gin.Context) {
+	var req ApplyAttentionTreeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.JSONBindError(c, err, "invalid attention tree request")
+		return
+	}
+	items, err := h.service.ApplyAttentionTree(c.GetString("orgID"), c.Param("session_id"), req)
+	if err != nil {
+		response.JSONError(c, response.CodeInvalidParameter, err.Error())
+		return
+	}
+	response.JSONSuccess(c, items)
+}
+
 func (h *Handler) CreateIntentPlannerJob(c *gin.Context) {
 	var req CreateIntentPlannerJobRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

@@ -1957,6 +1957,41 @@ func TestIntentPlannerResultUpdatesIntentSpecFromTrustedCallback(t *testing.T) {
 	}
 }
 
+func TestApplyAttentionTreePersistsDecisions(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_attention", "org_attention", "SKU-A")
+	session, err := service.CreateSession("user_attention", "org_attention", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	for _, element := range []models.EcommerceVisualDeconstructionElement{
+		{ID: "vde_keep", OrganizationID: "org_attention", SessionID: session.ID, JobID: "vdj_attention", ElementType: "style", ElementKey: "background", Label: "clean studio"},
+		{ID: "vde_drop", OrganizationID: "org_attention", SessionID: session.ID, JobID: "vdj_attention", ElementType: "object", ElementKey: "prop", Label: "extra prop"},
+	} {
+		if err := db.Create(&element).Error; err != nil {
+			t.Fatalf("seed element: %v", err)
+		}
+	}
+	confidence := 0.86
+	items, err := service.ApplyAttentionTree("org_attention", session.ID, ApplyAttentionTreeRequest{Decisions: []AttentionDecisionInput{
+		{ElementID: "vde_keep", Decision: "keep", GroupPath: []string{"composition", "background"}, Rationale: "brand background", Confidence: &confidence},
+		{ElementID: "vde_drop", Decision: "drop", Rationale: "not part of SKU"},
+	}})
+	if err != nil {
+		t.Fatalf("apply attention tree: %v", err)
+	}
+	if len(items) != 2 || !items[0].Selected || items[1].Selected {
+		t.Fatalf("unexpected attention decisions: %+v", items)
+	}
+	metadata := decodeObject(items[0].Metadata)
+	if metadata["decision"] != "keep" || metadata["confidence"].(float64) != confidence {
+		t.Fatalf("attention metadata not persisted: %+v", metadata)
+	}
+	if _, err := service.ApplyAttentionTree("org_attention", session.ID, ApplyAttentionTreeRequest{Decisions: []AttentionDecisionInput{{ElementID: "vde_keep", Decision: "overwrite"}}}); err == nil {
+		t.Fatalf("expected invalid decision error")
+	}
+}
+
 func TestCreatePromptPlannerJobCreatesPlatformTextRuntime(t *testing.T) {
 	service, _, db := setupVisualWorkflowTest(t)
 	product := seedProduct(t, db, "prod_prompt_planner", "org_prompt_planner", "SKU-P")

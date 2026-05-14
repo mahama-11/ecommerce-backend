@@ -306,6 +306,18 @@ type IntentPlannerJobResponse struct {
 	IdempotencyKey string             `json:"idempotency_key,omitempty"`
 }
 
+type CreatePromptPlannerJobRequest struct {
+	PromptID        string         `json:"prompt_id"`
+	TemplateID      string         `json:"template_id"`
+	Marketplace     string         `json:"marketplace"`
+	Locale          string         `json:"locale"`
+	DriftControls   map[string]any `json:"drift_controls"`
+	PromptVariables map[string]any `json:"prompt_variables"`
+	IdempotencyKey  string         `json:"idempotency_key"`
+}
+
+type PromptPlannerJobResponse = IntentPlannerJobResponse
+
 type ReadinessBlocker struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`

@@ -912,6 +912,160 @@ func (s *Service) HasIntentPlannerSession(sessionID string) bool {
 	return err == nil
 }
 
+func (s *Service) CreatePromptPlannerJob(orgID, sessionID string, req CreatePromptPlannerJobRequest) (*PromptPlannerJobResponse, error) {
+	session, err := s.repo.GetSession(orgID, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	if s.capabilityReader == nil || s.runtimeCreator == nil {
+		return s.persistPromptPlannerBlocked(session, "PLATFORM_CAPABILITY_UNAVAILABLE", "Platform prompt planning runtime is not configured")
+	}
+	intentSpec := decodeIntentSpec(session.IntentSpecJSON, session)
+	if strings.TrimSpace(intentSpec.SchemaVersion) == "" {
+		return s.persistPromptPlannerBlocked(session, "INTENT_SPEC_REQUIRED", "Intent spec is required before prompt planning")
+	}
+	matrix, err := s.capabilityReader.ListRuntimeCapabilities("ecommerce", "prompt_planning")
+	if err != nil {
+		return s.persistPromptPlannerBlocked(session, "PLATFORM_CAPABILITY_CHECK_FAILED", safePlatformCapabilityErrorMessage)
+	}
+	capability, ok := runtimeCapabilityForTask(matrix, "prompt_planning")
+	if !ok || !runtimeCapabilityIsReady(capability) {
+		return s.persistPromptPlannerBlocked(session, "PLATFORM_CAPABILITY_UNAVAILABLE", "Platform prompt_planning runtime is not ready")
+	}
+	existingPlan := decodePromptPlan(session.PromptPlanJSON, session)
+	manifest := map[string]any{
+		"input_mode": "ecommerce_visual_prompt_planning",
+		"prompt_snapshot": map[string]any{
+			"provider":    "minimax_text",
+			"user_prompt": buildPromptPlannerPrompt(session, &intentSpec, &existingPlan, req),
+		},
+		"params_snapshot": map[string]any{"response_format": "json", "temperature": 0.2},
+		"output_contract": map[string]any{"schema": "visual_prompt_plan.v1", "required_fields": []string{"schema_version", "status", "prompt_id", "scene_type", "variables"}},
+	}
+	idempotencyKey := strings.TrimSpace(req.IdempotencyKey)
+	if idempotencyKey == "" {
+		idempotencyKey = fmt.Sprintf("prompt-planner:%s:%x", session.ID, sha256.Sum256([]byte(mustJSON(manifest))))
+	}
+	runtimeJob, err := s.runtimeCreator.CreateRuntimeJob(platform.CreateRuntimeJobInput{
+		ProductCode:    "ecommerce",
+		TaskType:       "prompt_planning",
+		ProviderMode:   "async",
+		OrganizationID: session.OrganizationID,
+		UserID:         session.UserID,
+		SourceType:     "visual_prompt_planning",
+		SourceID:       session.ID,
+		IdempotencyKey: "ecommerce:visual_prompt_planning:" + idempotencyKey,
+		InputManifest:  mustJSON(sanitizeGenerationManifestValue(manifest)),
+		Metadata:       mustJSON(map[string]any{"product_id": session.ProductID, "sku_code": session.SKUCode, "session_id": session.ID}),
+		Priority:       90,
+		MaxAttempts:    2,
+		TimeoutSeconds: 300,
+	})
+	if err != nil {
+		return s.persistPromptPlannerBlocked(session, "PLATFORM_RUNTIME_CREATE_FAILED", safePlatformRuntimeJobCreateErrorMessage)
+	}
+	metadata := decodeObject(session.Metadata)
+	metadata["prompt_planner"] = map[string]any{"runtime_job_id": runtimeJob.ID, "status": runtimeJob.Status, "stage": runtimeJob.Stage, "progress": 5, "idempotency_key": idempotencyKey}
+	session.Metadata = mustJSON(sanitizeGenerationManifestValue(metadata))
+	session.CurrentStage = models.VisualWorkflowStagePrompt
+	session.Status = models.VisualWorkflowStatusProcessing
+	if err := s.repo.SaveSession(session); err != nil {
+		return nil, err
+	}
+	return &PromptPlannerJobResponse{SessionID: session.ID, RuntimeJobID: runtimeJob.ID, Status: runtimeJob.Status, Stage: runtimeJob.Stage, Progress: 5, IdempotencyKey: idempotencyKey}, nil
+}
+
+func (s *Service) persistPromptPlannerBlocked(session *models.EcommerceVisualWorkflowSession, code, message string) (*PromptPlannerJobResponse, error) {
+	metadata := decodeObject(session.Metadata)
+	metadata["prompt_planner"] = map[string]any{"status": "contract_needed", "blocker_code": code, "message": message}
+	session.Metadata = mustJSON(sanitizeGenerationManifestValue(metadata))
+	session.CurrentStage = models.VisualWorkflowStagePrompt
+	session.Status = models.VisualWorkflowStatusBlocked
+	if err := s.repo.SaveSession(session); err != nil {
+		return nil, err
+	}
+	return &PromptPlannerJobResponse{SessionID: session.ID, Status: "contract_needed", Stage: "contract_needed", Blockers: []ReadinessBlocker{{Code: code, Target: "prompt_planner", Message: message}}}, nil
+}
+
+func (s *Service) InternalUpdatePromptPlannerRuntime(sessionID string, req InternalRuntimeUpdateRequest) (*PromptPlannerJobResponse, error) {
+	session, err := s.repo.FindSessionByID(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	status := normalizeGenerationRuntimeCallbackStatus(req.Status)
+	if status == "" {
+		return nil, fmt.Errorf("%w: unsupported prompt planner runtime status %q", ErrInternalCallbackInvalid, req.Status)
+	}
+	progress := 0
+	if req.Progress != nil {
+		progress = *req.Progress
+	}
+	metadata := decodeObject(session.Metadata)
+	metadata["prompt_planner"] = map[string]any{"runtime_job_id": req.RuntimeJobID, "status": status, "stage": req.Stage, "progress": progress, "error_code": req.ErrorCode, "error_message": req.ErrorMessage}
+	session.Metadata = mustJSON(sanitizeGenerationManifestValue(metadata))
+	session.CurrentStage = models.VisualWorkflowStagePrompt
+	if status == "failed" || status == "canceled" {
+		session.Status = status
+	} else {
+		session.Status = models.VisualWorkflowStatusProcessing
+	}
+	if err := s.repo.SaveSession(session); err != nil {
+		return nil, err
+	}
+	return &PromptPlannerJobResponse{SessionID: session.ID, RuntimeJobID: req.RuntimeJobID, Status: status, Stage: req.Stage, Progress: progress}, nil
+}
+
+func (s *Service) InternalRecordPromptPlannerResults(sessionID string, req InternalRecordResultsRequest) (*SessionDTO, error) {
+	session, err := s.repo.FindSessionByID(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	status := normalizeGenerationRuntimeCallbackStatus(req.Status)
+	if status == "" {
+		return nil, fmt.Errorf("%w: unsupported prompt planner result status %q", ErrInternalCallbackInvalid, req.Status)
+	}
+	if status != "completed" {
+		_, err := s.InternalUpdatePromptPlannerRuntime(sessionID, InternalRuntimeUpdateRequest{Status: status, Stage: req.Stage, StageMessage: req.StageMessage, Progress: &req.Progress, ErrorCode: req.ErrorCode, ErrorMessage: req.ErrorMessage})
+		if err != nil {
+			return nil, err
+		}
+		dto := sessionDTO(session)
+		return dto, nil
+	}
+	content := firstPlannerVariantText(req.Variants)
+	if strings.TrimSpace(content) == "" {
+		return nil, fmt.Errorf("%w: prompt planner result text is required", ErrInternalCallbackInvalid)
+	}
+	var plan PromptPlanDTO
+	if err := json.Unmarshal([]byte(content), &plan); err != nil {
+		return nil, fmt.Errorf("%w: prompt planner result must be valid prompt plan JSON", ErrInternalCallbackInvalid)
+	}
+	applyPromptPlanDefaults(&plan, session)
+	if err := validatePromptPlan(&plan); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrInternalCallbackInvalid, err)
+	}
+	session.PromptPlanJSON = encodePromptPlan(&plan)
+	session.CurrentStage = models.VisualWorkflowStageGeneration
+	session.Status = models.VisualWorkflowStatusReady
+	metadata := decodeObject(session.Metadata)
+	metadata["prompt_planner"] = map[string]any{"status": "completed", "stage": req.Stage, "progress": req.Progress}
+	session.Metadata = mustJSON(sanitizeGenerationManifestValue(metadata))
+	if err := s.repo.SaveSession(session); err != nil {
+		return nil, err
+	}
+	return sessionDTO(session), nil
+}
+
+func (s *Service) HasPromptPlannerSession(sessionID string) bool {
+	_, err := s.repo.FindSessionByID(sessionID)
+	return err == nil
+}
+
+func buildPromptPlannerPrompt(session *models.EcommerceVisualWorkflowSession, intentSpec *IntentSpecDTO, existingPlan *PromptPlanDTO, req CreatePromptPlannerJobRequest) string {
+	payload := map[string]any{"instruction": "Return strict JSON visual_prompt_plan.v1 for provider-executable ecommerce visual generation. Include prompt_id/status/scene_type/variables/source_assets when known. Do not include execution artifact or credential fields.", "product_id": session.ProductID, "sku_code": session.SKUCode, "marketplace": req.Marketplace, "locale": req.Locale, "drift_controls": req.DriftControls, "prompt_variables": req.PromptVariables, "prompt_id": req.PromptID, "template_id": req.TemplateID, "intent_spec": intentSpec, "existing_prompt_plan": existingPlan}
+	return mustJSON(payload)
+}
+
 func selectPlannerElements(elements []models.EcommerceVisualDeconstructionElement, ids []string) []models.EcommerceVisualDeconstructionElement {
 	want := map[string]bool{}
 	for _, id := range ids {

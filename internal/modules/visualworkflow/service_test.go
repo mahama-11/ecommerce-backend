@@ -1957,12 +1957,66 @@ func TestIntentPlannerResultUpdatesIntentSpecFromTrustedCallback(t *testing.T) {
 	}
 }
 
+func TestCreatePromptPlannerJobCreatesPlatformTextRuntime(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_prompt_planner", "org_prompt_planner", "SKU-P")
+	session, err := service.CreateSession("user_prompt_planner", "org_prompt_planner", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	sessionModel, err := service.repo.GetSession("org_prompt_planner", session.ID)
+	if err != nil {
+		t.Fatalf("get session: %v", err)
+	}
+	sessionModel.IntentSpecJSON = toJSONForTest(IntentSpecDTO{SchemaVersion: intentSpecSchemaVersion, SceneType: "hero", Requirements: map[string]any{"marketplace": "amazon"}})
+	if err := service.repo.SaveSession(sessionModel); err != nil {
+		t.Fatalf("save intent spec: %v", err)
+	}
+	fake := &fakeRuntimeCapabilityReader{matrix: readyPromptPlanningMatrix(), runtimeJob: &platform.RuntimeJob{ID: "runtime-prompt-plan-1", ProductCode: "ecommerce", TaskType: "prompt_planning", Status: "queued", Stage: "queued"}}
+	service.WithRuntimeOrchestrator(fake)
+	resp, err := service.CreatePromptPlannerJob("org_prompt_planner", session.ID, CreatePromptPlannerJobRequest{PromptID: "prompt_v2", Marketplace: "amazon", Locale: "en-US", DriftControls: map[string]any{"style_strength": 0.6}, IdempotencyKey: "prompt-plan-1"})
+	if err != nil {
+		t.Fatalf("create prompt planner: %v", err)
+	}
+	if resp.RuntimeJobID != "runtime-prompt-plan-1" || len(fake.createInputs) != 1 {
+		t.Fatalf("expected runtime job creation, resp=%+v inputs=%d", resp, len(fake.createInputs))
+	}
+	input := fake.createInputs[0]
+	if input.TaskType != "prompt_planning" || input.SourceType != "visual_prompt_planning" || input.SourceID != session.ID {
+		t.Fatalf("unexpected prompt planner runtime input: %+v", input)
+	}
+	if strings.Contains(input.InputManifest, "provider_job_id") || strings.Contains(input.InputManifest, "storage_key") || strings.Contains(input.InputManifest, "billing") {
+		t.Fatalf("prompt planner manifest leaked forbidden execution metadata: %s", input.InputManifest)
+	}
+}
+
+func TestPromptPlannerResultUpdatesPromptPlanFromTrustedCallback(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_prompt_result", "org_prompt_result", "SKU-PR")
+	session, err := service.CreateSession("user_prompt_result", "org_prompt_result", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	plan := PromptPlanDTO{SchemaVersion: promptPlanSchemaVersion, Status: "ready", PromptID: "prompt_v2", SceneType: "hero", Variables: map[string]any{"headline": "clean studio"}}
+	result, err := service.InternalRecordPromptPlannerResults(session.ID, InternalRecordResultsRequest{Status: "completed", Progress: 100, Stage: "completed", Variants: []map[string]any{{"inline_data": toJSONForTest(plan)}}})
+	if err != nil {
+		t.Fatalf("record prompt planner result: %v", err)
+	}
+	if result.PromptPlan.PromptID != "prompt_v2" || result.PromptPlan.Status != "ready" || result.PromptPlan.Variables["headline"] != "clean studio" {
+		t.Fatalf("prompt plan not updated from planner result: %+v", result.PromptPlan)
+	}
+}
+
 func readyVisualGenerationMatrix() *platform.RuntimeCapabilityMatrix {
 	return &platform.RuntimeCapabilityMatrix{ProductCode: "ecommerce", Items: []platform.RuntimeCapabilityItem{{TaskType: "image_generation", Status: "ready", Available: true, ContractStatus: "ready"}}}
 }
 
 func readyIntentPlanningMatrix() *platform.RuntimeCapabilityMatrix {
 	return &platform.RuntimeCapabilityMatrix{ProductCode: "ecommerce", Items: []platform.RuntimeCapabilityItem{{TaskType: "intent_planning", Status: "ready", Available: true, ContractStatus: "ready"}}}
+}
+
+func readyPromptPlanningMatrix() *platform.RuntimeCapabilityMatrix {
+	return &platform.RuntimeCapabilityMatrix{ProductCode: "ecommerce", Items: []platform.RuntimeCapabilityItem{{TaskType: "prompt_planning", Status: "ready", Available: true, ContractStatus: "ready"}}}
 }
 
 func toJSONForTest(v any) string {

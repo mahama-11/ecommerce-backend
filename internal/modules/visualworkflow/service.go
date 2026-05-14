@@ -1061,6 +1061,120 @@ func (s *Service) HasPromptPlannerSession(sessionID string) bool {
 	return err == nil
 }
 
+func (s *Service) CreateStrategyReportJob(orgID, sessionID string, req CreateStrategyReportJobRequest) (*StrategyReportJobResponse, error) {
+	session, err := s.repo.GetSession(orgID, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	if s.capabilityReader == nil || s.runtimeCreator == nil {
+		return s.persistStrategyReportBlocked(session, "PLATFORM_CAPABILITY_UNAVAILABLE", "Platform strategy report runtime is not configured")
+	}
+	matrix, err := s.capabilityReader.ListRuntimeCapabilities("ecommerce", "strategy_report")
+	if err != nil {
+		return s.persistStrategyReportBlocked(session, "PLATFORM_CAPABILITY_CHECK_FAILED", safePlatformCapabilityErrorMessage)
+	}
+	capability, ok := runtimeCapabilityForTask(matrix, "strategy_report")
+	if !ok || !runtimeCapabilityIsReady(capability) {
+		return s.persistStrategyReportBlocked(session, "PLATFORM_CAPABILITY_UNAVAILABLE", "Platform strategy_report runtime is not ready")
+	}
+	manifest := map[string]any{"input_mode": "ecommerce_strategy_report", "prompt_snapshot": map[string]any{"provider": "minimax_text", "user_prompt": buildStrategyReportPrompt(session, req)}, "params_snapshot": map[string]any{"response_format": "json", "temperature": 0.2}, "output_contract": map[string]any{"schema": "ecommerce_strategy_report.v1", "required_fields": []string{"schema_version", "status", "summary", "recommendations"}}}
+	idempotencyKey := strings.TrimSpace(req.IdempotencyKey)
+	if idempotencyKey == "" {
+		idempotencyKey = fmt.Sprintf("strategy-report:%s:%x", session.ID, sha256.Sum256([]byte(mustJSON(manifest))))
+	}
+	runtimeJob, err := s.runtimeCreator.CreateRuntimeJob(platform.CreateRuntimeJobInput{ProductCode: "ecommerce", TaskType: "strategy_report", ProviderMode: "async", OrganizationID: session.OrganizationID, UserID: session.UserID, SourceType: "visual_strategy_report", SourceID: session.ID, IdempotencyKey: "ecommerce:visual_strategy_report:" + idempotencyKey, InputManifest: mustJSON(sanitizeGenerationManifestValue(manifest)), Metadata: mustJSON(map[string]any{"product_id": session.ProductID, "sku_code": session.SKUCode, "session_id": session.ID}), Priority: 70, MaxAttempts: 2, TimeoutSeconds: 300})
+	if err != nil {
+		return s.persistStrategyReportBlocked(session, "PLATFORM_RUNTIME_CREATE_FAILED", safePlatformRuntimeJobCreateErrorMessage)
+	}
+	metadata := decodeObject(session.Metadata)
+	metadata["strategy_report"] = map[string]any{"runtime_job_id": runtimeJob.ID, "status": runtimeJob.Status, "stage": runtimeJob.Stage, "progress": 5, "idempotency_key": idempotencyKey}
+	session.Metadata = mustJSON(sanitizeGenerationManifestValue(metadata))
+	if err := s.repo.SaveSession(session); err != nil {
+		return nil, err
+	}
+	return &StrategyReportJobResponse{SessionID: session.ID, RuntimeJobID: runtimeJob.ID, Status: runtimeJob.Status, Stage: runtimeJob.Stage, Progress: 5, IdempotencyKey: idempotencyKey}, nil
+}
+
+func (s *Service) persistStrategyReportBlocked(session *models.EcommerceVisualWorkflowSession, code, message string) (*StrategyReportJobResponse, error) {
+	metadata := decodeObject(session.Metadata)
+	metadata["strategy_report"] = map[string]any{"status": "contract_needed", "blocker_code": code, "message": message}
+	session.Metadata = mustJSON(sanitizeGenerationManifestValue(metadata))
+	if err := s.repo.SaveSession(session); err != nil {
+		return nil, err
+	}
+	return &StrategyReportJobResponse{SessionID: session.ID, Status: "contract_needed", Stage: "contract_needed", Blockers: []ReadinessBlocker{{Code: code, Target: "strategy_report", Message: message}}}, nil
+}
+
+func (s *Service) InternalUpdateStrategyReportRuntime(sessionID string, req InternalRuntimeUpdateRequest) (*StrategyReportJobResponse, error) {
+	session, err := s.repo.FindSessionByID(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	status := normalizeGenerationRuntimeCallbackStatus(req.Status)
+	if status == "" {
+		return nil, fmt.Errorf("%w: unsupported strategy report runtime status %q", ErrInternalCallbackInvalid, req.Status)
+	}
+	progress := 0
+	if req.Progress != nil {
+		progress = *req.Progress
+	}
+	metadata := decodeObject(session.Metadata)
+	metadata["strategy_report"] = map[string]any{"runtime_job_id": req.RuntimeJobID, "status": status, "stage": req.Stage, "progress": progress, "error_code": req.ErrorCode, "error_message": req.ErrorMessage}
+	session.Metadata = mustJSON(sanitizeGenerationManifestValue(metadata))
+	if err := s.repo.SaveSession(session); err != nil {
+		return nil, err
+	}
+	return &StrategyReportJobResponse{SessionID: session.ID, RuntimeJobID: req.RuntimeJobID, Status: status, Stage: req.Stage, Progress: progress}, nil
+}
+
+func (s *Service) InternalRecordStrategyReportResults(sessionID string, req InternalRecordResultsRequest) (*SessionDTO, error) {
+	session, err := s.repo.FindSessionByID(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	status := normalizeGenerationRuntimeCallbackStatus(req.Status)
+	if status == "" {
+		return nil, fmt.Errorf("%w: unsupported strategy report result status %q", ErrInternalCallbackInvalid, req.Status)
+	}
+	metadata := decodeObject(session.Metadata)
+	if status != "completed" {
+		metadata["strategy_report"] = map[string]any{"status": status, "stage": req.Stage, "progress": req.Progress, "error_code": req.ErrorCode, "error_message": req.ErrorMessage}
+		session.Metadata = mustJSON(sanitizeGenerationManifestValue(metadata))
+		if err := s.repo.SaveSession(session); err != nil {
+			return nil, err
+		}
+		dto := sessionDTO(session)
+		return dto, nil
+	}
+	content := firstPlannerVariantText(req.Variants)
+	if strings.TrimSpace(content) == "" {
+		return nil, fmt.Errorf("%w: strategy report result text is required", ErrInternalCallbackInvalid)
+	}
+	var report map[string]any
+	if err := json.Unmarshal([]byte(content), &report); err != nil {
+		return nil, fmt.Errorf("%w: strategy report result must be valid JSON", ErrInternalCallbackInvalid)
+	}
+	if strings.TrimSpace(fmt.Sprint(report["schema_version"])) == "" || strings.TrimSpace(fmt.Sprint(report["summary"])) == "" {
+		return nil, fmt.Errorf("%w: strategy report schema_version and summary are required", ErrInternalCallbackInvalid)
+	}
+	metadata["strategy_report"] = map[string]any{"status": "completed", "stage": req.Stage, "progress": req.Progress, "report": sanitizeGenerationManifestValue(report)}
+	session.Metadata = mustJSON(sanitizeGenerationManifestValue(metadata))
+	if err := s.repo.SaveSession(session); err != nil {
+		return nil, err
+	}
+	return sessionDTO(session), nil
+}
+
+func (s *Service) HasStrategyReportSession(sessionID string) bool {
+	_, err := s.repo.FindSessionByID(sessionID)
+	return err == nil
+}
+
+func buildStrategyReportPrompt(session *models.EcommerceVisualWorkflowSession, req CreateStrategyReportJobRequest) string {
+	payload := map[string]any{"instruction": "Return strict JSON ecommerce_strategy_report.v1. Use only supplied SKU/workflow/source facts. Provide summary, opportunities, risks, and recommendations. Do not include credentials or execution artifacts.", "product_id": session.ProductID, "sku_code": session.SKUCode, "marketplace": req.Marketplace, "locale": req.Locale, "report_goal": req.ReportGoal, "source_facts": req.SourceFacts, "intent_spec": decodeIntentSpec(session.IntentSpecJSON, session), "prompt_plan": decodePromptPlan(session.PromptPlanJSON, session)}
+	return mustJSON(payload)
+}
+
 func buildPromptPlannerPrompt(session *models.EcommerceVisualWorkflowSession, intentSpec *IntentSpecDTO, existingPlan *PromptPlanDTO, req CreatePromptPlannerJobRequest) string {
 	payload := map[string]any{"instruction": "Return strict JSON visual_prompt_plan.v1 for provider-executable ecommerce visual generation. Include prompt_id/status/scene_type/variables/source_assets when known. Do not include execution artifact or credential fields.", "product_id": session.ProductID, "sku_code": session.SKUCode, "marketplace": req.Marketplace, "locale": req.Locale, "drift_controls": req.DriftControls, "prompt_variables": req.PromptVariables, "prompt_id": req.PromptID, "template_id": req.TemplateID, "intent_spec": intentSpec, "existing_prompt_plan": existingPlan}
 	return mustJSON(payload)

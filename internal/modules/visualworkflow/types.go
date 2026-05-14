@@ -337,6 +337,16 @@ type CreatePromptPlannerJobRequest struct {
 
 type PromptPlannerJobResponse = IntentPlannerJobResponse
 
+type CreateStrategyReportJobRequest struct {
+	Marketplace    string         `json:"marketplace"`
+	Locale         string         `json:"locale"`
+	ReportGoal     string         `json:"report_goal"`
+	SourceFacts    map[string]any `json:"source_facts"`
+	IdempotencyKey string         `json:"idempotency_key"`
+}
+
+type StrategyReportJobResponse = IntentPlannerJobResponse
+
 type ReadinessBlocker struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`

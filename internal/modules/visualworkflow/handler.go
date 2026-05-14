@@ -232,6 +232,20 @@ func (h *Handler) CreatePromptPlannerJob(c *gin.Context) {
 	response.JSONSuccessWithStatus(c, http.StatusCreated, item)
 }
 
+func (h *Handler) CreateStrategyReportJob(c *gin.Context) {
+	var req CreateStrategyReportJobRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.JSONBindError(c, err, "invalid strategy report job request")
+		return
+	}
+	item, err := h.service.CreateStrategyReportJob(c.GetString("orgID"), c.Param("session_id"), req)
+	if err != nil {
+		response.JSONError(c, response.CodeInvalidParameter, err.Error())
+		return
+	}
+	response.JSONSuccessWithStatus(c, http.StatusCreated, item)
+}
+
 func (h *Handler) StageView(c *gin.Context) {
 	view, err := h.service.StageView(c.GetString("orgID"), c.Param("session_id"))
 	if err != nil {

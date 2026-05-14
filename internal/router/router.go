@@ -188,6 +188,7 @@ func New(cfg config.Config, platformClient *platform.Client, db *gorm.DB, redisC
 			protected.POST("/v2/visual-workflows/:session_id/attention-tree", visualWorkflowHandler.ApplyAttentionTree)
 			protected.POST("/v2/visual-workflows/:session_id/intent-planner-jobs", visualWorkflowHandler.CreateIntentPlannerJob)
 			protected.POST("/v2/visual-workflows/:session_id/prompt-planner-jobs", visualWorkflowHandler.CreatePromptPlannerJob)
+			protected.POST("/v2/visual-workflows/:session_id/strategy-report-jobs", visualWorkflowHandler.CreateStrategyReportJob)
 		}
 
 		workspaceGroup := v1.Group("")

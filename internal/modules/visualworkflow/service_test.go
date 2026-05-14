@@ -2042,6 +2042,54 @@ func TestPromptPlannerResultUpdatesPromptPlanFromTrustedCallback(t *testing.T) {
 	}
 }
 
+func TestCreateStrategyReportJobCreatesPlatformTextRuntime(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_strategy", "org_strategy", "SKU-S")
+	session, err := service.CreateSession("user_strategy", "org_strategy", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	fake := &fakeRuntimeCapabilityReader{matrix: readyStrategyReportMatrix(), runtimeJob: &platform.RuntimeJob{ID: "runtime-strategy-1", ProductCode: "ecommerce", TaskType: "strategy_report", Status: "queued", Stage: "queued"}}
+	service.WithRuntimeOrchestrator(fake)
+	resp, err := service.CreateStrategyReportJob("org_strategy", session.ID, CreateStrategyReportJobRequest{Marketplace: "amazon", Locale: "en-US", ReportGoal: "positioning", SourceFacts: map[string]any{"competitor_count": 3}, IdempotencyKey: "strategy-1"})
+	if err != nil {
+		t.Fatalf("create strategy report: %v", err)
+	}
+	if resp.RuntimeJobID != "runtime-strategy-1" || len(fake.createInputs) != 1 {
+		t.Fatalf("expected strategy runtime, resp=%+v inputs=%d", resp, len(fake.createInputs))
+	}
+	input := fake.createInputs[0]
+	if input.TaskType != "strategy_report" || input.SourceType != "visual_strategy_report" || input.SourceID != session.ID {
+		t.Fatalf("unexpected strategy runtime input: %+v", input)
+	}
+	if strings.Contains(input.InputManifest, "storage_key") || strings.Contains(input.InputManifest, "provider_job_id") {
+		t.Fatalf("strategy manifest leaked execution metadata: %s", input.InputManifest)
+	}
+}
+
+func TestStrategyReportResultPersistsSanitizedMetadata(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_strategy_result", "org_strategy_result", "SKU-SR")
+	session, err := service.CreateSession("user_strategy_result", "org_strategy_result", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	report := map[string]any{"schema_version": "ecommerce_strategy_report.v1", "status": "ready", "summary": "Premium positioning", "recommendations": []string{"lead with material"}}
+	result, err := service.InternalRecordStrategyReportResults(session.ID, InternalRecordResultsRequest{Status: "completed", Progress: 100, Stage: "completed", Variants: []map[string]any{{"inline_data": toJSONForTest(report)}}})
+	if err != nil {
+		t.Fatalf("record strategy report: %v", err)
+	}
+	metadata := result.Metadata
+	strategy := metadata["strategy_report"].(map[string]any)
+	if strategy["status"] != "completed" {
+		t.Fatalf("strategy report not completed in metadata: %+v", strategy)
+	}
+	persisted := strategy["report"].(map[string]any)
+	if persisted["summary"] != "Premium positioning" {
+		t.Fatalf("strategy report summary not persisted: %+v", persisted)
+	}
+}
+
 func readyVisualGenerationMatrix() *platform.RuntimeCapabilityMatrix {
 	return &platform.RuntimeCapabilityMatrix{ProductCode: "ecommerce", Items: []platform.RuntimeCapabilityItem{{TaskType: "image_generation", Status: "ready", Available: true, ContractStatus: "ready"}}}
 }
@@ -2052,6 +2100,10 @@ func readyIntentPlanningMatrix() *platform.RuntimeCapabilityMatrix {
 
 func readyPromptPlanningMatrix() *platform.RuntimeCapabilityMatrix {
 	return &platform.RuntimeCapabilityMatrix{ProductCode: "ecommerce", Items: []platform.RuntimeCapabilityItem{{TaskType: "prompt_planning", Status: "ready", Available: true, ContractStatus: "ready"}}}
+}
+
+func readyStrategyReportMatrix() *platform.RuntimeCapabilityMatrix {
+	return &platform.RuntimeCapabilityMatrix{ProductCode: "ecommerce", Items: []platform.RuntimeCapabilityItem{{TaskType: "strategy_report", Status: "ready", Available: true, ContractStatus: "ready"}}}
 }
 
 func toJSONForTest(v any) string {

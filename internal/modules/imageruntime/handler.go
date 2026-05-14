@@ -169,6 +169,38 @@ func (h *Handler) InternalUpdateJobRuntime(c *gin.Context) {
 		response.JSONSuccess(c, item)
 		return
 	}
+	if h.shouldRouteVisualStrategyReportCallback(c) {
+		var req visualworkflowmodule.InternalRuntimeUpdateRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			span.RecordError(err)
+			response.JSONBindError(c, err, "invalid ecommerce visual strategy report runtime update request")
+			return
+		}
+		item, err := h.visualWorkflow.InternalUpdateStrategyReportRuntime(c.Param("jobID"), req)
+		if err != nil {
+			span.RecordError(err)
+			h.writeVisualCallbackError(c, err, "Failed to update visual strategy report runtime", "ECOMMERCE_VISUAL_STRATEGY_REPORT_RUNTIME_UPDATE_FAILED")
+			return
+		}
+		response.JSONSuccess(c, item)
+		return
+	}
+	if h.shouldRouteVisualStrategyReportCallback(c) {
+		var req visualworkflowmodule.InternalRecordResultsRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			span.RecordError(err)
+			response.JSONBindError(c, err, "invalid ecommerce visual strategy report result callback request")
+			return
+		}
+		item, err := h.visualWorkflow.InternalRecordStrategyReportResults(c.Param("jobID"), req)
+		if err != nil {
+			span.RecordError(err)
+			h.writeVisualCallbackError(c, err, "Failed to record visual strategy report results", "ECOMMERCE_VISUAL_STRATEGY_REPORT_RESULT_RECORD_FAILED")
+			return
+		}
+		response.JSONSuccess(c, item)
+		return
+	}
 	if h.shouldRouteVisualGenerationCallback(c) {
 		var req visualworkflowmodule.InternalRuntimeUpdateRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -315,6 +347,16 @@ func (h *Handler) shouldRouteVisualPromptPlannerCallback(c *gin.Context) bool {
 		return true
 	}
 	return h.visualWorkflow.HasPromptPlannerSession(c.Param("jobID"))
+}
+
+func (h *Handler) shouldRouteVisualStrategyReportCallback(c *gin.Context) bool {
+	if h.visualWorkflow == nil {
+		return false
+	}
+	if c.Query("source_type") == "visual_strategy_report" {
+		return true
+	}
+	return h.visualWorkflow.HasStrategyReportSession(c.Param("jobID"))
 }
 
 func (h *Handler) shouldRouteVisualGenerationCallback(c *gin.Context) bool {

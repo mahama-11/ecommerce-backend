@@ -29,6 +29,7 @@ It should not host:
 - [Visual Workflow AI Requirement Contract](docs/architecture/VISUAL_WORKFLOW_AI_REQUIREMENT_CONTRACT.md)
 - [Visual Workflow Frontend Contract](docs/architecture/VISUAL_WORKFLOW_FRONTEND_CONTRACT.md)
 - [Image Generation Runtime Integration](docs/architecture/IMAGE_GENERATION_RUNTIME_INTEGRATION.md)
+- [Prod Deploy Runbook](docs/PROD_DEPLOY_RUNBOOK.md)
 - [OpenAPI Guide](docs/openapi/README.md)
 - [Template Center Data Model](docs/architecture/TEMPLATE_CENTER_DATA_MODEL.md)
 

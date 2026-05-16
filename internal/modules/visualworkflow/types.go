@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"ecommerce-service/internal/platform"
+	"ecommerce-service/internal/repository"
 )
 
 type CreateSessionRequest struct {
@@ -111,6 +112,28 @@ func (r *UpdateGenerationVersionRequest) UnmarshalJSON(data []byte) error {
 type SelectGenerationVersionRequest struct {
 	SelectedResultAssetID string         `json:"selected_result_asset_id"`
 	Metadata              map[string]any `json:"metadata"`
+}
+
+type SaveGenerationTemplateRequest struct {
+	AssetID        string   `json:"asset_id,omitempty"`
+	Title          string   `json:"title,omitempty"`
+	Summary        string   `json:"summary,omitempty"`
+	Scenario       string   `json:"scenario,omitempty"`
+	Platform       string   `json:"platform,omitempty"`
+	Tags           []string `json:"tags,omitempty"`
+	IdempotencyKey string   `json:"idempotency_key,omitempty"`
+}
+
+type SaveGenerationTemplateResponse struct {
+	SessionID             string                           `json:"session_id"`
+	VersionID             string                           `json:"version_id"`
+	ProductID             string                           `json:"product_id"`
+	SKUCode               string                           `json:"sku_code"`
+	SelectedResultAssetID string                           `json:"selected_result_asset_id"`
+	AssetContentURL       string                           `json:"asset_content_url,omitempty"`
+	Template              repository.SavedTemplateRecord   `json:"template"`
+	SavedTemplates        []repository.SavedTemplateRecord `json:"saved_templates"`
+	GenerationVersion     GenerationVersionDTO             `json:"generation_version"`
 }
 
 type WritebackSelectedGenerationAssetRequest struct {
@@ -221,6 +244,9 @@ type UpdateSourceReferenceRequest struct {
 }
 
 type CreateDeconstructionJobRequest struct {
+	// SourceReferenceID is kept for compatibility with older single-source callers.
+	// V2 P0 deconstruction now resolves both SKU and reference tracks from the
+	// session and records them in the runtime input manifest.
 	SourceReferenceID string         `json:"source_reference_id"`
 	IdempotencyKey    string         `json:"idempotency_key"`
 	RequestedElements []string       `json:"requested_elements"`
@@ -238,20 +264,22 @@ type InternalRuntimeUpdateRequest struct {
 }
 
 type InternalResultElementRequest struct {
-	ElementType   string         `json:"element_type"`
-	ElementKey    string         `json:"element_key"`
-	Key           string         `json:"key"`
-	Label         string         `json:"label"`
-	Value         map[string]any `json:"value"`
-	BoundingBox   map[string]any `json:"bounding_box"`
-	Confidence    float64        `json:"confidence"`
-	Selected      bool           `json:"selected"`
-	Confirmed     bool           `json:"confirmed"`
-	Readiness     string         `json:"readiness"`
-	SortOrder     int            `json:"sort_order"`
-	MaskAssetID   string         `json:"mask_asset_id"`
-	SourceAssetID string         `json:"source_asset_id"`
-	Metadata      map[string]any `json:"metadata"`
+	ElementType       string         `json:"element_type"`
+	ElementKey        string         `json:"element_key"`
+	Key               string         `json:"key"`
+	Label             string         `json:"label"`
+	Value             map[string]any `json:"value"`
+	BoundingBox       map[string]any `json:"bounding_box"`
+	Confidence        float64        `json:"confidence"`
+	Selected          bool           `json:"selected"`
+	Confirmed         bool           `json:"confirmed"`
+	Readiness         string         `json:"readiness"`
+	SortOrder         int            `json:"sort_order"`
+	MaskAssetID       string         `json:"mask_asset_id"`
+	SourceAssetID     string         `json:"source_asset_id"`
+	SourceReferenceID string         `json:"source_reference_id"`
+	SourceRole        string         `json:"source_role"`
+	Metadata          map[string]any `json:"metadata"`
 }
 
 type InternalResultMetadataRequest struct {
@@ -375,8 +403,19 @@ type IntentSpecDTO struct {
 }
 
 type IntentSourceDTO struct {
+	SourceKind        string                     `json:"source_kind,omitempty"`
+	SourceReferenceID string                     `json:"source_reference_id,omitempty"`
+	AssetID           string                     `json:"asset_id,omitempty"`
+	AssetRelationID   string                     `json:"asset_relation_id,omitempty"`
+	SourceRef         string                     `json:"source_ref,omitempty"`
+	SourceReferences  []IntentSourceReferenceDTO `json:"source_references,omitempty"`
+	Metadata          map[string]any             `json:"metadata,omitempty"`
+}
+
+type IntentSourceReferenceDTO struct {
+	SourceReferenceID string         `json:"source_reference_id"`
+	Role              string         `json:"role"`
 	SourceKind        string         `json:"source_kind,omitempty"`
-	SourceReferenceID string         `json:"source_reference_id,omitempty"`
 	AssetID           string         `json:"asset_id,omitempty"`
 	AssetRelationID   string         `json:"asset_relation_id,omitempty"`
 	SourceRef         string         `json:"source_ref,omitempty"`
@@ -516,6 +555,9 @@ type DeconstructionElementDTO struct {
 	MaskAssetID         string         `json:"mask_asset_id,omitempty"`
 	MaskAssetContentURL string         `json:"mask_asset_content_url,omitempty"`
 	SourceAssetID       string         `json:"source_asset_id,omitempty"`
+	SourceReferenceID   string         `json:"source_reference_id,omitempty"`
+	SourceRole          string         `json:"source_role,omitempty"`
+	Decision            string         `json:"decision,omitempty"`
 	Value               map[string]any `json:"value"`
 	Readiness           string         `json:"readiness"`
 	Selected            bool           `json:"selected"`
@@ -595,6 +637,7 @@ type StageViewDTO struct {
 	Status                 string                        `json:"status"`
 	Readiness              ReadinessDTO                  `json:"readiness"`
 	SourceReference        *SourceReferenceDTO           `json:"source_reference,omitempty"`
+	SourceReferences       []SourceReferenceDTO          `json:"source_references,omitempty"`
 	DeconstructionJob      *DeconstructionJobDTO         `json:"deconstruction_job,omitempty"`
 	DeconstructionElements []DeconstructionElementDTO    `json:"deconstruction_elements"`
 	IntentSpec             IntentSpecDTO                 `json:"intent_spec"`

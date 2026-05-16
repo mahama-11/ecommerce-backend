@@ -177,6 +177,7 @@ func New(cfg config.Config, platformClient *platform.Client, db *gorm.DB, redisC
 			protected.POST("/v2/visual-workflows/:session_id/generation-versions/:version_id/select", visualWorkflowHandler.SelectGenerationVersion)
 			protected.POST("/v2/visual-workflows/:session_id/generation-versions/:version_id/writeback-selected-asset", visualWorkflowHandler.WritebackSelectedGenerationAsset)
 			protected.POST("/v2/visual-workflows/:session_id/generation-versions/:version_id/writeback", visualWorkflowHandler.WritebackSelectedGenerationAsset)
+			protected.POST("/v2/visual-workflows/:session_id/generation-versions/:version_id/save-as-template", visualWorkflowHandler.SaveGenerationVersionAsTemplate)
 			protected.POST("/v2/visual-workflows/:session_id/source-references", visualWorkflowHandler.CreateSourceReference)
 			protected.GET("/v2/visual-workflows/:session_id/source-references", visualWorkflowHandler.ListSourceReferences)
 			protected.PATCH("/v2/visual-workflows/:session_id/source-references/:source_reference_id", visualWorkflowHandler.UpdateSourceReference)

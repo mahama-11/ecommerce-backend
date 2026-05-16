@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -95,12 +96,15 @@ func TestVisualWorkflowFoundationFlow(t *testing.T) {
 		t.Fatalf("unexpected session stage: %s", session.CurrentStage)
 	}
 
-	source, err := service.CreateSourceReference("user_1", "org_1", session.ID, CreateSourceReferenceRequest{SourceKind: models.VisualSourceKindProductAsset, AssetID: asset.ID, AssetRelationID: rel.ID})
+	source, err := service.CreateSourceReference("user_1", "org_1", session.ID, CreateSourceReferenceRequest{SourceKind: models.VisualSourceKindProductAsset, AssetID: asset.ID, AssetRelationID: rel.ID, Metadata: map[string]any{"source_role": "sku"}})
 	if err != nil {
 		t.Fatalf("create source reference: %v", err)
 	}
 	if source.AssetID != asset.ID || source.Status != models.VisualSourceStatusReady {
 		t.Fatalf("unexpected source: %+v", source)
+	}
+	if _, err := service.CreateSourceReference("user_1", "org_1", session.ID, CreateSourceReferenceRequest{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://reference", Metadata: map[string]any{"source_role": "reference"}}); err != nil {
+		t.Fatalf("create reference source: %v", err)
 	}
 
 	job, err := service.CreateDeconstructionJob("user_1", "org_1", session.ID, CreateDeconstructionJobRequest{RequestedElements: []string{"product_region"}})
@@ -183,6 +187,80 @@ func TestVisualWorkflowInternalRuntimeCallbackUpdatesProductVisibleFields(t *tes
 		if strings.Contains(encoded, forbidden) {
 			t.Fatalf("stage view leaked forbidden %q: %s", forbidden, encoded)
 		}
+	}
+}
+
+func TestInternalDeconstructionResultValidatesSourceRoleAndReference(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_role_ingest", "org_role_ingest", "SKU-RI")
+	session, err := service.CreateSession("user_role_ingest", "org_role_ingest", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	sku, err := service.CreateSourceReference("user_role_ingest", "org_role_ingest", session.ID, CreateSourceReferenceRequest{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://sku", Metadata: map[string]any{"source_role": "sku"}})
+	if err != nil {
+		t.Fatalf("create sku source: %v", err)
+	}
+	ref, err := service.CreateSourceReference("user_role_ingest", "org_role_ingest", session.ID, CreateSourceReferenceRequest{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://reference", Metadata: map[string]any{"source_role": "reference"}})
+	if err != nil {
+		t.Fatalf("create reference source: %v", err)
+	}
+	job := &models.EcommerceVisualDeconstructionJob{ID: "vdj_role_ingest", OrganizationID: "org_role_ingest", UserID: "user_role_ingest", SessionID: session.ID, ProductID: product.ID, SKUCode: product.SKUCode, Status: models.VisualDeconstructionStatusProcessing, Stage: "processing", Progress: 40, CapabilityCode: "visual_deconstruction", RuntimeTaskType: "image_understanding", SourceReferenceID: sku.ID, InputManifestJSON: toJSONForTest(map[string]any{"input_mode": "dual_track_sources"}), OutputManifestJSON: "{}", Metadata: "{}"}
+	if err := db.Create(job).Error; err != nil {
+		t.Fatalf("seed job: %v", err)
+	}
+	if _, err := service.InternalRecordDeconstructionResults(job.ID, InternalRecordResultsRequest{Status: "completed", Progress: 100, Elements: []InternalResultElementRequest{
+		{ElementType: "product_fact", ElementKey: "shape", Label: "Round bottle", SourceRole: "sku", SourceReferenceID: sku.ID, Value: map[string]any{"shape": "round"}, Metadata: map[string]any{"storage_key": "must-not-leak"}},
+		{ElementType: "reference_strategy", ElementKey: "mood", Label: "Warm lifestyle", SourceRole: "reference", SourceReferenceID: ref.ID, Value: map[string]any{"mood": "warm"}},
+	}}); err != nil {
+		t.Fatalf("record source-role result: %v", err)
+	}
+	view, err := service.StageView("org_role_ingest", session.ID)
+	if err != nil {
+		t.Fatalf("stage view: %v", err)
+	}
+	if len(view.DeconstructionElements) != 2 {
+		t.Fatalf("expected 2 elements, got %+v", view.DeconstructionElements)
+	}
+	roles := map[string]string{}
+	for _, element := range view.DeconstructionElements {
+		roles[element.SourceRole] = element.SourceReferenceID
+		encoded, _ := json.Marshal(element)
+		if strings.Contains(string(encoded), "storage_key") {
+			t.Fatalf("element leaked storage key: %s", encoded)
+		}
+	}
+	if roles["sku"] != sku.ID || roles["reference"] != ref.ID {
+		t.Fatalf("source-role projection mismatch: roles=%+v sku=%s ref=%s", roles, sku.ID, ref.ID)
+	}
+	service.WithRuntimeCapabilityReader(&fakeRuntimeCapabilityReader{matrix: testCapabilityMatrix(platform.RuntimeCapabilityItem{TaskType: "image_understanding", Status: "unavailable", Available: false, UnavailableReason: "contract-needed", ContractStatus: "contract-needed"})})
+	viewWithUnavailableCapability, err := service.StageView("org_role_ingest", session.ID)
+	if err != nil {
+		t.Fatalf("stage view with unavailable capability: %v", err)
+	}
+	if viewWithUnavailableCapability.Readiness.Deconstruction != models.VisualReadinessReady {
+		t.Fatalf("completed deconstruction result should remain ready even when new runtime capability is unavailable: %+v", viewWithUnavailableCapability.Readiness)
+	}
+
+	cases := []struct {
+		name string
+		elem InternalResultElementRequest
+	}{
+		{name: "invalid role", elem: InternalResultElementRequest{ElementType: "product_fact", SourceRole: "third_party", SourceReferenceID: sku.ID}},
+		{name: "unknown source reference", elem: InternalResultElementRequest{ElementType: "product_fact", SourceRole: "sku", SourceReferenceID: "vsr_missing"}},
+		{name: "role mismatch", elem: InternalResultElementRequest{ElementType: "product_fact", SourceRole: "reference", SourceReferenceID: sku.ID}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := service.InternalRecordDeconstructionResults(job.ID, InternalRecordResultsRequest{Status: "completed", Progress: 100, Elements: []InternalResultElementRequest{tc.elem, {ElementType: "reference_strategy", SourceRole: "reference", SourceReferenceID: ref.ID}}})
+			if !IsInternalCallbackInvalid(err) {
+				t.Fatalf("expected invalid callback, got %v", err)
+			}
+		})
+	}
+	_, err = service.InternalRecordDeconstructionResults(job.ID, InternalRecordResultsRequest{Status: "completed", Progress: 100, Elements: []InternalResultElementRequest{{ElementType: "product_fact", SourceRole: "sku", SourceReferenceID: sku.ID}}})
+	if !IsInternalCallbackInvalid(err) {
+		t.Fatalf("expected missing reference role coverage invalid callback, got %v", err)
 	}
 }
 
@@ -452,6 +530,66 @@ func TestSourceReferenceMetadataSanitizedAcrossCreateListAndStageView(t *testing
 	}
 }
 
+func TestStageViewProjectsDualTrackSourceReferences(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_1", "org_1", "SKU-1")
+	session, err := service.CreateSession("user_1", "org_1", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+
+	if _, err := service.CreateSourceReference("user_1", "org_1", session.ID, CreateSourceReferenceRequest{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://sku", Metadata: map[string]any{"source_role": "sku", "safe_note": "sku"}}); err != nil {
+		t.Fatalf("create sku source: %v", err)
+	}
+	view, err := service.StageView("org_1", session.ID)
+	if err != nil {
+		t.Fatalf("stage view sku-only: %v", err)
+	}
+	if len(view.SourceReferences) != 1 || view.Readiness.Source != models.VisualReadinessBlocked || !containsBlockerTarget(view.Readiness.Blockers, "DUAL_TRACK_REFERENCE_SOURCE_REQUIRED", "source_references") {
+		t.Fatalf("expected sku-only stage view to require reference source, got readiness=%+v sources=%+v", view.Readiness, view.SourceReferences)
+	}
+	if view.SourceReference == nil || view.SourceReference.Metadata["source_role"] != "sku" {
+		t.Fatalf("expected backward-compatible source_reference to remain latest sku, got %+v", view.SourceReference)
+	}
+
+	if _, err := service.CreateSourceReference("user_1", "org_1", session.ID, CreateSourceReferenceRequest{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://reference", Metadata: map[string]any{"source_role": "reference", "safe_note": "reference"}}); err != nil {
+		t.Fatalf("create reference source: %v", err)
+	}
+	view, err = service.StageView("org_1", session.ID)
+	if err != nil {
+		t.Fatalf("stage view dual-track: %v", err)
+	}
+	if len(view.SourceReferences) != 2 {
+		t.Fatalf("expected both source references in stage view, got %+v", view.SourceReferences)
+	}
+	roles := map[string]bool{}
+	for _, source := range view.SourceReferences {
+		role, _ := source.Metadata["source_role"].(string)
+		roles[role] = true
+	}
+	if !roles["sku"] || !roles["reference"] {
+		t.Fatalf("expected sku and reference roles in stage view, got %+v", view.SourceReferences)
+	}
+	if view.Readiness.Source != models.VisualReadinessReady {
+		t.Fatalf("expected dual-track source readiness ready, got %+v", view.Readiness)
+	}
+	if containsBlockerTarget(view.Readiness.Blockers, "SOURCE_MISSING", "source_reference") || containsBlockerTarget(view.Readiness.Blockers, "DUAL_TRACK_REFERENCE_SOURCE_REQUIRED", "source_references") {
+		t.Fatalf("expected stale source blockers to be cleared after dual-track ready, got %+v", view.Readiness.Blockers)
+	}
+}
+
+func seedDualTrackSourceReferencesForTest(t *testing.T, service *Service, userID, orgID, sessionID string) *models.EcommerceVisualSourceReference {
+	t.Helper()
+	sku, err := service.CreateSourceReference(userID, orgID, sessionID, CreateSourceReferenceRequest{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://sku", Metadata: map[string]any{"source_role": "sku"}})
+	if err != nil {
+		t.Fatalf("create sku source: %v", err)
+	}
+	if _, err := service.CreateSourceReference(userID, orgID, sessionID, CreateSourceReferenceRequest{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://reference", Metadata: map[string]any{"source_role": "reference"}}); err != nil {
+		t.Fatalf("create reference source: %v", err)
+	}
+	return sku
+}
+
 func TestCreateDeconstructionJobValidatesSourceReferenceScope(t *testing.T) {
 	service, _, db := setupVisualWorkflowTest(t)
 	product := seedProduct(t, db, "prod_1", "org_1", "SKU-1")
@@ -463,10 +601,7 @@ func TestCreateDeconstructionJobValidatesSourceReferenceScope(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create session2: %v", err)
 	}
-	source, err := service.CreateSourceReference("user_1", "org_1", session1.ID, CreateSourceReferenceRequest{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://1"})
-	if err != nil {
-		t.Fatalf("create source: %v", err)
-	}
+	source := seedDualTrackSourceReferencesForTest(t, service, "user_1", "org_1", session1.ID)
 
 	if _, err := service.CreateDeconstructionJob("user_1", "org_1", session1.ID, CreateDeconstructionJobRequest{SourceReferenceID: "missing"}); err == nil {
 		t.Fatalf("expected missing source_reference_id validation error")
@@ -494,10 +629,7 @@ func TestCreateDeconstructionJobBlocksWhenRuntimeCapabilityUnavailable(t *testin
 	if err != nil {
 		t.Fatalf("create session: %v", err)
 	}
-	source, err := service.CreateSourceReference("user_1", "org_1", session.ID, CreateSourceReferenceRequest{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://1"})
-	if err != nil {
-		t.Fatalf("create source: %v", err)
-	}
+	source := seedDualTrackSourceReferencesForTest(t, service, "user_1", "org_1", session.ID)
 	job, err := service.CreateDeconstructionJob("user_1", "org_1", session.ID, CreateDeconstructionJobRequest{SourceReferenceID: source.ID, IdempotencyKey: "idem-blocked"})
 	if err != nil {
 		t.Fatalf("create job: %v", err)
@@ -526,10 +658,7 @@ func TestCreateDeconstructionJobCreatesRuntimeJobAndPreservesIdempotency(t *test
 	if err != nil {
 		t.Fatalf("create session: %v", err)
 	}
-	source, err := service.CreateSourceReference("user_1", "org_1", session.ID, CreateSourceReferenceRequest{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://1"})
-	if err != nil {
-		t.Fatalf("create source: %v", err)
-	}
+	source := seedDualTrackSourceReferencesForTest(t, service, "user_1", "org_1", session.ID)
 	req := CreateDeconstructionJobRequest{SourceReferenceID: source.ID, IdempotencyKey: "client-retry-1", RequestedElements: []string{"product_region"}, Metadata: map[string]any{"storage_key": "must-not-forward", "provider_job_id": "provider-unsafe", "nested": map[string]any{"billing": map[string]any{"truth": true}}, "safe_note": "keep"}}
 	job, err := service.CreateDeconstructionJob("user_1", "org_1", session.ID, req)
 	if err != nil {
@@ -596,10 +725,7 @@ func TestCreateDeconstructionJobCapabilityErrorIsSafeAndDoesNotCreateRuntime(t *
 	if err != nil {
 		t.Fatalf("create session: %v", err)
 	}
-	source, err := service.CreateSourceReference("user_1", "org_1", session.ID, CreateSourceReferenceRequest{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://1"})
-	if err != nil {
-		t.Fatalf("create source: %v", err)
-	}
+	source := seedDualTrackSourceReferencesForTest(t, service, "user_1", "org_1", session.ID)
 	job, err := service.CreateDeconstructionJob("user_1", "org_1", session.ID, CreateDeconstructionJobRequest{SourceReferenceID: source.ID})
 	if err != nil {
 		t.Fatalf("create job: %v", err)
@@ -634,10 +760,7 @@ func TestCreateDeconstructionJobRuntimeCreateErrorIsSafe(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create session: %v", err)
 	}
-	source, err := service.CreateSourceReference("user_1", "org_1", session.ID, CreateSourceReferenceRequest{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://1"})
-	if err != nil {
-		t.Fatalf("create source: %v", err)
-	}
+	source := seedDualTrackSourceReferencesForTest(t, service, "user_1", "org_1", session.ID)
 	job, err := service.CreateDeconstructionJob("user_1", "org_1", session.ID, CreateDeconstructionJobRequest{SourceReferenceID: source.ID, Metadata: map[string]any{"billing": "no", "provider_response": secret, "safe_note": "keep"}})
 	if err != nil {
 		t.Fatalf("create job: %v", err)
@@ -676,10 +799,7 @@ func TestCreateDeconstructionJobDerivesStableIdempotencyWithoutClientKey(t *test
 	if err != nil {
 		t.Fatalf("create session: %v", err)
 	}
-	source, err := service.CreateSourceReference("user_1", "org_1", session.ID, CreateSourceReferenceRequest{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://1"})
-	if err != nil {
-		t.Fatalf("create source: %v", err)
-	}
+	source := seedDualTrackSourceReferencesForTest(t, service, "user_1", "org_1", session.ID)
 	req := CreateDeconstructionJobRequest{SourceReferenceID: source.ID, RequestedElements: []string{"product_region", "logo"}}
 	job, err := service.CreateDeconstructionJob("user_1", "org_1", session.ID, req)
 	if err != nil {
@@ -725,10 +845,7 @@ func TestDeconstructionJobPublicJSONDoesNotLeakRawArtifacts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create session: %v", err)
 	}
-	source, err := service.CreateSourceReference("user_1", "org_1", session.ID, CreateSourceReferenceRequest{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://1"})
-	if err != nil {
-		t.Fatalf("create source: %v", err)
-	}
+	source := seedDualTrackSourceReferencesForTest(t, service, "user_1", "org_1", session.ID)
 	router := visualWorkflowTestRouter(service)
 	body := `{"source_reference_id":"` + source.ID + `","idempotency_key":"client-public-key","runtime_job_id":"client-runtime","provider_job_id":"client-provider","storage_key":"client-storage","billing":{"truth":true},"charge_id":"client-charge","metadata":{"storage_key":"raw/object.png","provider_job_id":"provider-fake","provider":{"payload":true},"nested":{"platform_runtime_idempotency_key":"runtime-secret","billing_truth":true},"safe_note":"keep"}}`
 	req := httptest.NewRequest(http.MethodPost, "/visual-sessions/"+session.ID+"/deconstruction-jobs", bytes.NewBufferString(body))
@@ -790,10 +907,7 @@ func TestVisualWorkflowRejectsInvalidVocabulary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create session: %v", err)
 	}
-	source, err := service.CreateSourceReference("user_1", "org_1", session.ID, CreateSourceReferenceRequest{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://1"})
-	if err != nil {
-		t.Fatalf("create source: %v", err)
-	}
+	source := seedDualTrackSourceReferencesForTest(t, service, "user_1", "org_1", session.ID)
 	element := models.EcommerceVisualDeconstructionElement{ID: "vde_invalid", OrganizationID: "org_1", SessionID: session.ID, JobID: "job_1", ProductID: product.ID, SKUCode: product.SKUCode, ElementType: "product_region", ValueJSON: `{}`, Readiness: models.VisualReadinessNeedsReview}
 	if err := vwRepo.ReplaceDeconstructionElements("org_1", session.ID, "job_1", []models.EcommerceVisualDeconstructionElement{element}); err != nil {
 		t.Fatalf("seed element: %v", err)
@@ -881,9 +995,7 @@ func TestStageViewUnavailableImageUnderstandingAddsCapabilityBlocker(t *testing.
 	if err != nil {
 		t.Fatalf("create session: %v", err)
 	}
-	if _, err := service.CreateSourceReference("user_1", "org_1", session.ID, CreateSourceReferenceRequest{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://1"}); err != nil {
-		t.Fatalf("create source: %v", err)
-	}
+	seedDualTrackSourceReferencesForTest(t, service, "user_1", "org_1", session.ID)
 	if _, err := service.CreateDeconstructionJob("user_1", "org_1", session.ID, CreateDeconstructionJobRequest{RequestedElements: []string{"product_region"}}); err != nil {
 		t.Fatalf("create job: %v", err)
 	}
@@ -2004,6 +2116,109 @@ func TestApplyAttentionTreePersistsDecisions(t *testing.T) {
 	}
 }
 
+func TestCreateDeconstructionJobUsesDualTrackRuntimeManifest(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_dual_manifest", "org_dual_manifest", "SKU-DUAL")
+	orchestrator := &fakeRuntimeCapabilityReader{
+		matrix:     testCapabilityMatrix(platform.RuntimeCapabilityItem{TaskType: "image_understanding", Status: "available", Available: true, ContractStatus: "ready"}),
+		runtimeJob: &platform.RuntimeJob{ID: "runtime-dual", ProductCode: "ecommerce", TaskType: "image_understanding", Status: "processing", Stage: "queued"},
+	}
+	service.WithRuntimeOrchestrator(orchestrator)
+	session, err := service.CreateSession("user_dual_manifest", "org_dual_manifest", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	source := seedDualTrackSourceReferencesForTest(t, service, "user_dual_manifest", "org_dual_manifest", session.ID)
+	job, err := service.CreateDeconstructionJob("user_dual_manifest", "org_dual_manifest", session.ID, CreateDeconstructionJobRequest{SourceReferenceID: source.ID, RequestedElements: []string{"sku_facts", "reference_strategy"}})
+	if err != nil {
+		t.Fatalf("create deconstruction job: %v", err)
+	}
+	if job.SourceReferenceID != source.ID || len(orchestrator.createInputs) != 1 {
+		t.Fatalf("expected runtime job with sku primary source, job=%+v inputs=%d", job, len(orchestrator.createInputs))
+	}
+	manifest := decodeObject(orchestrator.createInputs[0].InputManifest)
+	if manifest["input_mode"] != "dual_track_sources" || manifest["source_role_output_required"] != true {
+		t.Fatalf("runtime manifest missing dual-track contract: %#v", manifest)
+	}
+	sources, ok := manifest["source_references"].([]any)
+	if !ok || len(sources) != 2 {
+		t.Fatalf("expected two source_references in manifest, got %#v", manifest["source_references"])
+	}
+	roles := map[string]bool{}
+	for _, raw := range sources {
+		item, _ := raw.(map[string]any)
+		roles[fmt.Sprint(item["role"])] = true
+	}
+	if !roles["sku"] || !roles["reference"] {
+		t.Fatalf("expected sku/reference source roles in manifest, got %#v", sources)
+	}
+	if strings.Contains(orchestrator.createInputs[0].InputManifest, "storage_key") || strings.Contains(orchestrator.createInputs[0].InputManifest, "provider_job_id") {
+		t.Fatalf("dual-track manifest leaked forbidden artifacts: %s", orchestrator.createInputs[0].InputManifest)
+	}
+}
+
+func TestAttentionDecisionRefreshesIntentInputManifest(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_intent_input", "org_intent_input", "SKU-I")
+	session, err := service.CreateSession("user_intent_input", "org_intent_input", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	seedDualTrackSourceReferencesForTest(t, service, "user_intent_input", "org_intent_input", session.ID)
+	for _, element := range []models.EcommerceVisualDeconstructionElement{
+		{ID: "vde_ref", OrganizationID: "org_intent_input", SessionID: session.ID, JobID: "vdj_intent_input", ElementType: "style", ElementKey: "mood", Label: "warm lifestyle", ValueJSON: toJSONForTest(map[string]any{"style": "warm"}), Metadata: toJSONForTest(map[string]any{"source_role": "reference", "source_reference_id": "vsr_reference"})},
+		{ID: "vde_sku", OrganizationID: "org_intent_input", SessionID: session.ID, JobID: "vdj_intent_input", ElementType: "product_fact", ElementKey: "shape", Label: "round bottle", ValueJSON: toJSONForTest(map[string]any{"shape": "round"}), Metadata: toJSONForTest(map[string]any{"source_role": "sku", "source_reference_id": "vsr_sku"})},
+	} {
+		if err := db.Create(&element).Error; err != nil {
+			t.Fatalf("seed element: %v", err)
+		}
+	}
+	if _, err := service.ApplyAttentionTree("org_intent_input", session.ID, ApplyAttentionTreeRequest{DriftControls: map[string]any{"reference_bias": 80, "sku_bias": 20}, Decisions: []AttentionDecisionInput{
+		{ElementID: "vde_ref", Decision: "keep", GroupPath: []string{"style"}},
+		{ElementID: "vde_sku", Decision: "replace", TargetAssetID: "asset_sku"},
+	}}); err != nil {
+		t.Fatalf("apply attention tree: %v", err)
+	}
+	model, err := service.repo.GetSession("org_intent_input", session.ID)
+	if err != nil {
+		t.Fatalf("reload session: %v", err)
+	}
+	intent := decodeIntentSpec(model.IntentSpecJSON, model)
+	if len(intent.Source.SourceReferences) != 2 || len(intent.Selections) != 2 {
+		t.Fatalf("intent spec missing dual-track sources/selections: %+v", intent)
+	}
+	if intent.Requirements["attribute_drift"] == nil {
+		t.Fatalf("intent spec missing drift controls: %+v", intent.Requirements)
+	}
+	manifest, _ := intent.Metadata["input_manifest"].(map[string]any)
+	if manifest["schema_version"] != "visual-intent-input.v1" || manifest["requires_prompt_diff"] != true {
+		t.Fatalf("intent input manifest not persisted: %#v", manifest)
+	}
+	if manifest["sku_fact_count"] != float64(1) || manifest["reference_strategy_count"] != float64(1) {
+		t.Fatalf("intent input manifest missing grouped sku/reference counts: %#v", manifest)
+	}
+	promptPlan := decodePromptPlan(model.PromptPlanJSON, model)
+	if promptPlan.Status != "ready" || len(promptPlan.Blockers) != 0 {
+		t.Fatalf("expected backend prompt plan readiness from intent fusion input, got %+v", promptPlan)
+	}
+	if promptPlan.Metadata["source"] != "backend_intent_fusion" {
+		t.Fatalf("prompt plan missing backend intent fusion provenance: %+v", promptPlan.Metadata)
+	}
+	view, err := service.StageView("org_intent_input", session.ID)
+	if err != nil {
+		t.Fatalf("stage view: %v", err)
+	}
+	if view.Readiness.Prompt != models.VisualReadinessReady || hasBlocker(view.Readiness.Blockers, "CONTRACT_NEEDED") && containsBlockerTarget(view.Readiness.Blockers, "CONTRACT_NEEDED", "prompt_plan") {
+		t.Fatalf("stage view prompt readiness should be ready after backend intent fusion: %+v", view.Readiness)
+	}
+	encoded, _ := json.Marshal(intent)
+	for _, forbidden := range []string{"storage_key", "provider_job_id", "billing"} {
+		if strings.Contains(string(encoded), forbidden) {
+			t.Fatalf("intent input leaked forbidden key %q: %s", forbidden, encoded)
+		}
+	}
+}
+
 func TestCreatePromptPlannerJobCreatesPlatformTextRuntime(t *testing.T) {
 	service, _, db := setupVisualWorkflowTest(t)
 	product := seedProduct(t, db, "prod_prompt_planner", "org_prompt_planner", "SKU-P")
@@ -2121,4 +2336,77 @@ func readyStrategyReportMatrix() *platform.RuntimeCapabilityMatrix {
 func toJSONForTest(v any) string {
 	b, _ := json.Marshal(v)
 	return string(b)
+}
+
+func TestSaveGenerationVersionAsTemplateFromCompletedResult(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	if err := db.AutoMigrate(&models.SavedTemplate{}); err != nil {
+		t.Fatalf("migrate saved template: %v", err)
+	}
+	workspaceRepo := repository.NewWorkspaceRepository(db)
+	service.WithWorkspaceRepository(workspaceRepo)
+	product, session, version := seedWritebackVisualWorkflow(t, service, db, "asset_tpl_1")
+	completedStatus := "completed"
+	completedStage := "result_available"
+	selectedAssetID := "asset_tpl_1"
+	version, err := service.UpdateGenerationVersion("org_1", session.ID, version.VersionID, UpdateGenerationVersionRequest{Status: &completedStatus, Stage: &completedStage, ResultAssets: []ResultAssetDTO{{AssetID: selectedAssetID, AssetContentURL: "/api/v1/ecommerce/assets/" + selectedAssetID + "/content"}}, SelectedResultAssetID: &selectedAssetID})
+	if err != nil {
+		t.Fatalf("prepare completed version: %v", err)
+	}
+	resp, err := service.SaveGenerationVersionAsTemplate("user_1", "org_1", session.ID, version.VersionID, SaveGenerationTemplateRequest{Title: "Hero template", IdempotencyKey: "idem-template"})
+	if err != nil {
+		t.Fatalf("save template: %v", err)
+	}
+	if resp.ProductID != product.ID || resp.SelectedResultAssetID != "asset_tpl_1" || resp.Template.SourceType != "visual_generation_result" {
+		t.Fatalf("unexpected template response: %+v", resp)
+	}
+	if resp.Template.ID == "" || resp.Template.ZH.Title != "Hero template" || resp.AssetContentURL == "" {
+		t.Fatalf("missing template fields: %+v", resp)
+	}
+	items, err := workspaceRepo.ListSavedTemplates(repository.Scope{UserID: "user_1", OrgID: "org_1"})
+	if err != nil || len(items) != 1 {
+		t.Fatalf("saved templates not persisted: len=%d err=%v", len(items), err)
+	}
+	replay, err := service.SaveGenerationVersionAsTemplate("user_1", "org_1", session.ID, version.VersionID, SaveGenerationTemplateRequest{Title: "Hero template", IdempotencyKey: "idem-template"})
+	if err != nil {
+		t.Fatalf("replay save template: %v", err)
+	}
+	if replay.Template.ID != resp.Template.ID || len(replay.SavedTemplates) != 1 {
+		t.Fatalf("expected idempotent template save, got first=%s replay=%s len=%d", resp.Template.ID, replay.Template.ID, len(replay.SavedTemplates))
+	}
+}
+
+func TestSaveGenerationVersionAsTemplateValidation(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	if err := db.AutoMigrate(&models.SavedTemplate{}); err != nil {
+		t.Fatalf("migrate saved template: %v", err)
+	}
+	service.WithWorkspaceRepository(repository.NewWorkspaceRepository(db))
+	_, session, version := seedWritebackVisualWorkflow(t, service, db, "asset_tpl_validate")
+	completedStatus := "completed"
+	completedStage := "result_available"
+	selectedAssetID := "asset_tpl_validate"
+	version, err := service.UpdateGenerationVersion("org_1", session.ID, version.VersionID, UpdateGenerationVersionRequest{Status: &completedStatus, Stage: &completedStage, ResultAssets: []ResultAssetDTO{{AssetID: selectedAssetID, AssetContentURL: "/api/v1/ecommerce/assets/" + selectedAssetID + "/content"}}, SelectedResultAssetID: &selectedAssetID})
+	if err != nil {
+		t.Fatalf("prepare completed version: %v", err)
+	}
+	if _, err := service.SaveGenerationVersionAsTemplate("", "org_1", session.ID, version.VersionID, SaveGenerationTemplateRequest{}); err == nil {
+		t.Fatalf("expected user required")
+	}
+	if _, err := service.SaveGenerationVersionAsTemplate("user_1", "org_1", session.ID, version.VersionID, SaveGenerationTemplateRequest{AssetID: "not_in_version"}); err == nil {
+		t.Fatalf("expected non-version asset rejection")
+	}
+	version.Status = "queued"
+	versions := []GenerationVersionDTO{*version}
+	encoded, err := marshalGenerationVersions(versions)
+	if err != nil {
+		t.Fatalf("marshal versions: %v", err)
+	}
+	session.GenerationVersionsJSON = encoded
+	if err := service.repo.SaveSession(session); err != nil {
+		t.Fatalf("save queued version: %v", err)
+	}
+	if _, err := service.SaveGenerationVersionAsTemplate("user_1", "org_1", session.ID, version.VersionID, SaveGenerationTemplateRequest{}); err == nil {
+		t.Fatalf("expected incomplete version rejection")
+	}
 }

@@ -58,6 +58,7 @@ type Service struct {
 	productRepo      *repository.ProductCenterRepository
 	assetRepo        *repository.ImageRuntimeRepository
 	promptRepo       *repository.PromptCenterRepository
+	workspaceRepo    *repository.WorkspaceRepository
 	capabilityReader RuntimeCapabilityReader
 	runtimeCreator   RuntimeJobCreator
 }
@@ -68,6 +69,11 @@ func NewService(repo *repository.VisualWorkflowRepository, productRepo *reposito
 
 func (s *Service) WithPromptRepository(promptRepo *repository.PromptCenterRepository) *Service {
 	s.promptRepo = promptRepo
+	return s
+}
+
+func (s *Service) WithWorkspaceRepository(workspaceRepo *repository.WorkspaceRepository) *Service {
+	s.workspaceRepo = workspaceRepo
 	return s
 }
 
@@ -162,7 +168,7 @@ func (s *Service) UpdateSession(orgID, sessionID string, req UpdateSessionReques
 	if req.PromptPlan != nil {
 		promptPlan := *req.PromptPlan
 		applyPromptPlanDefaults(&promptPlan, item)
-		if err := validatePromptPlan(&promptPlan); err != nil {
+		if err := validateClientPromptPlan(&promptPlan); err != nil {
 			return nil, err
 		}
 		item.PromptPlanJSON = encodePromptPlan(&promptPlan)
@@ -326,37 +332,65 @@ func (s *Service) CreateDeconstructionJob(userID, orgID, sessionID string, req C
 	if err != nil {
 		return nil, err
 	}
-	sourceID := strings.TrimSpace(req.SourceReferenceID)
-	if sourceID == "" {
-		if src, err := s.repo.LatestSourceReference(orgID, sessionID); err == nil {
-			sourceID = src.ID
-		} else if err != gorm.ErrRecordNotFound {
-			return nil, err
-		}
-	} else if _, err := s.repo.GetSourceReference(orgID, sessionID, sourceID); err != nil {
-		return nil, fmt.Errorf("source_reference_id is not in this session: %w", err)
+	sources, err := s.repo.ListSourceReferences(orgID, sessionID)
+	if err != nil {
+		return nil, err
 	}
-	idempotencyKey := deconstructionIdempotencyKey(orgID, session.ID, sourceID, req)
+	dualTrack, err := resolveDualTrackSourceReferences(sources, strings.TrimSpace(req.SourceReferenceID))
+	if err != nil {
+		return nil, err
+	}
+	sourceID := dualTrack.PrimarySourceReferenceID
+	idempotencyKey := deconstructionIdempotencyKey(orgID, session.ID, dualTrack.Signature, req)
 	if existing, err := s.repo.FindDeconstructionJobByIdempotencyKey(orgID, sessionID, idempotencyKey); err == nil {
+		if canRetryContractNeededDeconstructionJob(existing) {
+			ready, blockerCode, blockerMessage, blockerMetadata := s.deconstructionRuntimeCapabilityReady()
+			if !ready {
+				existing.Status = models.VisualDeconstructionStatusContractNeeded
+				existing.Stage = "contract_needed"
+				existing.StageMessage = blockerMessage
+				existing.ErrorCode = blockerCode
+				existing.ErrorMessage = blockerMessage
+				existing.Metadata = mustJSON(mergeObjectMaps(decodeObject(existing.Metadata), blockerMetadata, map[string]any{"unavailable_reason": "contract-needed"}))
+				_ = s.repo.SaveDeconstructionJob(existing)
+				return existing, nil
+			}
+			manifest := decodeObject(existing.InputManifestJSON)
+			if err := s.createPlatformDeconstructionRuntimeJob(existing, manifest); err != nil {
+				return nil, err
+			}
+			session.CurrentStage = models.VisualWorkflowStageDeconstruction
+			session.Status = models.VisualWorkflowStatusProcessing
+			_ = s.repo.SaveSession(session)
+		}
 		return existing, nil
 	} else if err != nil && err != gorm.ErrRecordNotFound {
 		return nil, err
 	}
 	manifest := map[string]any{
-		"session_id":          session.ID,
-		"product_id":          session.ProductID,
-		"sku_code":            session.SKUCode,
-		"source_reference_id": sourceID,
-		"requested_elements":  req.RequestedElements,
+		"schema_version":              "ecommerce.visual_deconstruction.v2",
+		"session_id":                  session.ID,
+		"product_id":                  session.ProductID,
+		"sku_code":                    session.SKUCode,
+		"source_reference_id":         sourceID,
+		"source_reference_ids":        dualTrack.SourceReferenceIDs,
+		"source_references":           dualTrack.ManifestSources,
+		"input_mode":                  "dual_track_sources",
+		"required_tracks":             []string{"sku", "reference"},
+		"requested_elements":          req.RequestedElements,
+		"source_role_output_required": true,
 		"output": map[string]any{
 			"include_bounding_boxes": true,
 			"include_masks":          false,
-			"schema_version":         "visual-deconstruction.v1",
+			"schema_version":         "visual-deconstruction.v2",
+			"element_fields":         []string{"source_role", "source_reference_id", "source_asset_id", "element_type", "element_key", "value"},
 		},
 	}
 	metadata := sanitizeDeconstructionRequestMetadata(req.Metadata)
 	metadata["platform_product_code"] = "ecommerce"
 	metadata["platform_task_type"] = "image_understanding"
+	metadata["source_reference_ids"] = dualTrack.SourceReferenceIDs
+	metadata["source_roles"] = dualTrack.SourceRoles
 	item := &models.EcommerceVisualDeconstructionJob{
 		ID:                 buildID("vdj"),
 		OrganizationID:     orgID,
@@ -367,7 +401,7 @@ func (s *Service) CreateDeconstructionJob(userID, orgID, sessionID string, req C
 		SourceReferenceID:  sourceID,
 		Status:             models.VisualDeconstructionStatusQueued,
 		Stage:              "queued",
-		StageMessage:       "Visual deconstruction job is queued for Platform runtime orchestration",
+		StageMessage:       "Dual-track visual deconstruction job is queued for Platform runtime orchestration",
 		Progress:           0,
 		CapabilityCode:     "visual_deconstruction",
 		RuntimeTaskType:    "image_understanding",
@@ -405,6 +439,13 @@ func (s *Service) CreateDeconstructionJob(userID, orgID, sessionID string, req C
 	}
 	_ = s.repo.SaveSession(session)
 	return item, nil
+}
+
+func canRetryContractNeededDeconstructionJob(item *models.EcommerceVisualDeconstructionJob) bool {
+	if item == nil {
+		return false
+	}
+	return item.Status == models.VisualDeconstructionStatusContractNeeded && strings.TrimSpace(item.RuntimeJobID) == "" && strings.TrimSpace(item.InputManifestJSON) != ""
 }
 
 func (s *Service) deconstructionRuntimeCapabilityReady() (bool, string, string, map[string]any) {
@@ -575,11 +616,11 @@ func (s *Service) platformRuntimeInputManifest(session *models.EcommerceVisualWo
 		return nil, fmt.Errorf("Prompt Center snapshot is required for visual generation runtime")
 	}
 	if s.promptRepo == nil {
-		return nil, fmt.Errorf("Prompt Center snapshot is required for prompt_id runtime generation")
+		return s.platformRuntimeInputManifestFromPromptPlan(manifest, session, version, promptPlan)
 	}
 	promptRun, err := s.promptRepo.FindPromptRunByID(session.OrganizationID, version.PromptID)
 	if err != nil {
-		return nil, fmt.Errorf("Prompt Center snapshot missing or not in organization")
+		return s.platformRuntimeInputManifestFromPromptPlan(manifest, session, version, promptPlan)
 	}
 	if promptRun.ProductID != session.ProductID || promptRun.SKUCode != session.SKUCode {
 		return nil, fmt.Errorf("Prompt Center snapshot does not match visual workflow product/SKU")
@@ -605,8 +646,8 @@ func (s *Service) platformRuntimeInputManifest(session *models.EcommerceVisualWo
 			continue
 		}
 		asset, err := s.assetRepo.FindAssetByID(session.OrganizationID, assetID)
-		if err != nil || strings.TrimSpace(asset.StorageKey) == "" {
-			return nil, fmt.Errorf("Prompt Center source asset snapshot is invalid")
+		if err != nil || strings.TrimSpace(asset.StorageKey) == "" || !assetUsableForGeneration(asset.Width, asset.Height) {
+			continue
 		}
 		sourceAssetIDs = append(sourceAssetIDs, asset.ID)
 		sourceAssets = append(sourceAssets, map[string]any{
@@ -636,6 +677,93 @@ func (s *Service) platformRuntimeInputManifest(session *models.EcommerceVisualWo
 	manifest["source_asset_ids"] = sourceAssetIDs
 	manifest["source_assets"] = sourceAssets
 	return sanitizeGenerationManifestValue(manifest).(map[string]any), nil
+}
+
+func (s *Service) platformRuntimeInputManifestFromPromptPlan(manifest map[string]any, session *models.EcommerceVisualWorkflowSession, version *GenerationVersionDTO, promptPlan *PromptPlanDTO) (map[string]any, error) {
+	if promptPlan == nil || strings.TrimSpace(promptPlan.Status) != "ready" || strings.TrimSpace(promptPlan.PromptID) == "" || strings.TrimSpace(version.PromptID) != strings.TrimSpace(promptPlan.PromptID) {
+		return nil, fmt.Errorf("Prompt Center snapshot missing or not in organization")
+	}
+	userPrompt := promptPlanRuntimeText(session, version, promptPlan)
+	if strings.TrimSpace(userPrompt) == "" {
+		return nil, fmt.Errorf("Prompt plan snapshot is not executable")
+	}
+	sourceAssetIDs := make([]string, 0, len(promptPlan.SourceAssets))
+	sourceAssets := make([]map[string]any, 0, len(promptPlan.SourceAssets))
+	for _, binding := range promptPlan.SourceAssets {
+		assetID := strings.TrimSpace(binding.AssetID)
+		if assetID == "" {
+			continue
+		}
+		if s.assetRepo == nil {
+			continue
+		}
+		asset, err := s.assetRepo.FindAssetByID(session.OrganizationID, assetID)
+		if err != nil || strings.TrimSpace(asset.StorageKey) == "" || !assetUsableForGeneration(asset.Width, asset.Height) {
+			continue
+		}
+		sourceAssetIDs = append(sourceAssetIDs, asset.ID)
+		sourceAssets = append(sourceAssets, map[string]any{
+			"id":          asset.ID,
+			"storage_key": asset.StorageKey,
+			"mime_type":   asset.MimeType,
+			"width":       asset.Width,
+			"height":      asset.Height,
+			"role":        binding.Role,
+		})
+	}
+	manifest["prompt_snapshot"] = map[string]any{
+		"provider":        "",
+		"model":           "",
+		"system_prompt":   "",
+		"style_prompt":    metadataString(promptPlan.Metadata, "negative_prompt"),
+		"user_prompt":     userPrompt,
+		"prompt_template": strings.TrimSpace(promptPlan.TemplateID),
+	}
+	manifest["params_snapshot"] = map[string]any{
+		"prompt_id":           promptPlan.PromptID,
+		"template_id":         promptPlan.TemplateID,
+		"template_version_id": promptPlan.TemplateVersionID,
+		"schema_version":      promptPlan.SchemaVersion,
+		"snapshot_source":     "visual_workflow_prompt_plan",
+	}
+	manifest["source_asset_ids"] = sourceAssetIDs
+	manifest["source_assets"] = sourceAssets
+	return sanitizeGenerationManifestValue(manifest).(map[string]any), nil
+}
+
+func assetUsableForGeneration(width, height int) bool {
+	return width >= 14 && height >= 14
+}
+
+func promptPlanRuntimeText(session *models.EcommerceVisualWorkflowSession, version *GenerationVersionDTO, promptPlan *PromptPlanDTO) string {
+	if promptPlan == nil {
+		return ""
+	}
+	for _, key := range []string{"final_prompt", "user_prompt", "positive_prompt", "generation_prompt", "prompt", "creative_brief"} {
+		if text := metadataString(promptPlan.Metadata, key); strings.TrimSpace(text) != "" {
+			return strings.TrimSpace(text)
+		}
+		if promptPlan.Variables != nil {
+			if text, ok := promptPlan.Variables[key].(string); ok && strings.TrimSpace(text) != "" {
+				return strings.TrimSpace(text)
+			}
+		}
+	}
+	payload := map[string]any{
+		"task":        "Generate ecommerce SKU visual assets from the current backend-approved prompt plan.",
+		"prompt_id":   promptPlan.PromptID,
+		"scene_type":  promptPlan.SceneType,
+		"template_id": promptPlan.TemplateID,
+		"variables":   promptPlan.Variables,
+	}
+	if session != nil {
+		payload["product_id"] = session.ProductID
+		payload["sku_code"] = session.SKUCode
+	}
+	if version != nil && strings.TrimSpace(version.RefinementInstruction) != "" {
+		payload["refinement_instruction"] = version.RefinementInstruction
+	}
+	return mustJSON(payload)
 }
 
 func sanitizedGenerationManifest(session *models.EcommerceVisualWorkflowSession, version *GenerationVersionDTO, promptPlan *PromptPlanDTO, intentSpec *IntentSpecDTO) map[string]any {
@@ -958,7 +1086,7 @@ func (s *Service) CreatePromptPlannerJob(orgID, sessionID string, req CreateProm
 			"user_prompt": buildPromptPlannerPrompt(session, &intentSpec, &existingPlan, req),
 		},
 		"params_snapshot": map[string]any{"response_format": "json", "temperature": 0.2},
-		"output_contract": map[string]any{"schema": "visual_prompt_plan.v1", "required_fields": []string{"schema_version", "status", "prompt_id", "scene_type", "variables"}},
+		"output_contract": map[string]any{"schema": "visual_prompt_plan.v1", "required_fields": []string{"schema_version", "status", "prompt_id", "scene_type", "variables", "metadata.prompt_diff"}},
 	}
 	idempotencyKey := strings.TrimSpace(req.IdempotencyKey)
 	if idempotencyKey == "" {
@@ -1005,8 +1133,27 @@ func (s *Service) persistPromptPlannerBlocked(session *models.EcommerceVisualWor
 	return &PromptPlannerJobResponse{SessionID: session.ID, Status: "contract_needed", Stage: "contract_needed", Blockers: []ReadinessBlocker{{Code: code, Target: "prompt_planner", Message: message}}}, nil
 }
 
+func (s *Service) resolvePromptPlannerSession(callbackID string) (*models.EcommerceVisualWorkflowSession, error) {
+	callbackID = strings.TrimSpace(callbackID)
+	if callbackID == "" {
+		return nil, gorm.ErrRecordNotFound
+	}
+	if session, err := s.repo.FindSessionByID(callbackID); err == nil {
+		return session, nil
+	}
+	session, err := s.repo.FindSessionByMetadataLike(callbackID)
+	if err != nil {
+		return nil, err
+	}
+	promptPlanner, _ := decodeObject(session.Metadata)["prompt_planner"].(map[string]any)
+	if strings.TrimSpace(fmt.Sprint(promptPlanner["runtime_job_id"])) != callbackID {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return session, nil
+}
+
 func (s *Service) InternalUpdatePromptPlannerRuntime(sessionID string, req InternalRuntimeUpdateRequest) (*PromptPlannerJobResponse, error) {
-	session, err := s.repo.FindSessionByID(sessionID)
+	session, err := s.resolvePromptPlannerSession(sessionID)
 	if err != nil {
 		return nil, err
 	}
@@ -1034,7 +1181,7 @@ func (s *Service) InternalUpdatePromptPlannerRuntime(sessionID string, req Inter
 }
 
 func (s *Service) InternalRecordPromptPlannerResults(sessionID string, req InternalRecordResultsRequest) (*SessionDTO, error) {
-	session, err := s.repo.FindSessionByID(sessionID)
+	session, err := s.resolvePromptPlannerSession(sessionID)
 	if err != nil {
 		return nil, err
 	}
@@ -1054,11 +1201,20 @@ func (s *Service) InternalRecordPromptPlannerResults(sessionID string, req Inter
 	if strings.TrimSpace(content) == "" {
 		return nil, fmt.Errorf("%w: prompt planner result text is required", ErrInternalCallbackInvalid)
 	}
+	existingPlan := decodePromptPlan(session.PromptPlanJSON, session)
 	var plan PromptPlanDTO
 	if err := json.Unmarshal([]byte(content), &plan); err != nil {
 		return nil, fmt.Errorf("%w: prompt planner result must be valid prompt plan JSON", ErrInternalCallbackInvalid)
 	}
 	applyPromptPlanDefaults(&plan, session)
+	if plan.Metadata == nil {
+		plan.Metadata = map[string]any{}
+	}
+	plan.Metadata["source"] = "llm_prompt_planner"
+	plan.Metadata["requires_prompt_diff"] = true
+	if promptDiffNeedsFallback(plan.Metadata["prompt_diff"]) {
+		plan.Metadata["prompt_diff"] = buildPromptPlanDiff(&existingPlan, &plan)
+	}
 	if err := validatePromptPlan(&plan); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrInternalCallbackInvalid, err)
 	}
@@ -1194,7 +1350,7 @@ func buildStrategyReportPrompt(session *models.EcommerceVisualWorkflowSession, r
 }
 
 func buildPromptPlannerPrompt(session *models.EcommerceVisualWorkflowSession, intentSpec *IntentSpecDTO, existingPlan *PromptPlanDTO, req CreatePromptPlannerJobRequest) string {
-	payload := map[string]any{"instruction": "Return strict JSON visual_prompt_plan.v1 for provider-executable ecommerce visual generation. Include prompt_id/status/scene_type/variables/source_assets when known. Do not include execution artifact or credential fields.", "product_id": session.ProductID, "sku_code": session.SKUCode, "marketplace": req.Marketplace, "locale": req.Locale, "drift_controls": req.DriftControls, "prompt_variables": req.PromptVariables, "prompt_id": req.PromptID, "template_id": req.TemplateID, "intent_spec": intentSpec, "existing_prompt_plan": existingPlan}
+	payload := map[string]any{"instruction": "Return strict JSON visual_prompt_plan.v1 for provider-executable ecommerce visual generation. Include prompt_id/status/scene_type/variables/source_assets when known. Also include metadata.prompt_diff with added, removed, and changed arrays comparing the existing_prompt_plan against the new plan. Do not include execution artifact or credential fields.", "product_id": session.ProductID, "sku_code": session.SKUCode, "marketplace": req.Marketplace, "locale": req.Locale, "drift_controls": req.DriftControls, "prompt_variables": req.PromptVariables, "prompt_id": req.PromptID, "template_id": req.TemplateID, "intent_spec": intentSpec, "existing_prompt_plan": existingPlan}
 	return mustJSON(payload)
 }
 
@@ -1237,18 +1393,35 @@ func firstPlannerVariantText(variants []map[string]any) string {
 	for _, variant := range variants {
 		for _, key := range []string{"inline_data", "text", "content", "body"} {
 			if value, ok := variant[key].(string); ok && strings.TrimSpace(value) != "" {
-				return value
+				return stripJSONMarkdownFence(value)
 			}
 		}
 		if asset, ok := variant["asset"].(map[string]any); ok {
 			for _, key := range []string{"inline_data", "text", "content", "body"} {
 				if value, ok := asset[key].(string); ok && strings.TrimSpace(value) != "" {
-					return value
+					return stripJSONMarkdownFence(value)
 				}
 			}
 		}
 	}
 	return ""
+}
+
+func stripJSONMarkdownFence(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if !strings.HasPrefix(trimmed, "```") {
+		return trimmed
+	}
+	trimmed = strings.TrimPrefix(trimmed, "```")
+	trimmed = strings.TrimSpace(trimmed)
+	lower := strings.ToLower(trimmed)
+	if strings.HasPrefix(lower, "json") {
+		trimmed = strings.TrimSpace(trimmed[len("json"):])
+	}
+	if idx := strings.LastIndex(trimmed, "```"); idx >= 0 {
+		trimmed = strings.TrimSpace(trimmed[:idx])
+	}
+	return trimmed
 }
 
 func (s *Service) createPlatformDeconstructionRuntimeJob(item *models.EcommerceVisualDeconstructionJob, manifest map[string]any) error {
@@ -1268,11 +1441,13 @@ func (s *Service) createPlatformDeconstructionRuntimeJob(item *models.EcommerceV
 		IdempotencyKey: idempotencyKey,
 		InputManifest:  mustJSON(manifest),
 		Metadata: mustJSON(map[string]any{
-			"product_id":          item.ProductID,
-			"sku_code":            item.SKUCode,
-			"session_id":          item.SessionID,
-			"source_reference_id": item.SourceReferenceID,
-			"capability_code":     item.CapabilityCode,
+			"product_id":           item.ProductID,
+			"sku_code":             item.SKUCode,
+			"session_id":           item.SessionID,
+			"source_reference_id":  item.SourceReferenceID,
+			"source_reference_ids": decodeObject(item.Metadata)["source_reference_ids"],
+			"source_roles":         decodeObject(item.Metadata)["source_roles"],
+			"capability_code":      item.CapabilityCode,
 		}),
 		Priority:       100,
 		MaxAttempts:    3,
@@ -1308,6 +1483,95 @@ func (s *Service) createPlatformDeconstructionRuntimeJob(item *models.EcommerceV
 		"platform_source_id":   item.ID,
 	}))
 	return s.repo.SaveDeconstructionJob(item)
+}
+
+type dualTrackSourceReferences struct {
+	PrimarySourceReferenceID string
+	Signature                string
+	SourceReferenceIDs       []string
+	SourceRoles              map[string]string
+	ManifestSources          []map[string]any
+}
+
+func resolveDualTrackSourceReferences(sources []models.EcommerceVisualSourceReference, requestedSourceID string) (*dualTrackSourceReferences, error) {
+	if len(sources) == 0 {
+		return nil, fmt.Errorf("dual-track source references are required before deconstruction")
+	}
+	var sku, reference *models.EcommerceVisualSourceReference
+	for i := range sources {
+		if sources[i].Status != models.VisualSourceStatusReady || sources[i].ResolveStatus != models.VisualSourceStatusReady {
+			continue
+		}
+		role := sourceRoleFromMetadata(decodeObject(sources[i].Metadata), sources[i].SourceKind)
+		switch role {
+		case "sku":
+			if sku == nil || sources[i].CreatedAt.After(sku.CreatedAt) {
+				sku = &sources[i]
+			}
+		case "reference":
+			if reference == nil || sources[i].CreatedAt.After(reference.CreatedAt) {
+				reference = &sources[i]
+			}
+		}
+	}
+	if sku == nil || reference == nil {
+		return nil, fmt.Errorf("dual-track source references require ready sku and reference tracks")
+	}
+	primary := sku
+	if requestedSourceID != "" {
+		matched := false
+		for i := range sources {
+			if sources[i].ID == requestedSourceID {
+				matched = true
+				if sources[i].ID == reference.ID {
+					primary = reference
+				}
+				break
+			}
+		}
+		if !matched {
+			return nil, fmt.Errorf("source_reference_id is not in this session")
+		}
+	}
+	ordered := []models.EcommerceVisualSourceReference{*sku, *reference}
+	ids := make([]string, 0, len(ordered))
+	roles := make(map[string]string, len(ordered))
+	manifestSources := make([]map[string]any, 0, len(ordered))
+	for _, src := range ordered {
+		metadata := sanitizeDeconstructionRequestMetadata(decodeObject(src.Metadata))
+		role := sourceRoleFromMetadata(metadata, src.SourceKind)
+		ids = append(ids, src.ID)
+		roles[src.ID] = role
+		manifestSources = append(manifestSources, map[string]any{
+			"source_reference_id": src.ID,
+			"role":                role,
+			"source_kind":         src.SourceKind,
+			"source_ref":          src.SourceRef,
+			"asset_id":            src.AssetID,
+			"asset_relation_id":   src.AssetRelationID,
+			"mime_type":           src.MimeType,
+			"metadata":            metadata,
+		})
+	}
+	return &dualTrackSourceReferences{
+		PrimarySourceReferenceID: primary.ID,
+		Signature:                strings.Join(ids, ","),
+		SourceReferenceIDs:       ids,
+		SourceRoles:              roles,
+		ManifestSources:          manifestSources,
+	}, nil
+}
+
+func sourceRoleFromMetadata(metadata map[string]any, sourceKind string) string {
+	role, _ := metadata["source_role"].(string)
+	role = strings.ToLower(strings.TrimSpace(role))
+	if role == "sku" || role == "reference" {
+		return role
+	}
+	if sourceKind == models.VisualSourceKindURL {
+		return "reference"
+	}
+	return "sku"
 }
 
 func deconstructionIdempotencyKey(orgID, sessionID, sourceID string, req CreateDeconstructionJobRequest) string {
@@ -1525,9 +1789,21 @@ func (s *Service) InternalRecordDeconstructionResults(jobID string, input Intern
 	item.ErrorMessage = strings.TrimSpace(input.ErrorMessage)
 	applyVisualDeconstructionCompletionTimestamps(item)
 
+	sourceRefs, err := s.repo.ListSourceReferences(item.OrganizationID, item.SessionID)
+	if err != nil {
+		return nil, err
+	}
+	sourceIndex := deconstructionResultSourceIndex(sourceRefs)
 	elements := make([]models.EcommerceVisualDeconstructionElement, 0, len(elementInputs))
 	for idx, in := range elementInputs {
-		elements = append(elements, internalResultElementToModel(item, in, idx))
+		element, err := internalResultElementToModel(item, in, idx, sourceIndex)
+		if err != nil {
+			return nil, err
+		}
+		elements = append(elements, element)
+	}
+	if err := validateDualTrackResultCoverage(item, elements); err != nil {
+		return nil, err
 	}
 	item.OutputManifestJSON = mustJSON(map[string]any{
 		"schema_version": "visual-deconstruction-result.v1",
@@ -1542,6 +1818,104 @@ func (s *Service) InternalRecordDeconstructionResults(jobID string, input Intern
 	return item, nil
 }
 
+func (s *Service) SaveGenerationVersionAsTemplate(userID, orgID, sessionID, versionID string, req SaveGenerationTemplateRequest) (*SaveGenerationTemplateResponse, error) {
+	if s.workspaceRepo == nil {
+		return nil, fmt.Errorf("workspace template repository is not configured")
+	}
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return nil, fmt.Errorf("user is required to save a template")
+	}
+	session, err := s.repo.GetSession(orgID, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	versions := decodeArray(session.GenerationVersionsJSON)
+	idx := -1
+	for i := range versions {
+		if versions[i].VersionID == strings.TrimSpace(versionID) {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	version := versions[idx]
+	if version.Status != "completed" || len(version.ResultAssets) == 0 {
+		return nil, fmt.Errorf("generation version must be completed with result assets before saving as template")
+	}
+	assetID := strings.TrimSpace(req.AssetID)
+	if assetID == "" {
+		assetID = strings.TrimSpace(version.SelectedResultAssetID)
+	}
+	if assetID == "" {
+		return nil, fmt.Errorf("selected result asset is required before saving as template")
+	}
+	var selected ResultAssetDTO
+	found := false
+	for _, asset := range version.ResultAssets {
+		if strings.TrimSpace(asset.AssetID) == assetID {
+			selected = asset
+			found = true
+			break
+		}
+	}
+	if !found {
+		return nil, fmt.Errorf("asset_id is not a result asset of this generation version")
+	}
+	if _, err := s.assetRepo.FindAssetByID(orgID, assetID); err != nil {
+		return nil, fmt.Errorf("selected result asset not found: %w", err)
+	}
+	now := time.Now().UTC()
+	title := strings.TrimSpace(req.Title)
+	if title == "" {
+		title = fmt.Sprintf("%s %s V%d visual template", defaultString(session.SKUCode, "SKU"), defaultString(version.Stage, "generation"), idx+1)
+	}
+	scenario := strings.TrimSpace(req.Scenario)
+	if scenario == "" {
+		scenario = "Ecommerce SKU visual generation template saved from a completed Workshop result."
+	}
+	summary := strings.TrimSpace(req.Summary)
+	if summary == "" {
+		summary = fmt.Sprintf("Saved from Visual Workflow session %s, generation version %s, asset %s.", session.ID, version.VersionID, assetID)
+	}
+	tags := []string{"visual-workflow", "generated-result", "ecommerce-v2", session.SKUCode}
+	for _, tag := range req.Tags {
+		trimmed := strings.TrimSpace(tag)
+		if trimmed != "" {
+			tags = append(tags, trimmed)
+		}
+	}
+	record := repository.SavedTemplateRecord{
+		ID:          buildID("tpl"),
+		Platform:    "ecommerce",
+		Tags:        dedupeStrings(tags),
+		UsageCount:  "0",
+		Favorite:    0,
+		SavedAt:     now.Format(time.RFC3339),
+		SourceType:  "visual_generation_result",
+		SourceLabel: fmt.Sprintf("product=%s sku=%s session=%s version=%s asset=%s", session.ProductID, session.SKUCode, session.ID, version.VersionID, assetID),
+		ZH:          repository.TemplateCopy{Title: title, Summary: summary, Scenario: scenario},
+		EN:          repository.TemplateCopy{Title: title, Summary: summary, Scenario: scenario},
+	}
+	if strings.TrimSpace(req.IdempotencyKey) != "" {
+		record.ID = "tpl_" + shortStableHash(fmt.Sprintf("%s:%s:%s:%s", orgID, session.ID, version.VersionID, strings.TrimSpace(req.IdempotencyKey)))
+	}
+	items, err := s.workspaceRepo.SaveTemplate(repository.Scope{UserID: userID, OrgID: orgID}, record)
+	if err != nil {
+		return nil, err
+	}
+	metadata := mergeGenerationMetadata(version.Metadata, map[string]any{"saved_template": map[string]any{"template_id": record.ID, "asset_id": assetID, "saved_at": record.SavedAt}})
+	version.Metadata = metadata
+	version.UpdatedAt = now.Format(time.RFC3339Nano)
+	versions[idx] = version
+	if err := s.saveGenerationVersions(session, versions, visualWorkflowStatusForGeneration(version.Status)); err != nil {
+		return nil, err
+	}
+	return &SaveGenerationTemplateResponse{SessionID: session.ID, VersionID: version.VersionID, ProductID: session.ProductID, SKUCode: session.SKUCode, SelectedResultAssetID: assetID, Template: record, SavedTemplates: items, GenerationVersion: version, AssetContentURL: selected.AssetContentURL}, nil
+}
+
 func (s *Service) HasGenerationVersion(versionID string) bool {
 	if strings.TrimSpace(versionID) == "" {
 		return false
@@ -1550,8 +1924,29 @@ func (s *Service) HasGenerationVersion(versionID string) bool {
 	return err == nil
 }
 
+func (s *Service) findGenerationVersionByCallbackID(callbackID string) (*models.EcommerceVisualWorkflowSession, []GenerationVersionDTO, int, error) {
+	callbackID = strings.TrimSpace(callbackID)
+	if callbackID == "" {
+		return nil, nil, -1, gorm.ErrRecordNotFound
+	}
+	if session, versions, idx, err := s.findGenerationVersionByID(callbackID); err == nil {
+		return session, versions, idx, nil
+	}
+	session, err := s.repo.FindSessionByGenerationVersionID(callbackID)
+	if err != nil {
+		return nil, nil, -1, err
+	}
+	versions := decodeArray(session.GenerationVersionsJSON)
+	for i := range versions {
+		if strings.TrimSpace(versions[i].RuntimeJobID) == callbackID {
+			return session, versions, i, nil
+		}
+	}
+	return nil, nil, -1, gorm.ErrRecordNotFound
+}
+
 func (s *Service) InternalUpdateGenerationRuntime(versionID string, input InternalRuntimeUpdateRequest) (*GenerationVersionDTO, error) {
-	session, versions, idx, err := s.findGenerationVersionByID(strings.TrimSpace(versionID))
+	session, versions, idx, err := s.findGenerationVersionByCallbackID(strings.TrimSpace(versionID))
 	if err != nil {
 		return nil, err
 	}
@@ -1592,7 +1987,7 @@ func (s *Service) InternalUpdateGenerationRuntime(versionID string, input Intern
 }
 
 func (s *Service) InternalRecordGenerationResults(versionID string, input InternalRecordResultsRequest) (*GenerationVersionDTO, error) {
-	session, versions, idx, err := s.findGenerationVersionByID(strings.TrimSpace(versionID))
+	session, versions, idx, err := s.findGenerationVersionByCallbackID(strings.TrimSpace(versionID))
 	if err != nil {
 		return nil, err
 	}
@@ -1663,7 +2058,7 @@ func visualResultElements(input InternalRecordResultsRequest) []InternalResultEl
 	return input.Metadata.DeconstructionElements
 }
 
-func internalResultElementToModel(job *models.EcommerceVisualDeconstructionJob, input InternalResultElementRequest, idx int) models.EcommerceVisualDeconstructionElement {
+func internalResultElementToModel(job *models.EcommerceVisualDeconstructionJob, input InternalResultElementRequest, idx int, sourceIndex map[string]string) (models.EcommerceVisualDeconstructionElement, error) {
 	readiness := strings.TrimSpace(input.Readiness)
 	if !validVisualReadiness(readiness) {
 		readiness = models.VisualReadinessNeedsReview
@@ -1688,6 +2083,17 @@ func internalResultElementToModel(job *models.EcommerceVisualDeconstructionJob, 
 	if confidence > 1 {
 		confidence = 1
 	}
+	metadata := sanitizeDeconstructionRequestMetadata(input.Metadata)
+	sourceRole, sourceReferenceID, err := normalizeResultElementSourceProjection(input, sourceIndex)
+	if err != nil {
+		return models.EcommerceVisualDeconstructionElement{}, err
+	}
+	if sourceRole != "" {
+		metadata["source_role"] = sourceRole
+	}
+	if sourceReferenceID != "" {
+		metadata["source_reference_id"] = sourceReferenceID
+	}
 	return models.EcommerceVisualDeconstructionElement{
 		ID:              buildID("vde"),
 		OrganizationID:  job.OrganizationID,
@@ -1707,8 +2113,80 @@ func internalResultElementToModel(job *models.EcommerceVisualDeconstructionJob, 
 		Selected:        input.Selected,
 		Confirmed:       input.Confirmed,
 		SortOrder:       sortOrder,
-		Metadata:        mustJSON(sanitizeDeconstructionRequestMetadata(input.Metadata)),
+		Metadata:        mustJSON(metadata),
+	}, nil
+}
+
+func deconstructionResultSourceIndex(sources []models.EcommerceVisualSourceReference) map[string]string {
+	index := map[string]string{}
+	for i := range sources {
+		role := sourceRoleFromMetadata(decodeObject(sources[i].Metadata), sources[i].SourceKind)
+		index[sources[i].ID] = role
 	}
+	return index
+}
+
+func normalizeResultElementSourceProjection(input InternalResultElementRequest, sourceIndex map[string]string) (string, string, error) {
+	role := strings.ToLower(strings.TrimSpace(input.SourceRole))
+	if role == "" {
+		if rawRole, _ := input.Metadata["source_role"].(string); rawRole != "" {
+			role = strings.ToLower(strings.TrimSpace(rawRole))
+		}
+	}
+	if role != "" && role != "sku" && role != "reference" {
+		return "", "", fmt.Errorf("%w: unsupported source_role %q", ErrInternalCallbackInvalid, input.SourceRole)
+	}
+	sourceReferenceID := strings.TrimSpace(input.SourceReferenceID)
+	if sourceReferenceID == "" {
+		if rawID, _ := input.Metadata["source_reference_id"].(string); rawID != "" {
+			sourceReferenceID = strings.TrimSpace(rawID)
+		}
+	}
+	if sourceReferenceID == "" {
+		return role, "", nil
+	}
+	trustedRole, ok := sourceIndex[sourceReferenceID]
+	if !ok {
+		return "", "", fmt.Errorf("%w: source_reference_id %q does not belong to this visual workflow session", ErrInternalCallbackInvalid, sourceReferenceID)
+	}
+	if role == "" {
+		role = trustedRole
+	}
+	if role != trustedRole {
+		return "", "", fmt.Errorf("%w: source_role %q does not match source_reference_id %q role %q", ErrInternalCallbackInvalid, role, sourceReferenceID, trustedRole)
+	}
+	return role, sourceReferenceID, nil
+}
+
+func validateDualTrackResultCoverage(job *models.EcommerceVisualDeconstructionJob, elements []models.EcommerceVisualDeconstructionElement) error {
+	if !jobRequiresDualTrackResultCoverage(job) || job.Status != models.VisualDeconstructionStatusCompleted {
+		return nil
+	}
+	roles := map[string]bool{}
+	for i := range elements {
+		role := sourceRoleFromResultElement(elements[i])
+		if role == "sku" || role == "reference" {
+			roles[role] = true
+		}
+	}
+	if !roles["sku"] || !roles["reference"] {
+		return fmt.Errorf("%w: completed dual-track deconstruction result must contain both sku and reference source_role elements", ErrInternalCallbackInvalid)
+	}
+	return nil
+}
+
+func jobRequiresDualTrackResultCoverage(job *models.EcommerceVisualDeconstructionJob) bool {
+	manifest := decodeObject(job.InputManifestJSON)
+	if strings.EqualFold(fmt.Sprint(manifest["input_mode"]), "dual_track_sources") {
+		return true
+	}
+	return false
+}
+
+func sourceRoleFromResultElement(element models.EcommerceVisualDeconstructionElement) string {
+	metadata := decodeObject(element.Metadata)
+	role, _ := metadata["source_role"].(string)
+	return strings.ToLower(strings.TrimSpace(role))
 }
 
 func visualWorkflowStatusForDeconstruction(status string) string {
@@ -2073,7 +2551,15 @@ func (s *Service) UpdateElement(orgID, sessionID, elementID string, req UpdateEl
 	if err := applyAttentionDecisionToElement(item, req.Decision, req.GroupPath, req.TargetAssetID, req.Rationale, req.Confidence, req.Metadata); err != nil {
 		return nil, err
 	}
-	return item, s.repo.UpdateDeconstructionElement(item)
+	if err := s.repo.UpdateDeconstructionElement(item); err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(req.Decision) != "" || req.Metadata != nil || len(req.GroupPath) > 0 || strings.TrimSpace(req.TargetAssetID) != "" {
+		if err := s.refreshIntentInputManifest(orgID, sessionID, nil); err != nil {
+			return nil, err
+		}
+	}
+	return item, nil
 }
 
 func (s *Service) ApplyAttentionTree(orgID, sessionID string, req ApplyAttentionTreeRequest) ([]models.EcommerceVisualDeconstructionElement, error) {
@@ -2105,7 +2591,221 @@ func (s *Service) ApplyAttentionTree(orgID, sessionID string, req ApplyAttention
 		}
 		out = append(out, *item)
 	}
+	if err := s.refreshIntentInputManifest(orgID, sessionID, req.DriftControls); err != nil {
+		return nil, err
+	}
 	return out, nil
+}
+
+func (s *Service) refreshIntentInputManifest(orgID, sessionID string, driftControls map[string]any) error {
+	session, err := s.repo.GetSession(orgID, sessionID)
+	if err != nil {
+		return err
+	}
+	sources, err := s.repo.ListSourceReferences(orgID, sessionID)
+	if err != nil {
+		return err
+	}
+	elements, err := s.repo.ListDeconstructionElements(orgID, sessionID)
+	if err != nil {
+		return err
+	}
+	intent := decodeIntentSpec(session.IntentSpecJSON, session)
+	intent.Source.SourceReferences = intentSourceReferencesFromSources(sources)
+	if len(intent.Source.SourceReferences) > 0 {
+		intent.Source.SourceKind = "dual_track_sources"
+		intent.Source.SourceReferenceID = ""
+		intent.Source.AssetID = ""
+		intent.Source.AssetRelationID = ""
+		intent.Source.SourceRef = ""
+	}
+	intent.Selections = intentSelectionsFromElements(elements)
+	if intent.Requirements == nil {
+		intent.Requirements = map[string]any{}
+	}
+	if driftControls != nil {
+		intent.Requirements["attribute_drift"] = sanitizeGenerationManifestValue(driftControls)
+	}
+	if intent.Metadata == nil {
+		intent.Metadata = map[string]any{}
+	}
+	inputManifest := buildIntentFusionInputManifest(intent.Source.SourceReferences, intent.Selections, elements)
+	intent.Metadata["input_manifest"] = sanitizeGenerationManifestValue(inputManifest)
+	applyIntentSpecDefaults(&intent, session)
+	if err := validateIntentSpec(&intent); err != nil {
+		return err
+	}
+	session.IntentSpecJSON = encodeIntentSpec(&intent)
+	promptPlan := promptPlanFromIntentFusion(session, &intent, inputManifest)
+	if err := validatePromptPlan(promptPlan); err != nil {
+		return err
+	}
+	session.PromptPlanJSON = encodePromptPlan(promptPlan)
+	return s.repo.SaveSession(session)
+}
+
+func intentSourceReferencesFromSources(sources []models.EcommerceVisualSourceReference) []IntentSourceReferenceDTO {
+	out := make([]IntentSourceReferenceDTO, 0, len(sources))
+	for i := range sources {
+		if sources[i].Status != models.VisualSourceStatusReady || sources[i].ResolveStatus != models.VisualSourceStatusReady {
+			continue
+		}
+		metadata := sanitizeDeconstructionRequestMetadata(decodeObject(sources[i].Metadata))
+		role := sourceRoleFromMetadata(metadata, sources[i].SourceKind)
+		if role != "sku" && role != "reference" {
+			continue
+		}
+		out = append(out, IntentSourceReferenceDTO{
+			SourceReferenceID: sources[i].ID,
+			Role:              role,
+			SourceKind:        sources[i].SourceKind,
+			AssetID:           sources[i].AssetID,
+			AssetRelationID:   sources[i].AssetRelationID,
+			SourceRef:         sources[i].SourceRef,
+			Metadata:          metadata,
+		})
+	}
+	return out
+}
+
+func intentSelectionsFromElements(elements []models.EcommerceVisualDeconstructionElement) []IntentElementDTO {
+	out := make([]IntentElementDTO, 0, len(elements))
+	for i := range elements {
+		metadata := sanitizeDeconstructionRequestMetadata(decodeObject(elements[i].Metadata))
+		decision := metadataString(metadata, "decision")
+		if decision == "" || decision == "needs_review" {
+			continue
+		}
+		out = append(out, IntentElementDTO{
+			ElementID:     elements[i].ID,
+			ElementType:   elements[i].ElementType,
+			Decision:      decision,
+			GroupPath:     stringSliceFromAny(metadata["group_path"]),
+			TargetAssetID: metadataString(metadata, "target_asset_id"),
+			ElementKey:    elements[i].ElementKey,
+			Label:         elements[i].Label,
+			Value:         sanitizeDeconstructionRequestMetadata(decodeObject(elements[i].ValueJSON)),
+			Metadata:      metadata,
+		})
+	}
+	return out
+}
+
+func buildIntentFusionInputManifest(sources []IntentSourceReferenceDTO, selections []IntentElementDTO, elements []models.EcommerceVisualDeconstructionElement) map[string]any {
+	skuFacts := make([]map[string]any, 0)
+	referenceStrategies := make([]map[string]any, 0)
+	for i := range elements {
+		metadata := sanitizeDeconstructionRequestMetadata(decodeObject(elements[i].Metadata))
+		role := metadataString(metadata, "source_role")
+		entry := map[string]any{
+			"element_id":          elements[i].ID,
+			"element_type":        elements[i].ElementType,
+			"element_key":         elements[i].ElementKey,
+			"label":               elements[i].Label,
+			"value":               sanitizeDeconstructionRequestMetadata(decodeObject(elements[i].ValueJSON)),
+			"source_role":         role,
+			"source_reference_id": metadataString(metadata, "source_reference_id"),
+			"decision":            metadataString(metadata, "decision"),
+		}
+		switch role {
+		case "sku":
+			skuFacts = append(skuFacts, entry)
+		case "reference":
+			referenceStrategies = append(referenceStrategies, entry)
+		}
+	}
+	ready := len(sources) >= 2 && len(skuFacts) > 0 && len(referenceStrategies) > 0 && len(selections) > 0
+	readiness := "blocked"
+	blockers := []ReadinessBlocker{}
+	if ready {
+		readiness = "ready"
+	} else {
+		if len(skuFacts) == 0 {
+			blockers = append(blockers, ReadinessBlocker{Code: "SKU_FACTS_REQUIRED", Target: "intent_input", Message: "SKU fact elements are required before prompt planning."})
+		}
+		if len(referenceStrategies) == 0 {
+			blockers = append(blockers, ReadinessBlocker{Code: "REFERENCE_STRATEGIES_REQUIRED", Target: "intent_input", Message: "Reference strategy elements are required before prompt planning."})
+		}
+		if len(selections) == 0 {
+			blockers = append(blockers, ReadinessBlocker{Code: "ATTENTION_DECISION_REQUIRED", Target: "intent_input", Message: "Keep/Replace/Drop decisions are required before prompt planning."})
+		}
+	}
+	return map[string]any{
+		"schema_version":           "visual-intent-input.v1",
+		"source_references":        sources,
+		"selections":               selections,
+		"selection_count":          len(selections),
+		"sku_facts":                skuFacts,
+		"sku_fact_count":           len(skuFacts),
+		"reference_strategies":     referenceStrategies,
+		"reference_strategy_count": len(referenceStrategies),
+		"readiness":                readiness,
+		"blockers":                 blockers,
+		"requires_prompt_diff":     true,
+	}
+}
+
+func promptPlanFromIntentFusion(session *models.EcommerceVisualWorkflowSession, intent *IntentSpecDTO, manifest map[string]any) *PromptPlanDTO {
+	status := "blocked"
+	blockers := []ReadinessBlocker{}
+	if strings.TrimSpace(fmt.Sprint(manifest["readiness"])) == "ready" {
+		status = "ready"
+	} else if rawBlockers, ok := manifest["blockers"].([]ReadinessBlocker); ok {
+		blockers = rawBlockers
+	} else {
+		blockers = []ReadinessBlocker{{Code: "INTENT_INPUT_REQUIRED", Target: "prompt_plan", Message: "Backend intent fusion input is not ready."}}
+	}
+	plan := &PromptPlanDTO{
+		SchemaVersion:     promptPlanSchemaVersion,
+		Status:            status,
+		SceneType:         intent.SceneType,
+		TemplateID:        strings.TrimSpace(session.TemplateID),
+		TemplateVersionID: strings.TrimSpace(session.TemplateVersionID),
+		Variables: map[string]any{
+			"intent_input_manifest": manifest,
+			"attribute_drift":       intent.Requirements["attribute_drift"],
+		},
+		SourceAssets: promptPlanSourceAssetsFromIntentSources(intent.Source.SourceReferences),
+		Blockers:     blockers,
+		Metadata: map[string]any{
+			"source":               "backend_intent_fusion",
+			"requires_prompt_diff": true,
+			"execution_contract":   "not_started",
+		},
+	}
+	applyPromptPlanDefaults(plan, session)
+	return plan
+}
+
+func promptPlanSourceAssetsFromIntentSources(sources []IntentSourceReferenceDTO) []PromptPlanSourceAssetDTO {
+	out := make([]PromptPlanSourceAssetDTO, 0, len(sources))
+	for _, source := range sources {
+		out = append(out, PromptPlanSourceAssetDTO{
+			AssetID:           source.AssetID,
+			AssetRelationID:   source.AssetRelationID,
+			SourceReferenceID: source.SourceReferenceID,
+			Role:              source.Role,
+			Metadata:          sanitizeDeconstructionRequestMetadata(source.Metadata),
+		})
+	}
+	return out
+}
+
+func stringSliceFromAny(raw any) []string {
+	switch value := raw.(type) {
+	case []string:
+		return value
+	case []any:
+		out := make([]string, 0, len(value))
+		for _, item := range value {
+			if s := strings.TrimSpace(fmt.Sprint(item)); s != "" {
+				out = append(out, s)
+			}
+		}
+		return out
+	default:
+		return nil
+	}
 }
 
 func applyAttentionDecisionToElement(item *models.EcommerceVisualDeconstructionElement, decision string, groupPath []string, targetAssetID, rationale string, confidence *float64, extra map[string]any) error {
@@ -2623,6 +3323,25 @@ func (s *Service) requireBoundProduct(orgID, productID, skuCode string) (*models
 	return product, nil
 }
 
+func shortStableHash(value string) string {
+	sum := sha256.Sum256([]byte(value))
+	return hex.EncodeToString(sum[:])[:16]
+}
+
+func dedupeStrings(values []string) []string {
+	seen := map[string]bool{}
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" || seen[trimmed] {
+			continue
+		}
+		seen[trimmed] = true
+		out = append(out, trimmed)
+	}
+	return out
+}
+
 func buildID(prefix string) string { return fmt.Sprintf("%s_%d", prefix, time.Now().UnixNano()) }
 
 func mustJSON(v any) string {
@@ -2794,6 +3513,17 @@ func validatePromptPlan(plan *PromptPlanDTO) error {
 	return nil
 }
 
+func validateClientPromptPlan(plan *PromptPlanDTO) error {
+	if err := validatePromptPlan(plan); err != nil {
+		return err
+	}
+	source := metadataString(plan.Metadata, "source")
+	if source == "backend_intent_fusion" || source == "llm_prompt_planner" {
+		return fmt.Errorf("prompt_plan.metadata.source %q is server-owned and cannot be supplied by clients", source)
+	}
+	return nil
+}
+
 func encodeIntentSpec(spec *IntentSpecDTO) string {
 	if spec == nil {
 		return mustJSON(defaultIntentSpec(&models.EcommerceVisualWorkflowSession{}))
@@ -2826,6 +3556,65 @@ func decodePromptPlan(raw string, session *models.EcommerceVisualWorkflowSession
 	_ = json.Unmarshal([]byte(raw), &out)
 	applyPromptPlanDefaults(&out, session)
 	return out
+}
+
+func promptDiffNeedsFallback(raw any) bool {
+	m, ok := raw.(map[string]any)
+	if !ok {
+		return true
+	}
+	for _, key := range []string{"added", "removed", "changed"} {
+		if values, ok := m[key].([]any); ok && len(values) > 0 {
+			return false
+		}
+		if values, ok := m[key].([]string); ok && len(values) > 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func buildPromptPlanDiff(before, after *PromptPlanDTO) map[string]any {
+	added := []any{}
+	removed := []any{}
+	changed := []any{}
+	if before == nil || after == nil {
+		return map[string]any{"added": added, "removed": removed, "changed": changed, "status": "fallback_unavailable"}
+	}
+	if strings.TrimSpace(before.PromptID) == "" && strings.TrimSpace(after.PromptID) != "" {
+		added = append(added, fmt.Sprintf("prompt_id: %s", after.PromptID))
+	} else if before.PromptID != after.PromptID {
+		changed = append(changed, map[string]any{"field": "prompt_id", "from": before.PromptID, "to": after.PromptID})
+	}
+	if before.Status != after.Status {
+		changed = append(changed, map[string]any{"field": "status", "from": before.Status, "to": after.Status})
+	}
+	if before.SceneType != after.SceneType {
+		changed = append(changed, map[string]any{"field": "scene_type", "from": before.SceneType, "to": after.SceneType})
+	}
+	for key, afterValue := range after.Variables {
+		beforeValue, existed := before.Variables[key]
+		if !existed {
+			added = append(added, fmt.Sprintf("variables.%s", key))
+			continue
+		}
+		if mustJSON(beforeValue) != mustJSON(afterValue) {
+			changed = append(changed, map[string]any{"field": "variables." + key, "from": beforeValue, "to": afterValue})
+		}
+	}
+	for key := range before.Variables {
+		if _, exists := after.Variables[key]; !exists {
+			removed = append(removed, fmt.Sprintf("variables.%s", key))
+		}
+	}
+	if len(before.SourceAssets) != len(after.SourceAssets) {
+		changed = append(changed, map[string]any{"field": "source_assets.count", "from": len(before.SourceAssets), "to": len(after.SourceAssets)})
+	}
+	status := "generated"
+	if len(added) == 0 && len(removed) == 0 && len(changed) == 0 {
+		status = "no_material_change"
+	}
+	return map[string]any{"added": added, "removed": removed, "changed": changed, "status": status, "source": "backend_fallback"}
 }
 
 func validPromptPlanStatus(v string) bool {

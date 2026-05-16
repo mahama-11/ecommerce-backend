@@ -315,6 +315,20 @@ func (h *Handler) SelectGenerationVersion(c *gin.Context) {
 	response.JSONSuccess(c, item)
 }
 
+func (h *Handler) SaveGenerationVersionAsTemplate(c *gin.Context) {
+	var req SaveGenerationTemplateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.JSONBindError(c, err, "invalid generation template save request")
+		return
+	}
+	item, err := h.service.SaveGenerationVersionAsTemplate(c.GetString("userID"), c.GetString("orgID"), c.Param("session_id"), c.Param("version_id"), req)
+	if err != nil {
+		response.JSONError(c, response.CodeInvalidParameter, err.Error())
+		return
+	}
+	response.JSONSuccessWithStatus(c, http.StatusCreated, item)
+}
+
 func (h *Handler) WritebackSelectedGenerationAsset(c *gin.Context) {
 	var req WritebackSelectedGenerationAssetRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

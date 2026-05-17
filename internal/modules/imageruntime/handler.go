@@ -1,6 +1,8 @@
 package imageruntime
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -267,6 +269,22 @@ func (h *Handler) InternalRecordJobResults(c *gin.Context) {
 		response.JSONSuccess(c, item)
 		return
 	}
+	if h.shouldRouteVisualPromptPlannerCallback(c) {
+		var req visualworkflowmodule.InternalRecordResultsRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			span.RecordError(err)
+			response.JSONBindError(c, err, "invalid ecommerce visual prompt planner result callback request")
+			return
+		}
+		item, err := h.visualWorkflow.InternalRecordPromptPlannerResults(c.Param("jobID"), req)
+		if err != nil {
+			span.RecordError(err)
+			h.writeVisualCallbackError(c, err, "Failed to record visual prompt planner results", "ECOMMERCE_VISUAL_PROMPT_PLANNER_RESULT_RECORD_FAILED")
+			return
+		}
+		response.JSONSuccess(c, item)
+		return
+	}
 	if h.shouldRouteVisualGenerationCallback(c) {
 		var req visualworkflowmodule.InternalRecordResultsRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -319,12 +337,36 @@ func (h *Handler) GetAssetContent(c *gin.Context) {
 	}
 }
 
+func (h *Handler) callbackSourceType(c *gin.Context) string {
+	if sourceType := c.Query("source_type"); sourceType != "" {
+		return sourceType
+	}
+	if c.Request == nil || c.Request.Body == nil {
+		return ""
+	}
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		return ""
+	}
+	c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
+	var envelope struct {
+		Metadata map[string]any `json:"metadata"`
+	}
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		return ""
+	}
+	if sourceType, ok := envelope.Metadata["source_type"].(string); ok {
+		return sourceType
+	}
+	return ""
+}
+
 func (h *Handler) shouldRouteVisualDeconstructionCallback(c *gin.Context) bool {
 	if h.visualWorkflow == nil {
 		return false
 	}
-	if c.Query("source_type") == "visual_deconstruction" {
-		return true
+	if sourceType := h.callbackSourceType(c); sourceType != "" {
+		return sourceType == "visual_deconstruction"
 	}
 	return h.visualWorkflow.HasDeconstructionJob(c.Param("jobID"))
 }
@@ -333,8 +375,8 @@ func (h *Handler) shouldRouteVisualIntentPlannerCallback(c *gin.Context) bool {
 	if h.visualWorkflow == nil {
 		return false
 	}
-	if c.Query("source_type") == "visual_intent_planning" {
-		return true
+	if sourceType := h.callbackSourceType(c); sourceType != "" {
+		return sourceType == "visual_intent_planning"
 	}
 	return h.visualWorkflow.HasIntentPlannerSession(c.Param("jobID"))
 }
@@ -343,8 +385,8 @@ func (h *Handler) shouldRouteVisualPromptPlannerCallback(c *gin.Context) bool {
 	if h.visualWorkflow == nil {
 		return false
 	}
-	if c.Query("source_type") == "visual_prompt_planning" {
-		return true
+	if sourceType := h.callbackSourceType(c); sourceType != "" {
+		return sourceType == "visual_prompt_planning"
 	}
 	return h.visualWorkflow.HasPromptPlannerSession(c.Param("jobID"))
 }
@@ -353,8 +395,8 @@ func (h *Handler) shouldRouteVisualStrategyReportCallback(c *gin.Context) bool {
 	if h.visualWorkflow == nil {
 		return false
 	}
-	if c.Query("source_type") == "visual_strategy_report" {
-		return true
+	if sourceType := h.callbackSourceType(c); sourceType != "" {
+		return sourceType == "visual_strategy_report"
 	}
 	return h.visualWorkflow.HasStrategyReportSession(c.Param("jobID"))
 }
@@ -363,8 +405,8 @@ func (h *Handler) shouldRouteVisualGenerationCallback(c *gin.Context) bool {
 	if h.visualWorkflow == nil {
 		return false
 	}
-	if c.Query("source_type") == "visual_generation" {
-		return true
+	if sourceType := h.callbackSourceType(c); sourceType != "" {
+		return sourceType == "visual_generation"
 	}
 	return h.visualWorkflow.HasGenerationVersion(c.Param("jobID"))
 }

@@ -72,13 +72,8 @@ func (s *Service) buildStageView(session *models.EcommerceVisualWorkflowSession)
 		GenerationVersions:     decodeArray(session.GenerationVersionsJSON),
 		UpdatedAt:              session.UpdatedAt,
 	}
-	if src, err := s.repo.LatestSourceReference(session.OrganizationID, session.ID); err == nil {
-		view.SourceReference = sourceDTO(src)
-		view.Readiness.Source = models.VisualReadinessReady
-		if src.Status == models.VisualSourceStatusContractNeeded {
-			view.Readiness.Source = models.VisualReadinessBlocked
-			view.Readiness.Blockers = append(view.Readiness.Blockers, ReadinessBlocker{Code: "CONTRACT_NEEDED", Message: src.ErrorMessage, Target: "source_reference"})
-		}
+	if sources, err := s.repo.ListSourceReferences(session.OrganizationID, session.ID); err == nil {
+		applySourceReferenceReadiness(view, sources)
 	} else if err != gorm.ErrRecordNotFound {
 		return nil, err
 	}
@@ -108,6 +103,92 @@ func (s *Service) buildStageView(session *models.EcommerceVisualWorkflowSession)
 	return view, nil
 }
 
+func applySourceReferenceReadiness(view *StageViewDTO, sources []models.EcommerceVisualSourceReference) {
+	view.Readiness.Blockers = withoutSourceReadinessBlockers(view.Readiness.Blockers)
+	if len(sources) == 0 {
+		view.Readiness.Source = models.VisualReadinessBlocked
+		appendReadinessBlocker(view, ReadinessBlocker{Code: "DUAL_TRACK_SOURCE_REQUIRED", Target: "source_references", Message: "Upload both a Target SKU source and an Inspiration Reference source before dual-track parsing."})
+		return
+	}
+	view.SourceReferences = make([]SourceReferenceDTO, 0, len(sources))
+	var latest *SourceReferenceDTO
+	hasSKU := false
+	hasReference := false
+	hasContractNeeded := false
+	for i := range sources {
+		dto := sourceDTO(&sources[i])
+		view.SourceReferences = append(view.SourceReferences, *dto)
+		if latest == nil {
+			copyDTO := *dto
+			latest = &copyDTO
+		}
+		role := sourceReferenceRole(dto)
+		switch role {
+		case "sku":
+			hasSKU = true
+		case "reference":
+			hasReference = true
+		}
+		if sources[i].Status == models.VisualSourceStatusContractNeeded {
+			hasContractNeeded = true
+			appendReadinessBlocker(view, ReadinessBlocker{Code: "CONTRACT_NEEDED", Message: sources[i].ErrorMessage, Target: "source_reference"})
+		}
+	}
+	view.SourceReference = latest
+	if hasContractNeeded || !hasSKU || !hasReference {
+		view.Readiness.Source = models.VisualReadinessBlocked
+		if !hasSKU {
+			appendReadinessBlocker(view, ReadinessBlocker{Code: "DUAL_TRACK_SKU_SOURCE_REQUIRED", Target: "source_references", Message: "Target SKU source is required for dual-track visual workflow."})
+		}
+		if !hasReference {
+			appendReadinessBlocker(view, ReadinessBlocker{Code: "DUAL_TRACK_REFERENCE_SOURCE_REQUIRED", Target: "source_references", Message: "Inspiration Reference source is required for dual-track visual workflow."})
+		}
+		return
+	}
+	view.Readiness.Source = models.VisualReadinessReady
+}
+
+func withoutSourceReadinessBlockers(blockers []ReadinessBlocker) []ReadinessBlocker {
+	if len(blockers) == 0 {
+		return blockers
+	}
+	filtered := make([]ReadinessBlocker, 0, len(blockers))
+	for _, blocker := range blockers {
+		code := strings.ToUpper(strings.TrimSpace(blocker.Code))
+		target := strings.TrimSpace(blocker.Target)
+		if target == "source_reference" || target == "source_references" || strings.HasPrefix(code, "DUAL_TRACK_") || code == "SOURCE_MISSING" {
+			continue
+		}
+		filtered = append(filtered, blocker)
+	}
+	return filtered
+}
+
+func sourceReferenceRole(src *SourceReferenceDTO) string {
+	if src == nil {
+		return ""
+	}
+	role, _ := src.Metadata["source_role"].(string)
+	role = strings.ToLower(strings.TrimSpace(role))
+	if role == "reference" || role == "sku" {
+		return role
+	}
+	if src.SourceKind == "url" {
+		return "reference"
+	}
+	return "sku"
+}
+
+func appendReadinessBlocker(view *StageViewDTO, blocker ReadinessBlocker) {
+	if blocker.Code == "" {
+		return
+	}
+	if containsBlockerTarget(view.Readiness.Blockers, blocker.Code, blocker.Target) {
+		return
+	}
+	view.Readiness.Blockers = append(view.Readiness.Blockers, blocker)
+}
+
 var visualWorkflowRuntimeCapabilityTasks = []string{"image_understanding", "image_generation", "image_inpainting", "video_keyframe"}
 
 func (s *Service) applyPromptAndGenerationContractReadiness(view *StageViewDTO) {
@@ -116,12 +197,13 @@ func (s *Service) applyPromptAndGenerationContractReadiness(view *StageViewDTO) 
 		Target:  "prompt_plan",
 		Message: "Prompt execution/preview contract is not finalized; no provider or fake Prompt Center execution was called.",
 	}
-	// QSR-1 honesty guard: this slice has no real prompt execution/preview
-	// contract, so stage-view must not project client-supplied prompt readiness as
-	// ready, even when prompt_plan.status was optimistically submitted as ready.
-	view.Readiness.Prompt = models.VisualReadinessBlocked
-	if !containsBlockerTarget(view.Readiness.Blockers, promptBlocker.Code, promptBlocker.Target) {
-		view.Readiness.Blockers = append(view.Readiness.Blockers, promptBlocker)
+	if view.PromptPlan.Status == "ready" && metadataString(view.PromptPlan.Metadata, "source") == "backend_intent_fusion" {
+		view.Readiness.Prompt = models.VisualReadinessReady
+	} else {
+		view.Readiness.Prompt = models.VisualReadinessBlocked
+		if !containsBlockerTarget(view.Readiness.Blockers, promptBlocker.Code, promptBlocker.Target) {
+			view.Readiness.Blockers = append(view.Readiness.Blockers, promptBlocker)
+		}
 	}
 	for _, blocker := range view.PromptPlan.Blockers {
 		if blocker.Code == "CONTRACT_NEEDED" && strings.TrimSpace(blocker.Target) == "prompt_plan" && !containsBlockerTarget(view.Readiness.Blockers, blocker.Code, blocker.Target) {
@@ -225,6 +307,9 @@ func needsDeconstructionCapability(view *StageViewDTO) bool {
 	if view.DeconstructionJob == nil {
 		return false
 	}
+	if view.DeconstructionJob.Status == models.VisualDeconstructionStatusCompleted {
+		return false
+	}
 	return view.DeconstructionJob.RuntimeTaskType == "image_understanding" || view.DeconstructionJob.UnavailableReason == "contract-needed" || view.DeconstructionJob.Status == models.VisualDeconstructionStatusContractNeeded
 }
 
@@ -317,19 +402,23 @@ func jobDTO(item *models.EcommerceVisualDeconstructionJob) *DeconstructionJobDTO
 }
 
 func elementDTO(item models.EcommerceVisualDeconstructionElement) DeconstructionElementDTO {
+	metadata := decodeObject(item.Metadata)
 	out := DeconstructionElementDTO{
-		ID:            item.ID,
-		ElementType:   item.ElementType,
-		ElementKey:    item.ElementKey,
-		Label:         item.Label,
-		Confidence:    item.Confidence,
-		MaskAssetID:   item.MaskAssetID,
-		SourceAssetID: item.SourceAssetID,
-		Value:         decodeObject(item.ValueJSON),
-		Readiness:     item.Readiness,
-		Selected:      item.Selected,
-		Confirmed:     item.Confirmed,
-		SortOrder:     item.SortOrder,
+		ID:                item.ID,
+		ElementType:       item.ElementType,
+		ElementKey:        item.ElementKey,
+		Label:             item.Label,
+		Confidence:        item.Confidence,
+		MaskAssetID:       item.MaskAssetID,
+		SourceAssetID:     item.SourceAssetID,
+		Value:             decodeObject(item.ValueJSON),
+		Readiness:         item.Readiness,
+		Selected:          item.Selected,
+		Confirmed:         item.Confirmed,
+		SourceReferenceID: metadataString(metadata, "source_reference_id"),
+		SourceRole:        metadataString(metadata, "source_role"),
+		Decision:          metadataString(metadata, "decision"),
+		SortOrder:         item.SortOrder,
 	}
 	if item.BoundingBoxJSON != "" {
 		out.BoundingBox = decodeObject(item.BoundingBoxJSON)

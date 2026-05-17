@@ -89,6 +89,14 @@ func (r *VisualWorkflowRepository) FindSessionByGenerationVersionID(versionID st
 	return &item, nil
 }
 
+func (r *VisualWorkflowRepository) FindSessionByMetadataLike(needle string) (*models.EcommerceVisualWorkflowSession, error) {
+	var item models.EcommerceVisualWorkflowSession
+	if err := r.db.Where("metadata LIKE ?", "%"+needle+"%").Order("updated_at DESC").First(&item).Error; err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
 func (r *VisualWorkflowRepository) CreateSourceReference(item *models.EcommerceVisualSourceReference) error {
 	return r.db.Create(item).Error
 }

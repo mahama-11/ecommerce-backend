@@ -353,9 +353,12 @@ type ApplyAttentionTreeRequest struct {
 const MaxGenerationFanoutTasks = 20
 
 type GenerationFanoutTemplateSlotRequest struct {
-	SourceAssetID     string `json:"source_asset_id"`
-	TemplateID        string `json:"template_id"`
-	TemplateVersionID string `json:"template_version_id"`
+	SourceAssetID       string `json:"source_asset_id"`
+	TemplateID          string `json:"template_id"`
+	TemplateVersionID   string `json:"template_version_id"`
+	SceneTag            string `json:"scene_tag"`
+	DetailRequirement   string `json:"detail_requirement"`
+	NegativeRequirement string `json:"negative_requirement"`
 }
 
 type CreateGenerationFanoutRequest struct {
@@ -368,9 +371,27 @@ type CreateGenerationFanoutRequest struct {
 	Locale             string                                `json:"locale"`
 	SceneType          string                                `json:"scene_type"`
 	RequestedVariants  int                                   `json:"requested_variants"`
+	MaxConcurrency     int                                   `json:"max_concurrency"`
+	RetryOnFailure     bool                                  `json:"retry_on_failure"`
+	MaxRetries         int                                   `json:"max_retries"`
+	TimeoutSeconds     int                                   `json:"timeout_seconds"`
 	ProviderConfig     map[string]any                        `json:"provider_config"`
 	PromptVariables    map[string]any                        `json:"prompt_variables"`
 	Metadata           map[string]any                        `json:"metadata"`
+}
+
+type GenerationFanoutExecutionConfigDTO struct {
+	MaxConcurrency int  `json:"max_concurrency"`
+	RetryOnFailure bool `json:"retry_on_failure"`
+	MaxRetries     int  `json:"max_retries"`
+	TimeoutSeconds int  `json:"timeout_seconds"`
+}
+
+type GenerationFanoutSummaryDTO struct {
+	TotalTasks     int `json:"total_tasks"`
+	QueuedTasks    int `json:"queued_tasks"`
+	CompletedTasks int `json:"completed_tasks"`
+	FailedTasks    int `json:"failed_tasks"`
 }
 
 type GenerationFanoutItemDTO struct {
@@ -379,16 +400,21 @@ type GenerationFanoutItemDTO struct {
 	TemplateID        string               `json:"template_id"`
 	TemplateVersionID string               `json:"template_version_id,omitempty"`
 	SlotIndex         int                  `json:"slot_index"`
+	SceneTag          string               `json:"scene_tag,omitempty"`
+	DetailRequirement string               `json:"detail_requirement,omitempty"`
 	GenerationVersion GenerationVersionDTO `json:"generation_version"`
 }
 
 type CreateGenerationFanoutResponse struct {
-	SessionID string                    `json:"session_id"`
-	ProductID string                    `json:"product_id"`
-	SKUCode   string                    `json:"sku_code"`
-	FanoutID  string                    `json:"fanout_id"`
-	Items     []GenerationFanoutItemDTO `json:"items"`
-	Blockers  []ReadinessBlocker        `json:"blockers,omitempty"`
+	SessionID       string                             `json:"session_id"`
+	ProductID       string                             `json:"product_id"`
+	SKUCode         string                             `json:"sku_code"`
+	FanoutID        string                             `json:"fanout_id"`
+	Status          string                             `json:"status"`
+	ExecutionConfig GenerationFanoutExecutionConfigDTO `json:"execution_config"`
+	Summary         GenerationFanoutSummaryDTO         `json:"summary"`
+	Items           []GenerationFanoutItemDTO          `json:"items"`
+	Blockers        []ReadinessBlocker                 `json:"blockers,omitempty"`
 }
 
 type ConfirmSelectionRequest struct {

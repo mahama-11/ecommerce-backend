@@ -2459,9 +2459,9 @@ func TestCreateGenerationFanoutHonorsExplicitTemplateSlots(t *testing.T) {
 		SourceAssetIDs: []string{"asset_slot_1", "asset_slot_2"},
 		TemplateIDs:    []string{"tpl_a", "tpl_b", "tpl_c"},
 		TemplateSlots: []GenerationFanoutTemplateSlotRequest{
-			{SourceAssetID: "asset_slot_1", TemplateID: "tpl_a"},
-			{SourceAssetID: "asset_slot_2", TemplateID: "tpl_b"},
-			{SourceAssetID: "asset_slot_1", TemplateID: "tpl_c"},
+			{SourceAssetID: "asset_slot_1", TemplateID: "tpl_a", SceneTag: "主图", DetailRequirement: "主体完整且白底", NegativeRequirement: "不要文字水印"},
+			{SourceAssetID: "asset_slot_2", TemplateID: "tpl_b", SceneTag: "细节图", DetailRequirement: "突出金属纹理"},
+			{SourceAssetID: "asset_slot_1", TemplateID: "tpl_c", SceneTag: "使用图", DetailRequirement: "展示真实使用场景"},
 		},
 		RequestedVariants: 1,
 	})
@@ -2476,6 +2476,16 @@ func TestCreateGenerationFanoutHonorsExplicitTemplateSlots(t *testing.T) {
 		params, _ := manifest["params_snapshot"].(map[string]any)
 		if fmt.Sprint(params["fanout_total"]) != "3" || fmt.Sprint(params["fanout_index"]) != fmt.Sprint(idx) {
 			t.Fatalf("explicit fanout index/total mismatch: %#v", params)
+		}
+		if fmt.Sprint(params["scene_tag"]) == "" || fmt.Sprint(params["detail_requirement"]) == "" {
+			t.Fatalf("explicit fanout slot requirements missing from runtime params: %#v", params)
+		}
+		promptSnapshot, _ := manifest["prompt_snapshot"].(map[string]any)
+		if !strings.Contains(fmt.Sprint(promptSnapshot["user_prompt"]), fmt.Sprint(params["detail_requirement"])) {
+			t.Fatalf("slot detail requirement not appended to provider prompt: prompt=%#v params=%#v", promptSnapshot, params)
+		}
+		if idx == 0 && !strings.Contains(fmt.Sprint(promptSnapshot["style_prompt"]), "不要文字水印") {
+			t.Fatalf("slot negative requirement not appended to negative prompt: %#v", promptSnapshot)
 		}
 	}
 }

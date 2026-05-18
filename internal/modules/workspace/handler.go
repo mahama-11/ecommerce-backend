@@ -62,6 +62,43 @@ func (h *Handler) SaveTemplate(c *gin.Context) {
 	}
 	response.JSONSuccessWithStatus(c, http.StatusCreated, items)
 }
+
+func (h *Handler) UpdateTemplate(c *gin.Context) {
+	var payload repository.SavedTemplateRecord
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		response.JSONBindError(c, err, "invalid template payload")
+		return
+	}
+	payload.ID = c.Param("template_id")
+	items, err := h.service.SaveTemplate(scopeFromContext(c), payload)
+	if err != nil {
+		response.JSONErrorSemantic(c, response.CodeInternalError, "update template failed", "SAVED_TEMPLATE_UPDATE_FAILED", "Please try again later.")
+		return
+	}
+	metrics.IncBusinessCounter("ecommerce_workspace_template_updated_total")
+	response.JSONSuccess(c, items)
+}
+
+func (h *Handler) DeleteTemplate(c *gin.Context) {
+	items, err := h.service.DeleteTemplate(scopeFromContext(c), c.Param("template_id"))
+	if err != nil {
+		response.JSONErrorSemantic(c, response.CodeInternalError, "delete template failed", "SAVED_TEMPLATE_DELETE_FAILED", "Please try again later.")
+		return
+	}
+	metrics.IncBusinessCounter("ecommerce_workspace_template_deleted_total")
+	response.JSONSuccess(c, items)
+}
+
+func (h *Handler) UseTemplate(c *gin.Context) {
+	item, err := h.service.UseTemplate(scopeFromContext(c), c.Param("template_id"))
+	if err != nil {
+		response.JSONErrorSemantic(c, response.CodeNotFound, "template not found", "SAVED_TEMPLATE_NOT_FOUND", "The template no longer exists.")
+		return
+	}
+	metrics.IncBusinessCounter("ecommerce_workspace_template_used_total")
+	response.JSONSuccess(c, item)
+}
+
 func (h *Handler) ListWorkflowEvents(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/workspace-handler", "ecommerce.workspace.workflow_events.list")
 	defer span.End()

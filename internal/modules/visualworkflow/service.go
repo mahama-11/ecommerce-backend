@@ -745,7 +745,7 @@ func (s *Service) platformRuntimeInputManifest(session *models.EcommerceVisualWo
 		"user_prompt":     compiled.FinalPrompt,
 		"prompt_template": promptRun.TemplateCode,
 	}
-	manifest["params_snapshot"] = map[string]any{
+	paramsSnapshot := map[string]any{
 		"prompt_id":           promptRun.ID,
 		"template_id":         promptRun.TemplateID,
 		"template_version_id": promptRun.TemplateVersionID,
@@ -753,6 +753,8 @@ func (s *Service) platformRuntimeInputManifest(session *models.EcommerceVisualWo
 		"content_hash":        promptRun.ContentHash,
 		"source_map_hash":     promptRun.SourceMapHash,
 	}
+	mergeAllowedGenerationRuntimeParams(paramsSnapshot, version.Metadata)
+	manifest["params_snapshot"] = paramsSnapshot
 	manifest["source_asset_ids"] = sourceAssetIDs
 	manifest["source_assets"] = sourceAssets
 	return sanitizeGenerationManifestValue(manifest).(map[string]any), nil
@@ -798,13 +800,15 @@ func (s *Service) platformRuntimeInputManifestFromPromptPlan(manifest map[string
 		"user_prompt":     userPrompt,
 		"prompt_template": strings.TrimSpace(promptPlan.TemplateID),
 	}
-	manifest["params_snapshot"] = map[string]any{
+	paramsSnapshot := map[string]any{
 		"prompt_id":           promptPlan.PromptID,
 		"template_id":         promptPlan.TemplateID,
 		"template_version_id": promptPlan.TemplateVersionID,
 		"schema_version":      promptPlan.SchemaVersion,
 		"snapshot_source":     "visual_workflow_prompt_plan",
 	}
+	mergeAllowedGenerationRuntimeParams(paramsSnapshot, version.Metadata)
+	manifest["params_snapshot"] = paramsSnapshot
 	manifest["source_asset_ids"] = sourceAssetIDs
 	manifest["source_assets"] = sourceAssets
 	return sanitizeGenerationManifestValue(manifest).(map[string]any), nil
@@ -812,6 +816,25 @@ func (s *Service) platformRuntimeInputManifestFromPromptPlan(manifest map[string
 
 func assetUsableForGeneration(width, height int) bool {
 	return width >= 14 && height >= 14
+}
+
+func mergeAllowedGenerationRuntimeParams(params map[string]any, metadata map[string]any) {
+	if params == nil || metadata == nil {
+		return
+	}
+	uiConfig, _ := metadata["ui_execution_config"].(map[string]any)
+	providerConfig, _ := uiConfig["provider_config"].(map[string]any)
+	resolutionID, _ := providerConfig["resolution_id"].(string)
+	switch strings.TrimSpace(resolutionID) {
+	case "1024-square":
+		params["width"] = 1024
+		params["height"] = 1024
+		params["resolution_id"] = "1024-square"
+	case "720-wide":
+		params["width"] = 1280
+		params["height"] = 720
+		params["resolution_id"] = "720-wide"
+	}
 }
 
 func promptPlanRuntimeText(session *models.EcommerceVisualWorkflowSession, version *GenerationVersionDTO, promptPlan *PromptPlanDTO) string {

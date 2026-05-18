@@ -171,6 +171,7 @@ func New(cfg config.Config, platformClient *platform.Client, db *gorm.DB, redisC
 			protected.POST("/v2/visual-workflows/:session_id/cancel", visualWorkflowHandler.CancelSession)
 			protected.GET("/v2/visual-workflows/:session_id/stage-view", visualWorkflowHandler.StageView)
 			protected.POST("/v2/visual-workflows/:session_id/generation-versions", visualWorkflowHandler.CreateGenerationVersion)
+			protected.POST("/v2/visual-workflows/:session_id/generation-version-fanouts", visualWorkflowHandler.CreateGenerationFanout)
 			protected.GET("/v2/visual-workflows/:session_id/generation-versions", visualWorkflowHandler.ListGenerationVersions)
 			protected.GET("/v2/visual-workflows/:session_id/generation-versions/:version_id", visualWorkflowHandler.GetGenerationVersion)
 			protected.PATCH("/v2/visual-workflows/:session_id/generation-versions/:version_id", visualWorkflowHandler.UpdateGenerationVersion)

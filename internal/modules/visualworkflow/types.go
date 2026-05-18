@@ -352,18 +352,25 @@ type ApplyAttentionTreeRequest struct {
 
 const MaxGenerationFanoutTasks = 20
 
+type GenerationFanoutTemplateSlotRequest struct {
+	SourceAssetID     string `json:"source_asset_id"`
+	TemplateID        string `json:"template_id"`
+	TemplateVersionID string `json:"template_version_id"`
+}
+
 type CreateGenerationFanoutRequest struct {
-	IdempotencyKey     string         `json:"idempotency_key"`
-	SourceAssetIDs     []string       `json:"source_asset_ids"`
-	TemplateIDs        []string       `json:"template_ids"`
-	TemplateVersionIDs []string       `json:"template_version_ids"`
-	Marketplace        string         `json:"marketplace"`
-	Locale             string         `json:"locale"`
-	SceneType          string         `json:"scene_type"`
-	RequestedVariants  int            `json:"requested_variants"`
-	ProviderConfig     map[string]any `json:"provider_config"`
-	PromptVariables    map[string]any `json:"prompt_variables"`
-	Metadata           map[string]any `json:"metadata"`
+	IdempotencyKey     string                                `json:"idempotency_key"`
+	SourceAssetIDs     []string                              `json:"source_asset_ids"`
+	TemplateIDs        []string                              `json:"template_ids"`
+	TemplateVersionIDs []string                              `json:"template_version_ids"`
+	TemplateSlots      []GenerationFanoutTemplateSlotRequest `json:"template_slots"`
+	Marketplace        string                                `json:"marketplace"`
+	Locale             string                                `json:"locale"`
+	SceneType          string                                `json:"scene_type"`
+	RequestedVariants  int                                   `json:"requested_variants"`
+	ProviderConfig     map[string]any                        `json:"provider_config"`
+	PromptVariables    map[string]any                        `json:"prompt_variables"`
+	Metadata           map[string]any                        `json:"metadata"`
 }
 
 type GenerationFanoutItemDTO struct {

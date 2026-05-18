@@ -2194,7 +2194,11 @@ func TestCreateDeconstructionJobUsesDualTrackRuntimeManifest(t *testing.T) {
 	}
 	sources, ok := manifest["source_references"].([]any)
 	if !ok || len(sources) != 2 {
-		t.Fatalf("expected two source_references in manifest, got %#v", manifest["source_references"])
+		t.Fatalf("expected two contextual source_references in manifest, got %#v", manifest["source_references"])
+	}
+	runtimeAssets, ok := manifest["source_assets"].([]any)
+	if !ok || len(runtimeAssets) != 1 {
+		t.Fatalf("expected exactly one source_asset for single-image understanding API, got %#v", manifest["source_assets"])
 	}
 	roles := map[string]bool{}
 	for _, raw := range sources {
@@ -2422,6 +2426,57 @@ func TestCreateGenerationFanoutCreatesMatrixRuntimeJobs(t *testing.T) {
 	}
 	if len(seen) != 4 {
 		t.Fatalf("fanout matrix did not cover all source/template pairs: %#v", seen)
+	}
+}
+
+func TestCreateGenerationFanoutHonorsExplicitTemplateSlots(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_fanout_slots", "org_fanout_slots", "SKU-FS")
+	for _, asset := range []models.EcommerceAsset{
+		{ID: "asset_slot_1", OrganizationID: "org_fanout_slots", UserID: "user_fanout_slots", AssetType: "image", SourceType: "upload", StorageKey: "store/slot-a.png", MimeType: "image/png", FileName: "slot-a.png", Width: 1024, Height: 1024, Metadata: "{}"},
+		{ID: "asset_slot_2", OrganizationID: "org_fanout_slots", UserID: "user_fanout_slots", AssetType: "image", SourceType: "upload", StorageKey: "store/slot-b.png", MimeType: "image/png", FileName: "slot-b.png", Width: 1024, Height: 1024, Metadata: "{}"},
+	} {
+		if err := db.Create(&asset).Error; err != nil {
+			t.Fatalf("seed asset: %v", err)
+		}
+	}
+	session, err := service.CreateSession("user_fanout_slots", "org_fanout_slots", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	model, err := service.repo.GetSession("org_fanout_slots", session.ID)
+	if err != nil {
+		t.Fatalf("get session: %v", err)
+	}
+	model.PromptPlanJSON = encodePromptPlan(&PromptPlanDTO{SchemaVersion: promptPlanSchemaVersion, Status: "ready", PromptID: "prompt_slots", TemplateID: "tpl_base", Variables: map[string]any{"prompt": "Generate ecommerce hero"}, SourceAssets: []PromptPlanSourceAssetDTO{{AssetID: "asset_slot_1", Role: "sku"}}})
+	if err := service.repo.SaveSession(model); err != nil {
+		t.Fatalf("save prompt plan: %v", err)
+	}
+	fake := &fakeRuntimeCapabilityReader{matrix: readyVisualGenerationMatrix()}
+	service.WithRuntimeOrchestrator(fake)
+	resp, err := service.CreateGenerationFanout("org_fanout_slots", session.ID, CreateGenerationFanoutRequest{
+		IdempotencyKey: "fanout-slots",
+		SourceAssetIDs: []string{"asset_slot_1", "asset_slot_2"},
+		TemplateIDs:    []string{"tpl_a", "tpl_b", "tpl_c"},
+		TemplateSlots: []GenerationFanoutTemplateSlotRequest{
+			{SourceAssetID: "asset_slot_1", TemplateID: "tpl_a"},
+			{SourceAssetID: "asset_slot_2", TemplateID: "tpl_b"},
+			{SourceAssetID: "asset_slot_1", TemplateID: "tpl_c"},
+		},
+		RequestedVariants: 1,
+	})
+	if err != nil {
+		t.Fatalf("create explicit fanout: %v", err)
+	}
+	if len(resp.Items) != 3 || len(fake.createInputs) != 3 {
+		t.Fatalf("expected exactly 3 explicit fanout jobs, resp=%+v inputs=%d", resp, len(fake.createInputs))
+	}
+	for idx, input := range fake.createInputs {
+		manifest := decodeObject(input.InputManifest)
+		params, _ := manifest["params_snapshot"].(map[string]any)
+		if fmt.Sprint(params["fanout_total"]) != "3" || fmt.Sprint(params["fanout_index"]) != fmt.Sprint(idx) {
+			t.Fatalf("explicit fanout index/total mismatch: %#v", params)
+		}
 	}
 }
 

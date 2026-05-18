@@ -22,6 +22,8 @@ type CreateSessionRequest struct {
 type UpdateSessionRequest struct {
 	CurrentStage       string                 `json:"current_stage"`
 	Status             string                 `json:"status"`
+	TemplateID         string                 `json:"template_id"`
+	TemplateVersionID  string                 `json:"template_version_id"`
 	Readiness          map[string]any         `json:"readiness"`
 	IntentSpec         *IntentSpecDTO         `json:"intent_spec"`
 	PromptPlan         *PromptPlanDTO         `json:"prompt_plan"`
@@ -56,6 +58,9 @@ func (r *CreateGenerationVersionRequest) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	if err := validateNoExecutionArtifacts(raw); err != nil {
+		return err
+	}
+	if err := validateNoClientClosureEvidenceArtifacts(raw); err != nil {
 		return err
 	}
 	type alias CreateGenerationVersionRequest
@@ -98,6 +103,9 @@ func (r *UpdateGenerationVersionRequest) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	if err := validateNoExecutionArtifacts(raw); err != nil {
+		return err
+	}
+	if err := validateNoClientClosureEvidenceArtifacts(raw); err != nil {
 		return err
 	}
 	type alias UpdateGenerationVersionRequest
@@ -200,6 +208,9 @@ func (r *SelectGenerationVersionRequest) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	if err := validateNoExecutionArtifacts(raw); err != nil {
+		return err
+	}
+	if err := validateNoClientClosureEvidenceArtifacts(raw); err != nil {
 		return err
 	}
 	type alias SelectGenerationVersionRequest
@@ -508,6 +519,13 @@ func validateNoExecutionArtifacts(raw any) error {
 	return nil
 }
 
+func validateNoClientClosureEvidenceArtifacts(raw any) error {
+	if key, ok := findForbiddenClientClosureEvidenceKey(raw); ok {
+		return fmt.Errorf("generation version payload contains server-owned closure evidence field %q", key)
+	}
+	return nil
+}
+
 func validateNoWritebackMetadataArtifacts(raw any) error {
 	if key, ok := findForbiddenWritebackMetadataKey(raw); ok {
 		return fmt.Errorf("writeback metadata contains execution-owned field %q", key)
@@ -626,6 +644,72 @@ type RuntimeCapabilityError struct {
 	Message string `json:"message"`
 }
 
+type IntegrationVerdictDTO struct {
+	SchemaVersion string                      `json:"schema_version"`
+	Status        string                      `json:"status"`
+	ReadyCount    int                         `json:"ready_count"`
+	TotalCount    int                         `json:"total_count"`
+	Gates         []IntegrationVerdictGateDTO `json:"gates"`
+	Blockers      []ReadinessBlocker          `json:"blockers,omitempty"`
+}
+
+type IntegrationVerdictGateDTO struct {
+	GateID   string         `json:"gate_id"`
+	Label    string         `json:"label"`
+	Status   string         `json:"status"`
+	Evidence map[string]any `json:"evidence,omitempty"`
+}
+
+type RollbackSnapshotDTO struct {
+	SchemaVersion string             `json:"schema_version"`
+	SessionID     string             `json:"session_id"`
+	Status        string             `json:"status"`
+	Scopes        []RollbackScopeDTO `json:"scopes"`
+	Instructions  []string           `json:"instructions,omitempty"`
+	Metadata      map[string]any     `json:"metadata,omitempty"`
+}
+
+type RollbackScopeDTO struct {
+	ScopeID      string         `json:"scope_id"`
+	ResourceType string         `json:"resource_type"`
+	ResourceID   string         `json:"resource_id,omitempty"`
+	Action       string         `json:"action"`
+	Safe         bool           `json:"safe"`
+	Evidence     map[string]any `json:"evidence,omitempty"`
+}
+
+type ReleaseReadinessDTO struct {
+	SchemaVersion string                      `json:"schema_version"`
+	Status        string                      `json:"status"`
+	Gates         []IntegrationVerdictGateDTO `json:"gates"`
+	Blockers      []ReadinessBlocker          `json:"blockers,omitempty"`
+}
+
+type BusinessWorkflowDAGDTO struct {
+	SchemaVersion string                    `json:"schema_version"`
+	FlowID        string                    `json:"flow_id"`
+	Status        string                    `json:"status"`
+	Persistence   string                    `json:"persistence"`
+	Nodes         []BusinessWorkflowNodeDTO `json:"nodes"`
+	Edges         []BusinessWorkflowEdgeDTO `json:"edges"`
+}
+
+type BusinessWorkflowNodeDTO struct {
+	NodeID    string             `json:"node_id"`
+	Label     string             `json:"label"`
+	Owner     string             `json:"owner"`
+	Status    string             `json:"status"`
+	Readiness string             `json:"readiness,omitempty"`
+	Evidence  map[string]any     `json:"evidence,omitempty"`
+	Blockers  []ReadinessBlocker `json:"blockers,omitempty"`
+}
+
+type BusinessWorkflowEdgeDTO struct {
+	From       string `json:"from"`
+	To         string `json:"to"`
+	Dependency string `json:"dependency,omitempty"`
+}
+
 type StageViewDTO struct {
 	SessionID              string                        `json:"session_id"`
 	ProductID              string                        `json:"product_id"`
@@ -636,6 +720,7 @@ type StageViewDTO struct {
 	CurrentStage           string                        `json:"current_stage"`
 	Status                 string                        `json:"status"`
 	Readiness              ReadinessDTO                  `json:"readiness"`
+	BusinessFlow           *BusinessWorkflowDAGDTO       `json:"business_flow,omitempty"`
 	SourceReference        *SourceReferenceDTO           `json:"source_reference,omitempty"`
 	SourceReferences       []SourceReferenceDTO          `json:"source_references,omitempty"`
 	DeconstructionJob      *DeconstructionJobDTO         `json:"deconstruction_job,omitempty"`
@@ -645,5 +730,8 @@ type StageViewDTO struct {
 	GenerationVersions     []GenerationVersionDTO        `json:"generation_versions"`
 	RuntimeCapabilities    []RuntimeCapabilityProjection `json:"runtime_capabilities,omitempty"`
 	RuntimeCapabilityError *RuntimeCapabilityError       `json:"runtime_capability_error,omitempty"`
+	IntegrationVerdict     *IntegrationVerdictDTO        `json:"integration_verdict,omitempty"`
+	RollbackSnapshot       *RollbackSnapshotDTO          `json:"rollback_snapshot,omitempty"`
+	ReleaseReadiness       *ReleaseReadinessDTO          `json:"release_readiness,omitempty"`
 	UpdatedAt              time.Time                     `json:"updated_at"`
 }

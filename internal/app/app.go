@@ -82,7 +82,7 @@ func New(configFile string) (*App, error) {
 	templateCenterService := templatecentermodule.NewService(templateCenterRepo, auditService, platformClient)
 	promptCenterService := promptcentermodule.NewService(promptCenterRepo, templateCenterRepo, imageRuntimeRepo, productcenterRepo, cfg.App)
 	productcoreService := productcoremodule.NewService(productcenterRepo, imageRuntimeRepo, platformClient)
-	visualWorkflowService := visualworkflowmodule.NewService(visualWorkflowRepo, productcenterRepo, imageRuntimeRepo).WithPromptRepository(promptCenterRepo).WithWorkspaceRepository(workspaceRepo).WithRuntimeOrchestrator(platformClient)
+	visualWorkflowService := visualworkflowmodule.NewService(visualWorkflowRepo, productcenterRepo, imageRuntimeRepo).WithPromptRepository(promptCenterRepo).WithPromptSnapshotCreator(promptCenterService).WithWorkspaceRepository(workspaceRepo).WithRuntimeOrchestrator(platformClient)
 	accessHandler := accessmodule.NewHandler(authzService)
 	authHandler := authmodule.NewHandler(authService, auditService)
 	billingHandler := billingmodule.NewHandler(billingService)

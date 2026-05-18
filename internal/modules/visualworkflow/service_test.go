@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"ecommerce-service/internal/models"
+	"ecommerce-service/internal/modules/promptcenter"
 	"ecommerce-service/internal/platform"
 	"ecommerce-service/internal/repository"
 
@@ -48,6 +49,23 @@ func (f *fakeRuntimeCapabilityReader) CreateRuntimeJob(input platform.CreateRunt
 		return f.runtimeJob, nil
 	}
 	return &platform.RuntimeJob{ID: "runtime-job-1", ProductCode: input.ProductCode, TaskType: input.TaskType, OrganizationID: input.OrganizationID, UserID: input.UserID, SourceType: input.SourceType, SourceID: input.SourceID, Status: "queued", Stage: "queued", StageMessage: "queued"}, nil
+}
+
+type fakePromptSnapshotCreator struct {
+	response *promptcenter.PromptRunResponse
+	err      error
+	inputs   []promptcenter.PreviewPromptInput
+}
+
+func (f *fakePromptSnapshotCreator) Preview(userID, orgID string, input promptcenter.PreviewPromptInput) (*promptcenter.PromptRunResponse, error) {
+	f.inputs = append(f.inputs, input)
+	if f.err != nil {
+		return nil, f.err
+	}
+	if f.response != nil {
+		return f.response, nil
+	}
+	return &promptcenter.PromptRunResponse{PromptID: "prompt_snapshot_1", ProductID: input.ProductID, SKUCode: input.SKUCode, TemplateID: input.TemplateID, TemplateVersionID: input.TemplateVersionID, SceneType: input.SceneType, Status: "validated"}, nil
 }
 
 func setupVisualWorkflowTest(t *testing.T) (*Service, *repository.VisualWorkflowRepository, *gorm.DB) {
@@ -141,6 +159,40 @@ func TestVisualWorkflowFoundationFlow(t *testing.T) {
 	}
 	if view.DeconstructionJob.RuntimeTaskType != "image_understanding" {
 		t.Fatalf("stage view exposed non-P0 runtime task type: %+v", view.DeconstructionJob)
+	}
+	if view.BusinessFlow == nil {
+		t.Fatalf("stage view missing business flow DAG")
+	}
+	if view.BusinessFlow.SchemaVersion != "ecommerce_business_flow.v1" || view.BusinessFlow.FlowID != session.ID {
+		t.Fatalf("unexpected business flow identity: %+v", view.BusinessFlow)
+	}
+	if len(view.BusinessFlow.Nodes) != 8 || len(view.BusinessFlow.Edges) != 7 {
+		t.Fatalf("unexpected business flow shape: nodes=%d edges=%d flow=%+v", len(view.BusinessFlow.Nodes), len(view.BusinessFlow.Edges), view.BusinessFlow)
+	}
+	businessNodes := map[string]BusinessWorkflowNodeDTO{}
+	for _, node := range view.BusinessFlow.Nodes {
+		businessNodes[node.NodeID] = node
+	}
+	if businessNodes["source"].Status != models.VisualReadinessReady {
+		t.Fatalf("source node should be ready: %+v", businessNodes["source"])
+	}
+	if businessNodes["deconstruction"].Status != models.VisualDeconstructionStatusContractNeeded {
+		t.Fatalf("deconstruction node should expose real job status: %+v", businessNodes["deconstruction"])
+	}
+	if businessNodes["delivery_download"].Status != models.VisualReadinessMissing || businessNodes["charge_metering"].Status != models.VisualReadinessMissing {
+		t.Fatalf("downstream nodes must not fake pass before evidence: delivery=%+v metering=%+v", businessNodes["delivery_download"], businessNodes["charge_metering"])
+	}
+	if view.IntegrationVerdict == nil || view.IntegrationVerdict.Status != "blocked" {
+		t.Fatalf("stage view should expose fail-closed integration verdict: %+v", view.IntegrationVerdict)
+	}
+	if view.IntegrationVerdict.ReadyCount != 1 || view.IntegrationVerdict.TotalCount != 8 {
+		t.Fatalf("integration verdict should count business DAG readiness honestly: %+v", view.IntegrationVerdict)
+	}
+	if view.RollbackSnapshot == nil || view.RollbackSnapshot.SessionID != session.ID || len(view.RollbackSnapshot.Scopes) == 0 {
+		t.Fatalf("stage view should expose rollback scope snapshot: %+v", view.RollbackSnapshot)
+	}
+	if view.ReleaseReadiness == nil || view.ReleaseReadiness.Status != "blocked" || len(view.ReleaseReadiness.Gates) == 0 {
+		t.Fatalf("stage view should expose release readiness gates: %+v", view.ReleaseReadiness)
 	}
 }
 
@@ -2259,7 +2311,9 @@ func TestPromptPlannerResultUpdatesPromptPlanFromTrustedCallback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create session: %v", err)
 	}
-	plan := PromptPlanDTO{SchemaVersion: promptPlanSchemaVersion, Status: "ready", PromptID: "prompt_v2", SceneType: "hero", Variables: map[string]any{"headline": "clean studio"}}
+	plan := PromptPlanDTO{SchemaVersion: promptPlanSchemaVersion, Status: "ready", PromptID: "prompt_v2", SceneType: "hero", TemplateID: "tpl_prompt_result", Variables: map[string]any{"headline": "clean studio"}}
+	promptFake := &fakePromptSnapshotCreator{response: &promptcenter.PromptRunResponse{PromptID: "prompt_v2", ProductID: product.ID, SKUCode: product.SKUCode, TemplateID: "tpl_prompt_result", SceneType: "hero", Status: "validated"}}
+	service.WithPromptSnapshotCreator(promptFake)
 	result, err := service.InternalRecordPromptPlannerResults(session.ID, InternalRecordResultsRequest{Status: "completed", Progress: 100, Stage: "completed", Variants: []map[string]any{{"inline_data": toJSONForTest(plan)}}})
 	if err != nil {
 		t.Fatalf("record prompt planner result: %v", err)

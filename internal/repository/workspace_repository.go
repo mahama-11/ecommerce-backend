@@ -2,6 +2,9 @@ package repository
 
 import (
 	"encoding/json"
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"ecommerce-service/internal/models"
@@ -98,6 +101,31 @@ func (r *WorkspaceRepository) SaveTemplate(scope Scope, record SavedTemplateReco
 		return nil, err
 	}
 	return r.ListSavedTemplates(scope)
+}
+
+func (r *WorkspaceRepository) DeleteTemplate(scope Scope, id string) ([]SavedTemplateRecord, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("template id is required")
+	}
+	if err := r.db.Where("id = ? AND user_id = ? AND organization_id = ?", strings.TrimSpace(id), scope.UserID, scope.OrgID).Delete(&models.SavedTemplate{}).Error; err != nil {
+		return nil, err
+	}
+	return r.ListSavedTemplates(scope)
+}
+
+func (r *WorkspaceRepository) MarkTemplateUsed(scope Scope, id string) (*SavedTemplateRecord, error) {
+	var item models.SavedTemplate
+	if err := r.db.Where("id = ? AND user_id = ? AND organization_id = ?", strings.TrimSpace(id), scope.UserID, scope.OrgID).First(&item).Error; err != nil {
+		return nil, err
+	}
+	current, _ := strconv.Atoi(strings.TrimSpace(item.UsageCount))
+	item.UsageCount = strconv.Itoa(current + 1)
+	item.UpdatedAt = time.Now()
+	if err := r.db.Save(&item).Error; err != nil {
+		return nil, err
+	}
+	out := toSavedTemplateRecord(item)
+	return &out, nil
 }
 
 func (r *WorkspaceRepository) ListWorkflowEvents(scope Scope) ([]WorkflowEventRecord, error) {

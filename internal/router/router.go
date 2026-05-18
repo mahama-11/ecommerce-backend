@@ -198,6 +198,9 @@ func New(cfg config.Config, platformClient *platform.Client, db *gorm.DB, redisC
 		{
 			workspaceGroup.GET("/templates/saved", workspaceHandler.ListSavedTemplates)
 			workspaceGroup.POST("/templates/saved", workspaceHandler.SaveTemplate)
+			workspaceGroup.PUT("/templates/saved/:template_id", workspaceHandler.UpdateTemplate)
+			workspaceGroup.DELETE("/templates/saved/:template_id", workspaceHandler.DeleteTemplate)
+			workspaceGroup.POST("/templates/saved/:template_id/use", workspaceHandler.UseTemplate)
 			workspaceGroup.GET("/workflow/events", workspaceHandler.ListWorkflowEvents)
 			workspaceGroup.POST("/workflow/events", workspaceHandler.SaveWorkflowEvent)
 			workspaceGroup.GET("/workflow/template-bridges", workspaceHandler.ListTemplateBridges)

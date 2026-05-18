@@ -747,8 +747,8 @@ func (s *Service) platformRuntimeInputManifest(session *models.EcommerceVisualWo
 		"provider":        "",
 		"model":           "",
 		"system_prompt":   "",
-		"style_prompt":    compiled.FinalNegativePrompt,
-		"user_prompt":     compiled.FinalPrompt,
+		"style_prompt":    fanoutNegativePrompt(compiled.FinalNegativePrompt, versionMetadata(version)),
+		"user_prompt":     fanoutSlotPrompt(compiled.FinalPrompt, versionMetadata(version)),
 		"prompt_template": promptRun.TemplateCode,
 	}
 	paramsSnapshot := map[string]any{
@@ -809,8 +809,8 @@ func (s *Service) platformRuntimeInputManifestFromPromptPlan(manifest map[string
 		"provider":        "",
 		"model":           "",
 		"system_prompt":   "",
-		"style_prompt":    metadataString(promptPlan.Metadata, "negative_prompt"),
-		"user_prompt":     userPrompt,
+		"style_prompt":    fanoutNegativePrompt(metadataString(promptPlan.Metadata, "negative_prompt"), versionMetadata(version)),
+		"user_prompt":     fanoutSlotPrompt(userPrompt, versionMetadata(version)),
 		"prompt_template": strings.TrimSpace(promptPlan.TemplateID),
 	}
 	paramsSnapshot := map[string]any{
@@ -855,11 +855,36 @@ func assetUsableForGeneration(width, height int) bool {
 	return width >= 14 && height >= 14
 }
 
+func fanoutSlotPrompt(base string, metadata map[string]any) string {
+	parts := []string{strings.TrimSpace(base)}
+	if scene := metadataString(metadata, "scene_tag"); scene != "" {
+		parts = append(parts, "Image type / scene: "+scene)
+	}
+	if detail := metadataString(metadata, "detail_requirement"); detail != "" {
+		parts = append(parts, "Slot-specific detail requirements: "+detail)
+	}
+	return strings.TrimSpace(strings.Join(compactUniqueStrings(parts), "\n"))
+}
+
+func fanoutNegativePrompt(base string, metadata map[string]any) string {
+	negative := metadataString(metadata, "negative_requirement")
+	if negative == "" {
+		return strings.TrimSpace(base)
+	}
+	if strings.TrimSpace(base) == "" {
+		return negative
+	}
+	return strings.TrimSpace(base) + "\n" + negative
+}
+
 func mergeAllowedGenerationRuntimeParams(params map[string]any, metadata map[string]any) {
 	if params == nil || metadata == nil {
 		return
 	}
 	uiConfig, _ := metadata["ui_execution_config"].(map[string]any)
+	if execConfig, ok := metadata["execution_config"].(map[string]any); ok {
+		uiConfig = execConfig
+	}
 	providerConfig, _ := uiConfig["provider_config"].(map[string]any)
 	resolutionID, _ := providerConfig["resolution_id"].(string)
 	switch strings.TrimSpace(resolutionID) {
@@ -871,6 +896,11 @@ func mergeAllowedGenerationRuntimeParams(params map[string]any, metadata map[str
 		params["width"] = 1280
 		params["height"] = 720
 		params["resolution_id"] = "720-wide"
+	}
+	for _, key := range []string{"scene_tag", "detail_requirement", "negative_requirement"} {
+		if text := metadataString(metadata, key); text != "" {
+			params[key] = text
+		}
 	}
 }
 
@@ -1820,6 +1850,9 @@ func (s *Service) platformDeconstructionRuntimeInputManifest(item *models.Ecomme
 		if src.Status != models.VisualSourceStatusReady || src.ResolveStatus != models.VisualSourceStatusReady {
 			continue
 		}
+		if strings.TrimSpace(src.ID) != strings.TrimSpace(item.SourceReferenceID) {
+			continue
+		}
 		metadata := sanitizeDeconstructionRequestMetadata(decodeObject(src.Metadata))
 		role := sourceRoleFromMetadata(metadata, src.SourceKind)
 		asset := map[string]any{
@@ -1858,7 +1891,7 @@ func (s *Service) platformDeconstructionRuntimeInputManifest(item *models.Ecomme
 		"source_role_output_required": true,
 		"source_reference_id":         item.SourceReferenceID,
 		"source_reference_ids":        businessManifest["source_reference_ids"],
-		"source_references":           sourceAssets,
+		"source_references":           businessManifest["source_references"],
 		"source_asset_ids":            sourceAssetIDs,
 		"source_assets":               sourceAssets,
 		"prompt_snapshot": map[string]any{
@@ -3603,19 +3636,58 @@ func (s *Service) CreateGenerationFanout(orgID, sessionID string, req CreateGene
 	if err != nil {
 		return nil, err
 	}
-	sourceIDs := compactUniqueStrings(req.SourceAssetIDs)
-	templateIDs := compactUniqueStrings(req.TemplateIDs)
-	if len(sourceIDs) == 0 {
-		return nil, fmt.Errorf("source_asset_ids are required for generation fan-out")
+	type fanoutPair struct {
+		sourceID            string
+		templateID          string
+		templateVersionID   string
+		sceneTag            string
+		detailRequirement   string
+		negativeRequirement string
 	}
-	if len(templateIDs) == 0 {
-		return nil, fmt.Errorf("template_ids are required for generation fan-out")
+	pairs := make([]fanoutPair, 0)
+	if len(req.TemplateSlots) > 0 {
+		for _, slot := range req.TemplateSlots {
+			sourceID := strings.TrimSpace(slot.SourceAssetID)
+			templateID := strings.TrimSpace(slot.TemplateID)
+			if sourceID == "" || templateID == "" {
+				continue
+			}
+			pairs = append(pairs, fanoutPair{
+				sourceID:            sourceID,
+				templateID:          templateID,
+				templateVersionID:   strings.TrimSpace(slot.TemplateVersionID),
+				sceneTag:            strings.TrimSpace(slot.SceneTag),
+				detailRequirement:   strings.TrimSpace(slot.DetailRequirement),
+				negativeRequirement: strings.TrimSpace(slot.NegativeRequirement),
+			})
+		}
+	} else {
+		sourceIDs := compactUniqueStrings(req.SourceAssetIDs)
+		templateIDs := compactUniqueStrings(req.TemplateIDs)
+		for _, sourceID := range sourceIDs {
+			for templateIndex, templateID := range templateIDs {
+				templateVersionID := ""
+				if templateIndex < len(req.TemplateVersionIDs) {
+					templateVersionID = strings.TrimSpace(req.TemplateVersionIDs[templateIndex])
+				}
+				pairs = append(pairs, fanoutPair{sourceID: sourceID, templateID: templateID, templateVersionID: templateVersionID})
+			}
+		}
 	}
-	total := len(sourceIDs) * len(templateIDs)
+	if len(pairs) == 0 {
+		return nil, fmt.Errorf("at least one source/template fan-out task is required")
+	}
+	total := len(pairs)
 	if total > MaxGenerationFanoutTasks {
 		return nil, fmt.Errorf("generation fan-out task count %d exceeds limit %d", total, MaxGenerationFanoutTasks)
 	}
-	for _, sourceID := range sourceIDs {
+	for _, sourceID := range compactUniqueStrings(func() []string {
+		ids := make([]string, 0, len(pairs))
+		for _, pair := range pairs {
+			ids = append(ids, pair.sourceID)
+		}
+		return ids
+	}()) {
 		if err := s.validateFanoutSourceAsset(session, sourceID); err != nil {
 			return nil, err
 		}
@@ -3624,51 +3696,71 @@ func (s *Service) CreateGenerationFanout(orgID, sessionID string, req CreateGene
 	if fanoutID == "" {
 		fanoutID = buildID("gfb")
 	}
+	executionConfig := GenerationFanoutExecutionConfigDTO{
+		MaxConcurrency: clampInt(req.MaxConcurrency, 1, MaxGenerationFanoutTasks),
+		RetryOnFailure: req.RetryOnFailure,
+		MaxRetries:     clampInt(req.MaxRetries, 0, 5),
+		TimeoutSeconds: clampInt(req.TimeoutSeconds, 30, 1800),
+	}
 	promptPlan := decodePromptPlan(session.PromptPlanJSON, session)
 	if strings.TrimSpace(promptPlan.PromptID) == "" || strings.TrimSpace(promptPlan.Status) != "ready" {
 		return nil, fmt.Errorf("ready prompt_plan with prompt_id is required before generation fan-out")
 	}
 	items := make([]GenerationFanoutItemDTO, 0, total)
-	for sourceIndex, sourceID := range sourceIDs {
-		for templateIndex, templateID := range templateIDs {
-			templateVersionID := ""
-			if templateIndex < len(req.TemplateVersionIDs) {
-				templateVersionID = strings.TrimSpace(req.TemplateVersionIDs[templateIndex])
-			}
-			slotIndex := sourceIndex*len(templateIDs) + templateIndex
-			fanoutTaskID := fmt.Sprintf("%s:%02d", fanoutID, slotIndex+1)
-			providerConfig := sanitizeGenerationManifestValue(req.ProviderConfig)
-			metadata := mergeObjectMaps(req.Metadata, map[string]any{
-				"source":              "sandbox_generation_fanout",
-				"idempotency_key":     fmt.Sprintf("generation-fanout:%s:%s:%s:%s", session.ID, fanoutID, sourceID, templateID),
-				"fanout_id":           fanoutID,
-				"fanout_task_id":      fanoutTaskID,
-				"fanout_index":        slotIndex,
-				"fanout_total":        total,
-				"source_asset_id":     sourceID,
-				"template_id":         strings.TrimSpace(templateID),
-				"template_version_id": templateVersionID,
-				"requested_variants":  clampInt(req.RequestedVariants, 1, 4),
-				"ui_execution_config": map[string]any{"provider_config": providerConfig},
-			})
-			if len(req.PromptVariables) > 0 {
-				metadata["prompt_variables"] = sanitizeGenerationManifestValue(req.PromptVariables)
-			}
-			version, err := s.CreateGenerationVersion(orgID, sessionID, CreateGenerationVersionRequest{
-				PromptID:       promptPlan.PromptID,
-				Status:         "queued",
-				Stage:          "queued",
-				Progress:       intPtr(0),
-				IdempotencyKey: metadataString(metadata, "idempotency_key"),
-				Metadata:       metadata,
-			})
-			if err != nil {
-				return nil, err
-			}
-			items = append(items, GenerationFanoutItemDTO{FanoutTaskID: fanoutTaskID, SourceAssetID: sourceID, TemplateID: strings.TrimSpace(templateID), TemplateVersionID: templateVersionID, SlotIndex: slotIndex, GenerationVersion: *version})
+	for slotIndex, pair := range pairs {
+		sourceID := pair.sourceID
+		templateID := pair.templateID
+		templateVersionID := pair.templateVersionID
+		fanoutTaskID := fmt.Sprintf("%s:%02d", fanoutID, slotIndex+1)
+		providerConfig := sanitizeGenerationManifestValue(req.ProviderConfig)
+		metadata := mergeObjectMaps(req.Metadata, map[string]any{
+			"source":               "sandbox_generation_fanout",
+			"idempotency_key":      fmt.Sprintf("generation-fanout:%s:%s:%02d:%s:%s", session.ID, fanoutID, slotIndex+1, sourceID, templateID),
+			"fanout_id":            fanoutID,
+			"fanout_task_id":       fanoutTaskID,
+			"fanout_index":         slotIndex,
+			"fanout_total":         total,
+			"source_asset_id":      sourceID,
+			"template_id":          strings.TrimSpace(templateID),
+			"template_version_id":  templateVersionID,
+			"scene_tag":            pair.sceneTag,
+			"detail_requirement":   pair.detailRequirement,
+			"negative_requirement": pair.negativeRequirement,
+			"requested_variants":   clampInt(req.RequestedVariants, 1, 4),
+			"execution_config": map[string]any{
+				"max_concurrency":  executionConfig.MaxConcurrency,
+				"retry_on_failure": executionConfig.RetryOnFailure,
+				"max_retries":      executionConfig.MaxRetries,
+				"timeout_seconds":  executionConfig.TimeoutSeconds,
+				"provider_config":  providerConfig,
+			},
+		})
+		if len(req.PromptVariables) > 0 {
+			metadata["prompt_variables"] = sanitizeGenerationManifestValue(req.PromptVariables)
 		}
+		version, err := s.CreateGenerationVersion(orgID, sessionID, CreateGenerationVersionRequest{
+			PromptID:       promptPlan.PromptID,
+			Status:         "queued",
+			Stage:          "queued",
+			Progress:       intPtr(0),
+			IdempotencyKey: metadataString(metadata, "idempotency_key"),
+			Metadata:       metadata,
+		})
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, GenerationFanoutItemDTO{FanoutTaskID: fanoutTaskID, SourceAssetID: sourceID, TemplateID: strings.TrimSpace(templateID), TemplateVersionID: templateVersionID, SlotIndex: slotIndex, SceneTag: pair.sceneTag, DetailRequirement: pair.detailRequirement, GenerationVersion: *version})
 	}
-	return &CreateGenerationFanoutResponse{SessionID: session.ID, ProductID: session.ProductID, SKUCode: session.SKUCode, FanoutID: fanoutID, Items: items}, nil
+	return &CreateGenerationFanoutResponse{
+		SessionID:       session.ID,
+		ProductID:       session.ProductID,
+		SKUCode:         session.SKUCode,
+		FanoutID:        fanoutID,
+		Status:          "queued",
+		ExecutionConfig: executionConfig,
+		Summary:         GenerationFanoutSummaryDTO{TotalTasks: len(items), QueuedTasks: len(items)},
+		Items:           items,
+	}, nil
 }
 
 func (s *Service) ListGenerationVersions(orgID, sessionID string) ([]GenerationVersionDTO, error) {

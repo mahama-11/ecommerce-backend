@@ -32,6 +32,24 @@ func (s *Service) SaveTemplate(scope repository.Scope, record repository.SavedTe
 	s.invalidate(scope, "saved_templates")
 	return items, nil
 }
+
+func (s *Service) DeleteTemplate(scope repository.Scope, id string) ([]repository.SavedTemplateRecord, error) {
+	items, err := s.repo.DeleteTemplate(scope, id)
+	if err != nil {
+		return nil, err
+	}
+	s.invalidate(scope, "saved_templates")
+	return items, nil
+}
+
+func (s *Service) UseTemplate(scope repository.Scope, id string) (*repository.SavedTemplateRecord, error) {
+	item, err := s.repo.MarkTemplateUsed(scope, id)
+	if err != nil {
+		return nil, err
+	}
+	s.invalidate(scope, "saved_templates")
+	return item, nil
+}
 func (s *Service) ListWorkflowEvents(scope repository.Scope) ([]repository.WorkflowEventRecord, error) {
 	return withCache(s, scope, "workflow_events", s.repo.ListWorkflowEvents)
 }

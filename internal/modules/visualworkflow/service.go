@@ -685,7 +685,7 @@ func generationRuntimeIdempotencyKey(session *models.EcommerceVisualWorkflowSess
 func (s *Service) platformRuntimeInputManifest(session *models.EcommerceVisualWorkflowSession, version *GenerationVersionDTO, promptPlan *PromptPlanDTO, intentSpec *IntentSpecDTO) (map[string]any, error) {
 	manifest := map[string]any{
 		"input_mode":         "prompt_snapshot",
-		"requested_variants": 1,
+		"requested_variants": requestedVariantsFromMetadata(versionMetadata(version)),
 		"params_snapshot":    map[string]any{},
 		"source_asset_ids":   []string{},
 		"source_assets":      []map[string]any{},
@@ -737,6 +737,12 @@ func (s *Service) platformRuntimeInputManifest(session *models.EcommerceVisualWo
 			"height":      asset.Height,
 		})
 	}
+	if fanoutSourceID := metadataString(version.Metadata, "source_asset_id"); fanoutSourceID != "" {
+		if ids, assets := s.runtimeSourceAssetsForIDs(session.OrganizationID, []string{fanoutSourceID}); len(ids) > 0 {
+			sourceAssetIDs = ids
+			sourceAssets = assets
+		}
+	}
 	manifest["prompt_snapshot"] = map[string]any{
 		"provider":        "",
 		"model":           "",
@@ -754,6 +760,7 @@ func (s *Service) platformRuntimeInputManifest(session *models.EcommerceVisualWo
 		"source_map_hash":     promptRun.SourceMapHash,
 	}
 	mergeAllowedGenerationRuntimeParams(paramsSnapshot, version.Metadata)
+	mergeFanoutGenerationRuntimeParams(paramsSnapshot, version.Metadata)
 	manifest["params_snapshot"] = paramsSnapshot
 	manifest["source_asset_ids"] = sourceAssetIDs
 	manifest["source_assets"] = sourceAssets
@@ -792,6 +799,12 @@ func (s *Service) platformRuntimeInputManifestFromPromptPlan(manifest map[string
 			"role":        binding.Role,
 		})
 	}
+	if fanoutSourceID := metadataString(version.Metadata, "source_asset_id"); fanoutSourceID != "" {
+		if ids, assets := s.runtimeSourceAssetsForIDs(session.OrganizationID, []string{fanoutSourceID}); len(ids) > 0 {
+			sourceAssetIDs = ids
+			sourceAssets = assets
+		}
+	}
 	manifest["prompt_snapshot"] = map[string]any{
 		"provider":        "",
 		"model":           "",
@@ -808,10 +821,34 @@ func (s *Service) platformRuntimeInputManifestFromPromptPlan(manifest map[string
 		"snapshot_source":     "visual_workflow_prompt_plan",
 	}
 	mergeAllowedGenerationRuntimeParams(paramsSnapshot, version.Metadata)
+	mergeFanoutGenerationRuntimeParams(paramsSnapshot, version.Metadata)
 	manifest["params_snapshot"] = paramsSnapshot
 	manifest["source_asset_ids"] = sourceAssetIDs
 	manifest["source_assets"] = sourceAssets
 	return sanitizeGenerationManifestValue(manifest).(map[string]any), nil
+}
+
+func (s *Service) runtimeSourceAssetsForIDs(orgID string, assetIDs []string) ([]string, []map[string]any) {
+	if s == nil || s.assetRepo == nil {
+		return nil, nil
+	}
+	ids := make([]string, 0, len(assetIDs))
+	assets := make([]map[string]any, 0, len(assetIDs))
+	for _, rawID := range compactUniqueStrings(assetIDs) {
+		asset, err := s.assetRepo.FindAssetByID(orgID, rawID)
+		if err != nil || strings.TrimSpace(asset.StorageKey) == "" || !assetUsableForGeneration(asset.Width, asset.Height) {
+			continue
+		}
+		ids = append(ids, asset.ID)
+		assets = append(assets, map[string]any{
+			"id":          asset.ID,
+			"storage_key": asset.StorageKey,
+			"mime_type":   asset.MimeType,
+			"width":       asset.Width,
+			"height":      asset.Height,
+		})
+	}
+	return ids, assets
 }
 
 func assetUsableForGeneration(width, height int) bool {
@@ -3050,6 +3087,9 @@ func (s *Service) ApplyAttentionTree(orgID, sessionID string, req ApplyAttention
 	if _, err := s.repo.GetSession(orgID, sessionID); err != nil {
 		return nil, err
 	}
+	if err := validateAttentionTreeRequest(req); err != nil {
+		return nil, err
+	}
 	out := make([]models.EcommerceVisualDeconstructionElement, 0, len(req.Decisions))
 	for _, decision := range req.Decisions {
 		item, err := s.repo.GetDeconstructionElement(orgID, sessionID, strings.TrimSpace(decision.ElementID))
@@ -3064,7 +3104,7 @@ func (s *Service) ApplyAttentionTree(orgID, sessionID string, req ApplyAttention
 		} else {
 			item.Readiness = models.VisualReadinessReady
 		}
-		if err := applyAttentionDecisionToElement(item, decision.Decision, decision.GroupPath, decision.TargetAssetID, decision.Rationale, decision.Confidence, decision.Metadata); err != nil {
+		if err := applyAttentionDecisionToElement(item, decision.Decision, decision.GroupPath, decision.TargetAssetID, decision.Rationale, decision.Confidence, attentionDecisionMetadata(req, decision)); err != nil {
 			return nil, err
 		}
 		if err := s.repo.UpdateDeconstructionElement(item); err != nil {
@@ -3220,6 +3260,7 @@ func buildIntentFusionInputManifest(sources []IntentSourceReferenceDTO, selectio
 		"sku_fact_count":           len(skuFacts),
 		"reference_strategies":     referenceStrategies,
 		"reference_strategy_count": len(referenceStrategies),
+		"decision_tree":            decisionTreeProjection(selections),
 		"readiness":                readiness,
 		"blockers":                 blockers,
 		"requires_prompt_diff":     true,
@@ -3287,6 +3328,115 @@ func stringSliceFromAny(raw any) []string {
 	default:
 		return nil
 	}
+}
+
+func validateAttentionTreeRequest(req ApplyAttentionTreeRequest) error {
+	requestLayer := -1
+	if req.Layer != nil {
+		if *req.Layer < 0 {
+			return fmt.Errorf("attention tree layer must be >= 0")
+		}
+		requestLayer = *req.Layer
+	}
+	seenNodeIDs := map[string]bool{}
+	for _, decision := range req.Decisions {
+		layer := requestLayer
+		if decision.Layer != nil {
+			if *decision.Layer < 0 {
+				return fmt.Errorf("attention tree layer must be >= 0")
+			}
+			layer = *decision.Layer
+		}
+		if layer == 0 && strings.TrimSpace(decision.ParentNodeID) != "" {
+			return fmt.Errorf("root attention decision cannot have parent_node_id")
+		}
+		if strings.TrimSpace(decision.DecisionNodeID) != "" {
+			if seenNodeIDs[strings.TrimSpace(decision.DecisionNodeID)] {
+				return fmt.Errorf("duplicate decision_node_id: %s", decision.DecisionNodeID)
+			}
+			seenNodeIDs[strings.TrimSpace(decision.DecisionNodeID)] = true
+		}
+	}
+	return nil
+}
+
+func attentionDecisionMetadata(req ApplyAttentionTreeRequest, decision AttentionDecisionInput) map[string]any {
+	metadata := mergeObjectMaps(decision.Metadata)
+	if strings.TrimSpace(req.TreeID) != "" {
+		metadata["tree_id"] = strings.TrimSpace(req.TreeID)
+	}
+	roundID := strings.TrimSpace(decision.RoundID)
+	if roundID == "" {
+		roundID = strings.TrimSpace(req.RoundID)
+	}
+	if roundID != "" {
+		metadata["round_id"] = roundID
+	}
+	if strings.TrimSpace(decision.DecisionNodeID) != "" {
+		metadata["decision_node_id"] = strings.TrimSpace(decision.DecisionNodeID)
+	}
+	if strings.TrimSpace(decision.ParentNodeID) != "" {
+		metadata["parent_node_id"] = strings.TrimSpace(decision.ParentNodeID)
+	}
+	if decision.Layer != nil {
+		metadata["layer"] = *decision.Layer
+	} else if req.Layer != nil {
+		metadata["layer"] = *req.Layer
+	}
+	if len(decision.Path) > 0 {
+		metadata["path"] = decision.Path
+	}
+	if strings.TrimSpace(decision.Question) != "" {
+		metadata["question"] = strings.TrimSpace(decision.Question)
+	}
+	if strings.TrimSpace(decision.Answer) != "" {
+		metadata["answer"] = strings.TrimSpace(decision.Answer)
+	}
+	return metadata
+}
+
+func decisionTreeProjection(selections []IntentElementDTO) map[string]any {
+	nodes := make([]map[string]any, 0, len(selections))
+	layers := map[int]bool{}
+	rounds := map[string]bool{}
+	for _, selection := range selections {
+		metadata := selection.Metadata
+		if metadata == nil {
+			continue
+		}
+		nodeID := metadataString(metadata, "decision_node_id")
+		if nodeID == "" {
+			nodeID = selection.ElementID
+		}
+		layer := intFromAny(metadata["layer"], 0)
+		roundID := metadataString(metadata, "round_id")
+		if roundID != "" {
+			rounds[roundID] = true
+		}
+		layers[layer] = true
+		nodes = append(nodes, map[string]any{
+			"node_id":         nodeID,
+			"parent_node_id":  metadataString(metadata, "parent_node_id"),
+			"round_id":        roundID,
+			"layer":           layer,
+			"path":            metadata["path"],
+			"question":        metadataString(metadata, "question"),
+			"answer":          metadataString(metadata, "answer"),
+			"element_id":      selection.ElementID,
+			"decision":        selection.Decision,
+			"target_asset_id": selection.TargetAssetID,
+			"group_path":      selection.GroupPath,
+		})
+	}
+	layerList := make([]int, 0, len(layers))
+	for layer := range layers {
+		layerList = append(layerList, layer)
+	}
+	roundList := make([]string, 0, len(rounds))
+	for roundID := range rounds {
+		roundList = append(roundList, roundID)
+	}
+	return map[string]any{"schema_version": "visual-decision-tree.v1", "rounds": roundList, "layers": layerList, "nodes": nodes}
 }
 
 func applyAttentionDecisionToElement(item *models.EcommerceVisualDeconstructionElement, decision string, groupPath []string, targetAssetID, rationale string, confidence *float64, extra map[string]any) error {
@@ -3446,6 +3596,79 @@ func (s *Service) CreateGenerationVersion(orgID, sessionID string, req CreateGen
 		return nil, err
 	}
 	return &version, nil
+}
+
+func (s *Service) CreateGenerationFanout(orgID, sessionID string, req CreateGenerationFanoutRequest) (*CreateGenerationFanoutResponse, error) {
+	session, err := s.repo.GetSession(orgID, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	sourceIDs := compactUniqueStrings(req.SourceAssetIDs)
+	templateIDs := compactUniqueStrings(req.TemplateIDs)
+	if len(sourceIDs) == 0 {
+		return nil, fmt.Errorf("source_asset_ids are required for generation fan-out")
+	}
+	if len(templateIDs) == 0 {
+		return nil, fmt.Errorf("template_ids are required for generation fan-out")
+	}
+	total := len(sourceIDs) * len(templateIDs)
+	if total > MaxGenerationFanoutTasks {
+		return nil, fmt.Errorf("generation fan-out task count %d exceeds limit %d", total, MaxGenerationFanoutTasks)
+	}
+	for _, sourceID := range sourceIDs {
+		if err := s.validateFanoutSourceAsset(session, sourceID); err != nil {
+			return nil, err
+		}
+	}
+	fanoutID := strings.TrimSpace(req.IdempotencyKey)
+	if fanoutID == "" {
+		fanoutID = buildID("gfb")
+	}
+	promptPlan := decodePromptPlan(session.PromptPlanJSON, session)
+	if strings.TrimSpace(promptPlan.PromptID) == "" || strings.TrimSpace(promptPlan.Status) != "ready" {
+		return nil, fmt.Errorf("ready prompt_plan with prompt_id is required before generation fan-out")
+	}
+	items := make([]GenerationFanoutItemDTO, 0, total)
+	for sourceIndex, sourceID := range sourceIDs {
+		for templateIndex, templateID := range templateIDs {
+			templateVersionID := ""
+			if templateIndex < len(req.TemplateVersionIDs) {
+				templateVersionID = strings.TrimSpace(req.TemplateVersionIDs[templateIndex])
+			}
+			slotIndex := sourceIndex*len(templateIDs) + templateIndex
+			fanoutTaskID := fmt.Sprintf("%s:%02d", fanoutID, slotIndex+1)
+			providerConfig := sanitizeGenerationManifestValue(req.ProviderConfig)
+			metadata := mergeObjectMaps(req.Metadata, map[string]any{
+				"source":              "sandbox_generation_fanout",
+				"idempotency_key":     fmt.Sprintf("generation-fanout:%s:%s:%s:%s", session.ID, fanoutID, sourceID, templateID),
+				"fanout_id":           fanoutID,
+				"fanout_task_id":      fanoutTaskID,
+				"fanout_index":        slotIndex,
+				"fanout_total":        total,
+				"source_asset_id":     sourceID,
+				"template_id":         strings.TrimSpace(templateID),
+				"template_version_id": templateVersionID,
+				"requested_variants":  clampInt(req.RequestedVariants, 1, 4),
+				"ui_execution_config": map[string]any{"provider_config": providerConfig},
+			})
+			if len(req.PromptVariables) > 0 {
+				metadata["prompt_variables"] = sanitizeGenerationManifestValue(req.PromptVariables)
+			}
+			version, err := s.CreateGenerationVersion(orgID, sessionID, CreateGenerationVersionRequest{
+				PromptID:       promptPlan.PromptID,
+				Status:         "queued",
+				Stage:          "queued",
+				Progress:       intPtr(0),
+				IdempotencyKey: metadataString(metadata, "idempotency_key"),
+				Metadata:       metadata,
+			})
+			if err != nil {
+				return nil, err
+			}
+			items = append(items, GenerationFanoutItemDTO{FanoutTaskID: fanoutTaskID, SourceAssetID: sourceID, TemplateID: strings.TrimSpace(templateID), TemplateVersionID: templateVersionID, SlotIndex: slotIndex, GenerationVersion: *version})
+		}
+	}
+	return &CreateGenerationFanoutResponse{SessionID: session.ID, ProductID: session.ProductID, SKUCode: session.SKUCode, FanoutID: fanoutID, Items: items}, nil
 }
 
 func (s *Service) ListGenerationVersions(orgID, sessionID string) ([]GenerationVersionDTO, error) {
@@ -4245,6 +4468,87 @@ func intentSnapshotMetadata(spec IntentSpecDTO) map[string]any {
 		out["selection_count"] = len(spec.Selections)
 	}
 	return out
+}
+
+func compactUniqueStrings(values []string) []string {
+	seen := map[string]bool{}
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" || seen[trimmed] {
+			continue
+		}
+		seen[trimmed] = true
+		out = append(out, trimmed)
+	}
+	return out
+}
+
+func intPtr(v int) *int { return &v }
+
+func clampInt(v, min, max int) int {
+	if v < min {
+		return min
+	}
+	if v > max {
+		return max
+	}
+	return v
+}
+
+func intFromAny(raw any, fallback int) int {
+	switch value := raw.(type) {
+	case int:
+		return value
+	case int64:
+		return int(value)
+	case float64:
+		return int(value)
+	case json.Number:
+		if parsed, err := value.Int64(); err == nil {
+			return int(parsed)
+		}
+	}
+	return fallback
+}
+
+func versionMetadata(version *GenerationVersionDTO) map[string]any {
+	if version == nil {
+		return nil
+	}
+	return version.Metadata
+}
+
+func requestedVariantsFromMetadata(metadata map[string]any) int {
+	return clampInt(intFromAny(metadata["requested_variants"], 1), 1, 4)
+}
+
+func mergeFanoutGenerationRuntimeParams(params map[string]any, metadata map[string]any) {
+	if params == nil || metadata == nil {
+		return
+	}
+	for _, key := range []string{"fanout_id", "fanout_task_id", "fanout_index", "fanout_total", "source_asset_id", "template_id", "template_version_id"} {
+		if value, ok := metadata[key]; ok {
+			params[key] = sanitizeGenerationManifestValue(value)
+		}
+	}
+}
+
+func (s *Service) validateFanoutSourceAsset(session *models.EcommerceVisualWorkflowSession, sourceID string) error {
+	if strings.TrimSpace(sourceID) == "" {
+		return fmt.Errorf("source asset id is required")
+	}
+	if s.assetRepo == nil {
+		return nil
+	}
+	asset, err := s.assetRepo.FindAssetByID(session.OrganizationID, sourceID)
+	if err != nil {
+		return fmt.Errorf("source asset %s is not available in organization", sourceID)
+	}
+	if strings.TrimSpace(asset.StorageKey) == "" || !assetUsableForGeneration(asset.Width, asset.Height) {
+		return fmt.Errorf("source asset %s is not usable for generation", sourceID)
+	}
+	return nil
 }
 
 func metadataString(metadata map[string]any, key string) string {

@@ -2371,6 +2371,101 @@ func TestStrategyReportResultPersistsSanitizedMetadata(t *testing.T) {
 	}
 }
 
+func TestCreateGenerationFanoutCreatesMatrixRuntimeJobs(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_fanout", "org_fanout", "SKU-F")
+	assets := []models.EcommerceAsset{
+		{ID: "asset_fanout_1", OrganizationID: "org_fanout", UserID: "user_fanout", AssetType: "image", SourceType: "upload", StorageKey: "store/a.png", MimeType: "image/png", FileName: "a.png", Width: 1024, Height: 1024, Metadata: "{}"},
+		{ID: "asset_fanout_2", OrganizationID: "org_fanout", UserID: "user_fanout", AssetType: "image", SourceType: "upload", StorageKey: "store/b.png", MimeType: "image/png", FileName: "b.png", Width: 1024, Height: 1024, Metadata: "{}"},
+	}
+	for i := range assets {
+		if err := db.Create(&assets[i]).Error; err != nil {
+			t.Fatalf("seed asset: %v", err)
+		}
+	}
+	session, err := service.CreateSession("user_fanout", "org_fanout", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	model, err := service.repo.GetSession("org_fanout", session.ID)
+	if err != nil {
+		t.Fatalf("get session: %v", err)
+	}
+	model.PromptPlanJSON = encodePromptPlan(&PromptPlanDTO{SchemaVersion: promptPlanSchemaVersion, Status: "ready", PromptID: "prompt_fanout", TemplateID: "tpl_base", Variables: map[string]any{"prompt": "Generate ecommerce hero"}, SourceAssets: []PromptPlanSourceAssetDTO{{AssetID: "asset_fanout_1", Role: "sku"}}})
+	if err := service.repo.SaveSession(model); err != nil {
+		t.Fatalf("save prompt plan: %v", err)
+	}
+	fake := &fakeRuntimeCapabilityReader{matrix: readyVisualGenerationMatrix()}
+	service.WithRuntimeOrchestrator(fake)
+	resp, err := service.CreateGenerationFanout("org_fanout", session.ID, CreateGenerationFanoutRequest{IdempotencyKey: "fanout-1", SourceAssetIDs: []string{"asset_fanout_1", "asset_fanout_2"}, TemplateIDs: []string{"tpl_a", "tpl_b"}, RequestedVariants: 1, ProviderConfig: map[string]any{"resolution_id": "1024-square"}})
+	if err != nil {
+		t.Fatalf("create fanout: %v", err)
+	}
+	if len(resp.Items) != 4 || len(fake.createInputs) != 4 {
+		t.Fatalf("expected 4 fanout items/runtime jobs, resp=%+v inputs=%d", resp, len(fake.createInputs))
+	}
+	seen := map[string]bool{}
+	for _, input := range fake.createInputs {
+		manifest := decodeObject(input.InputManifest)
+		params, _ := manifest["params_snapshot"].(map[string]any)
+		if params["fanout_id"] != "fanout-1" || params["template_id"] == "" || params["source_asset_id"] == "" {
+			t.Fatalf("fanout params missing from manifest: %#v", params)
+		}
+		seen[fmt.Sprint(params["source_asset_id"])+":"+fmt.Sprint(params["template_id"])] = true
+		sourceIDs, _ := manifest["source_asset_ids"].([]any)
+		if len(sourceIDs) != 1 || fmt.Sprint(sourceIDs[0]) != fmt.Sprint(params["source_asset_id"]) {
+			t.Fatalf("fanout runtime should use exactly its selected source asset: manifest=%#v params=%#v", manifest["source_asset_ids"], params)
+		}
+		if strings.Contains(input.InputManifest, "provider_job_id") {
+			t.Fatalf("fanout manifest leaked execution artifact: %s", input.InputManifest)
+		}
+	}
+	if len(seen) != 4 {
+		t.Fatalf("fanout matrix did not cover all source/template pairs: %#v", seen)
+	}
+}
+
+func TestApplyAttentionTreePersistsLayeredDecisionNodes(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_tree", "org_tree", "SKU-T")
+	session, err := service.CreateSession("user_tree", "org_tree", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	for _, element := range []models.EcommerceVisualDeconstructionElement{
+		{ID: "vde_root", OrganizationID: "org_tree", SessionID: session.ID, JobID: "vdj_tree", ElementType: "style", ElementKey: "root", Label: "root"},
+		{ID: "vde_child", OrganizationID: "org_tree", SessionID: session.ID, JobID: "vdj_tree", ElementType: "object", ElementKey: "child", Label: "child"},
+	} {
+		if err := db.Create(&element).Error; err != nil {
+			t.Fatalf("seed element: %v", err)
+		}
+	}
+	layer0 := 0
+	layer1 := 1
+	confidence := 0.9
+	_, err = service.ApplyAttentionTree("org_tree", session.ID, ApplyAttentionTreeRequest{TreeID: "tree-1", RoundID: "round-1", Decisions: []AttentionDecisionInput{
+		{ElementID: "vde_root", Decision: "keep", DecisionNodeID: "node-root", Layer: &layer0, Question: "Keep root?", Answer: "yes", Confidence: &confidence},
+		{ElementID: "vde_child", Decision: "replace", DecisionNodeID: "node-child", ParentNodeID: "node-root", Layer: &layer1, Path: []string{"root", "child"}, Question: "Replace child?", Answer: "replace"},
+	}})
+	if err != nil {
+		t.Fatalf("apply layered attention tree: %v", err)
+	}
+	model, err := service.repo.GetSession("org_tree", session.ID)
+	if err != nil {
+		t.Fatalf("reload session: %v", err)
+	}
+	intent := decodeIntentSpec(model.IntentSpecJSON, model)
+	manifest, _ := intent.Metadata["input_manifest"].(map[string]any)
+	tree, _ := manifest["decision_tree"].(map[string]any)
+	nodes, _ := tree["nodes"].([]any)
+	if tree["schema_version"] != "visual-decision-tree.v1" || len(nodes) != 2 {
+		t.Fatalf("decision tree projection missing: %#v", tree)
+	}
+	if _, err := service.ApplyAttentionTree("org_tree", session.ID, ApplyAttentionTreeRequest{Decisions: []AttentionDecisionInput{{ElementID: "vde_root", Decision: "keep", DecisionNodeID: "bad-root", ParentNodeID: "parent", Layer: &layer0}}}); err == nil {
+		t.Fatalf("expected invalid root parent error")
+	}
+}
+
 func readyVisualGenerationMatrix() *platform.RuntimeCapabilityMatrix {
 	return &platform.RuntimeCapabilityMatrix{ProductCode: "ecommerce", Items: []platform.RuntimeCapabilityItem{{TaskType: "image_generation", Status: "ready", Available: true, ContractStatus: "ready"}}}
 }

@@ -326,18 +326,62 @@ type UpdateElementRequest struct {
 }
 
 type AttentionDecisionInput struct {
-	ElementID     string         `json:"element_id" binding:"required"`
-	Decision      string         `json:"decision" binding:"required"`
-	GroupPath     []string       `json:"group_path"`
-	TargetAssetID string         `json:"target_asset_id"`
-	Rationale     string         `json:"rationale"`
-	Confidence    *float64       `json:"confidence"`
-	Metadata      map[string]any `json:"metadata"`
+	ElementID      string         `json:"element_id" binding:"required"`
+	Decision       string         `json:"decision" binding:"required"`
+	GroupPath      []string       `json:"group_path"`
+	TargetAssetID  string         `json:"target_asset_id"`
+	Rationale      string         `json:"rationale"`
+	Confidence     *float64       `json:"confidence"`
+	DecisionNodeID string         `json:"decision_node_id"`
+	ParentNodeID   string         `json:"parent_node_id"`
+	RoundID        string         `json:"round_id"`
+	Layer          *int           `json:"layer"`
+	Path           []string       `json:"path"`
+	Question       string         `json:"question"`
+	Answer         string         `json:"answer"`
+	Metadata       map[string]any `json:"metadata"`
 }
 
 type ApplyAttentionTreeRequest struct {
+	TreeID        string                   `json:"tree_id"`
+	RoundID       string                   `json:"round_id"`
+	Layer         *int                     `json:"layer"`
 	Decisions     []AttentionDecisionInput `json:"decisions" binding:"required"`
 	DriftControls map[string]any           `json:"drift_controls"`
+}
+
+const MaxGenerationFanoutTasks = 20
+
+type CreateGenerationFanoutRequest struct {
+	IdempotencyKey     string         `json:"idempotency_key"`
+	SourceAssetIDs     []string       `json:"source_asset_ids"`
+	TemplateIDs        []string       `json:"template_ids"`
+	TemplateVersionIDs []string       `json:"template_version_ids"`
+	Marketplace        string         `json:"marketplace"`
+	Locale             string         `json:"locale"`
+	SceneType          string         `json:"scene_type"`
+	RequestedVariants  int            `json:"requested_variants"`
+	ProviderConfig     map[string]any `json:"provider_config"`
+	PromptVariables    map[string]any `json:"prompt_variables"`
+	Metadata           map[string]any `json:"metadata"`
+}
+
+type GenerationFanoutItemDTO struct {
+	FanoutTaskID      string               `json:"fanout_task_id"`
+	SourceAssetID     string               `json:"source_asset_id"`
+	TemplateID        string               `json:"template_id"`
+	TemplateVersionID string               `json:"template_version_id,omitempty"`
+	SlotIndex         int                  `json:"slot_index"`
+	GenerationVersion GenerationVersionDTO `json:"generation_version"`
+}
+
+type CreateGenerationFanoutResponse struct {
+	SessionID string                    `json:"session_id"`
+	ProductID string                    `json:"product_id"`
+	SKUCode   string                    `json:"sku_code"`
+	FanoutID  string                    `json:"fanout_id"`
+	Items     []GenerationFanoutItemDTO `json:"items"`
+	Blockers  []ReadinessBlocker        `json:"blockers,omitempty"`
 }
 
 type ConfirmSelectionRequest struct {

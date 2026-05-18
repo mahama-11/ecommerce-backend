@@ -269,6 +269,20 @@ func (h *Handler) CreateGenerationVersion(c *gin.Context) {
 	response.JSONSuccessWithStatus(c, http.StatusCreated, item)
 }
 
+func (h *Handler) CreateGenerationFanout(c *gin.Context) {
+	var req CreateGenerationFanoutRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.JSONBindError(c, err, "invalid generation fan-out request")
+		return
+	}
+	item, err := h.service.CreateGenerationFanout(c.GetString("orgID"), c.Param("session_id"), req)
+	if err != nil {
+		response.JSONError(c, response.CodeInvalidParameter, err.Error())
+		return
+	}
+	response.JSONSuccessWithStatus(c, http.StatusCreated, item)
+}
+
 func (h *Handler) ListGenerationVersions(c *gin.Context) {
 	items, err := h.service.ListGenerationVersions(c.GetString("orgID"), c.Param("session_id"))
 	if err != nil {

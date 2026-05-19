@@ -103,7 +103,7 @@ func (r *VisualWorkflowRepository) CreateSourceReference(item *models.EcommerceV
 
 func (r *VisualWorkflowRepository) ListSourceReferences(orgID, sessionID string) ([]models.EcommerceVisualSourceReference, error) {
 	var items []models.EcommerceVisualSourceReference
-	if err := r.db.Where("organization_id = ? AND session_id = ?", orgID, sessionID).Order("created_at DESC").Find(&items).Error; err != nil {
+	if err := r.db.Where("organization_id = ? AND session_id = ? AND status <> ?", orgID, sessionID, models.VisualSourceStatusArchived).Order("created_at DESC").Find(&items).Error; err != nil {
 		return nil, err
 	}
 	return items, nil
@@ -111,7 +111,7 @@ func (r *VisualWorkflowRepository) ListSourceReferences(orgID, sessionID string)
 
 func (r *VisualWorkflowRepository) LatestSourceReference(orgID, sessionID string) (*models.EcommerceVisualSourceReference, error) {
 	var item models.EcommerceVisualSourceReference
-	if err := r.db.Where("organization_id = ? AND session_id = ?", orgID, sessionID).Order("created_at DESC").First(&item).Error; err != nil {
+	if err := r.db.Where("organization_id = ? AND session_id = ? AND status <> ?", orgID, sessionID, models.VisualSourceStatusArchived).Order("created_at DESC").First(&item).Error; err != nil {
 		return nil, err
 	}
 	return &item, nil

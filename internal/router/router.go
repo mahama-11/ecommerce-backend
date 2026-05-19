@@ -182,6 +182,7 @@ func New(cfg config.Config, platformClient *platform.Client, db *gorm.DB, redisC
 			protected.POST("/v2/visual-workflows/:session_id/source-references", visualWorkflowHandler.CreateSourceReference)
 			protected.GET("/v2/visual-workflows/:session_id/source-references", visualWorkflowHandler.ListSourceReferences)
 			protected.PATCH("/v2/visual-workflows/:session_id/source-references/:source_reference_id", visualWorkflowHandler.UpdateSourceReference)
+			protected.DELETE("/v2/visual-workflows/:session_id/source-references/:source_reference_id", visualWorkflowHandler.ArchiveSourceReference)
 			protected.POST("/v2/visual-workflows/:session_id/deconstruction-jobs", visualWorkflowHandler.CreateDeconstructionJob)
 			protected.GET("/v2/visual-workflows/:session_id/deconstruction-jobs/:job_id", visualWorkflowHandler.GetDeconstructionJob)
 			protected.GET("/v2/visual-workflows/:session_id/deconstruction-elements", visualWorkflowHandler.ListElements)

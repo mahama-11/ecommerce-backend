@@ -91,6 +91,39 @@ func setupVisualWorkflowTest(t *testing.T) (*Service, *repository.VisualWorkflow
 	return service, vwRepo, db
 }
 
+func TestVisualWorkflowSourceReferenceArchiveAndListActive(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := models.EcomProductSKU{ID: "prod_sources", OrganizationID: "org_sources", SKUCode: "SKU-SRC", Title: "Source Test", Status: models.ProductStatusDraft}
+	if err := db.Create(&product).Error; err != nil {
+		t.Fatalf("seed product: %v", err)
+	}
+	session, err := service.CreateSession("user_sources", "org_sources", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode, ToolSlug: "production-pipeline"})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	sku, err := service.CreateSourceReference("user_sources", "org_sources", session.ID, CreateSourceReferenceRequest{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://sku", Metadata: map[string]any{"source_role": "sku"}})
+	if err != nil {
+		t.Fatalf("create sku source: %v", err)
+	}
+	ref, err := service.CreateSourceReference("user_sources", "org_sources", session.ID, CreateSourceReferenceRequest{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://ref", Metadata: map[string]any{"source_role": "reference"}})
+	if err != nil {
+		t.Fatalf("create ref source: %v", err)
+	}
+	if _, err := service.ArchiveSourceReference("org_sources", session.ID, sku.ID); err != nil {
+		t.Fatalf("archive source: %v", err)
+	}
+	items, err := service.ListSourceReferences("org_sources", session.ID)
+	if err != nil {
+		t.Fatalf("list sources: %v", err)
+	}
+	if len(items) != 1 || items[0].ID != ref.ID {
+		t.Fatalf("expected only active reference source, got %+v", items)
+	}
+	if _, err := service.CreateDeconstructionJob("user_sources", "org_sources", session.ID, CreateDeconstructionJobRequest{}); err == nil || !strings.Contains(err.Error(), "ready sku and reference tracks") {
+		t.Fatalf("expected archived sku source to be unavailable for deconstruction, got %v", err)
+	}
+}
+
 func TestVisualWorkflowFoundationFlow(t *testing.T) {
 	service, vwRepo, db := setupVisualWorkflowTest(t)
 	product := models.EcomProductSKU{ID: "prod_1", OrganizationID: "org_1", SKUCode: "SKU-1", Title: "Test", Status: models.ProductStatusDraft, AssetStatus: models.AssetStatusReady, ListingStatus: models.ListingStatusMissing, ExportStatus: models.ExportStatusPending}
@@ -2622,5 +2655,24 @@ func TestSaveGenerationVersionAsTemplateValidation(t *testing.T) {
 	}
 	if _, err := service.SaveGenerationVersionAsTemplate("user_1", "org_1", session.ID, version.VersionID, SaveGenerationTemplateRequest{}); err == nil {
 		t.Fatalf("expected incomplete version rejection")
+	}
+}
+
+func TestGenerationProviderCodeAllowsFrontendSelectableProviders(t *testing.T) {
+	metadata := map[string]any{
+		"ui_execution_config": map[string]any{
+			"provider_config": map[string]any{"generation_provider_code": "gemini_image_generation"},
+		},
+	}
+	if got := generationProviderCode(metadata); got != "gemini_image_generation" {
+		t.Fatalf("expected gemini provider code, got %q", got)
+	}
+	metadata["provider_code"] = "comfyui_bridge"
+	if got := generationProviderCode(metadata); got != "comfyui_bridge" {
+		t.Fatalf("expected explicit comfyui provider code, got %q", got)
+	}
+	metadata["provider_code"] = "gemini_visual_understanding"
+	if got := generationProviderCode(metadata); got != "" {
+		t.Fatalf("visual-understanding provider must not be accepted for generation, got %q", got)
 	}
 }

@@ -34,6 +34,10 @@ func WritePlatformError(c *gin.Context, err error, fallback string) {
 		status = http.StatusUnauthorized
 	} else if platform.IsNotFound(err) {
 		status = http.StatusNotFound
+	} else if platform.IsBadRequest(err) {
+		status = http.StatusBadRequest
+	} else if platform.IsPayloadTooLarge(err) {
+		status = http.StatusRequestEntityTooLarge
 	}
 	errorCode := platform.ErrorCode(err)
 	if errorCode == "" {
@@ -51,6 +55,10 @@ func WritePlatformError(c *gin.Context, err error, fallback string) {
 		responseCode = response.CodeConflict
 	case http.StatusNotFound:
 		responseCode = response.CodeNotFound
+	case http.StatusBadRequest:
+		responseCode = response.CodeBadRequest
+	case http.StatusRequestEntityTooLarge:
+		responseCode = response.CodeInvalidParameter
 	}
 	response.JSONErrorWithStatusSemantic(c, responseCode, err.Error(), errorCode, errorHint, status)
 }

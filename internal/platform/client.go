@@ -70,6 +70,21 @@ func IsNotFound(err error) bool {
 	var pe *platformError
 	return errors.As(err, &pe) && pe.Status == http.StatusNotFound
 }
+func IsBadRequest(err error) bool {
+	var pe *platformError
+	return errors.As(err, &pe) && pe.Status == http.StatusBadRequest
+}
+func IsPayloadTooLarge(err error) bool {
+	var pe *platformError
+	return errors.As(err, &pe) && pe.Status == http.StatusRequestEntityTooLarge
+}
+func StatusCode(err error) int {
+	var pe *platformError
+	if errors.As(err, &pe) {
+		return pe.Status
+	}
+	return 0
+}
 func ErrorCode(err error) string {
 	var pe *platformError
 	if errors.As(err, &pe) {

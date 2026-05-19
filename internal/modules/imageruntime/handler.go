@@ -43,7 +43,7 @@ func (h *Handler) RegisterSourceAsset(c *gin.Context) {
 	item, err := h.service.RegisterSourceAsset(c.GetString("userID"), c.GetString("orgID"), req)
 	if err != nil {
 		span.RecordError(err)
-		response.JSONErrorSemantic(c, response.CodeInternalError, "Failed to register source asset", "ECOMMERCE_SOURCE_ASSET_REGISTER_FAILED", "Check source payload and try again.")
+		moduleutil.WritePlatformError(c, err, "Failed to register source asset")
 		return
 	}
 	response.JSONSuccessWithStatus(c, http.StatusCreated, item)

@@ -749,3 +749,60 @@ func TestCreateImageJobDoesNotOverwriteRuntimeCallbackRace(t *testing.T) {
 		t.Fatalf("error code lost after race: %+v", stored)
 	}
 }
+
+func TestRegisterSourceAssetPropagatesPlatformUploadBadRequest(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	platformServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/internal/v1/storage/assets" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"code":1000,"message":"invalid asset upload request","error_code":"STORAGE_ASSET_PAYLOAD_INVALID","error_hint":"Send a valid data URL or base64-encoded image payload.","error":"http: request body too large"}`))
+	}))
+	defer platformServer.Close()
+
+	db := newImageRuntimeTestDB(t)
+	repo := repository.NewImageRuntimeRepository(db)
+	productRepo := repository.NewProductCenterRepository(db)
+	if err := db.Create(&models.EcomProductSKU{
+		ID:             "product-upload-limit",
+		OrganizationID: "org-1",
+		SKUCode:        "SKU-UPLOAD-LIMIT",
+		Title:          "Upload Limit Product",
+		Status:         models.ProductStatusDraft,
+		AssetStatus:    models.AssetStatusMissing,
+		ListingStatus:  models.ListingStatusMissing,
+		ExportStatus:   models.ExportStatusPending,
+	}).Error; err != nil {
+		t.Fatalf("create product: %v", err)
+	}
+	service := NewService(repo, repository.NewCommercialRepository(db), nil, productRepo, nil, platform.New(config.PlatformConfig{
+		BaseURL:               platformServer.URL,
+		Timeout:               5 * time.Second,
+		ServiceName:           "v-ecommerce-backend",
+		InternalServiceSecret: "platform-internal-secret",
+	}), testImageRuntimeAppConfig())
+	handler := NewHandler(service)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("userID", "user-1")
+		c.Set("orgID", "org-1")
+		c.Next()
+	})
+	router.POST("/api/v1/ecommerce/assets/source", handler.RegisterSourceAsset)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/ecommerce/assets/source", bytes.NewBufferString(`{"product_id":"product-upload-limit","sku_code":"SKU-UPLOAD-LIMIT","file_name":"source.png","mime_type":"image/png","payload":"data:image/png;base64,Zm9v"}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+	if resp.Code != http.StatusBadRequest {
+		t.Fatalf("register source asset status = %d, want %d body=%s", resp.Code, http.StatusBadRequest, resp.Body.String())
+	}
+	if !strings.Contains(resp.Body.String(), "STORAGE_ASSET_PAYLOAD_INVALID") {
+		t.Fatalf("expected upstream storage error code to be propagated, body=%s", resp.Body.String())
+	}
+}

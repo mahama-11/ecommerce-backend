@@ -33,6 +33,7 @@ const (
 	VisualSourceStatusReady          = "ready"
 	VisualSourceStatusPending        = "pending"
 	VisualSourceStatusContractNeeded = "contract_needed"
+	VisualSourceStatusArchived       = "archived"
 
 	VisualDeconstructionStatusQueued         = "queued"
 	VisualDeconstructionStatusProcessing     = "processing"

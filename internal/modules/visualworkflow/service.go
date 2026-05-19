@@ -321,6 +321,22 @@ func (s *Service) ListSourceReferences(orgID, sessionID string) ([]models.Ecomme
 	return s.repo.ListSourceReferences(orgID, sessionID)
 }
 
+func (s *Service) ArchiveSourceReference(orgID, sessionID, sourceID string) (*models.EcommerceVisualSourceReference, error) {
+	item, err := s.repo.GetSourceReference(orgID, sessionID, sourceID)
+	if err != nil {
+		return nil, err
+	}
+	item.Status = models.VisualSourceStatusArchived
+	item.ResolveStatus = models.VisualSourceStatusArchived
+	metadata := decodeObject(item.Metadata)
+	metadata["archived_from"] = "production-prep-source-remove"
+	item.Metadata = mustJSON(metadata)
+	if err := s.repo.SaveSourceReference(item); err != nil {
+		return nil, err
+	}
+	return item, nil
+}
+
 func (s *Service) UpdateSourceReference(orgID, sessionID, sourceID string, req UpdateSourceReferenceRequest) (*models.EcommerceVisualSourceReference, error) {
 	item, err := s.repo.GetSourceReference(orgID, sessionID, sourceID)
 	if err != nil {
@@ -575,9 +591,11 @@ func (s *Service) createPlatformGenerationRuntimeJob(session *models.EcommerceVi
 		})
 		return nil
 	}
+	providerCode := generationProviderCode(version.Metadata)
 	runtimeJob, err := s.runtimeCreator.CreateRuntimeJob(platform.CreateRuntimeJobInput{
 		ProductCode:     "ecommerce",
 		TaskType:        "image_generation",
+		ProviderCode:    providerCode,
 		ProviderMode:    "async",
 		OrganizationID:  session.OrganizationID,
 		UserID:          session.UserID,
@@ -586,6 +604,7 @@ func (s *Service) createPlatformGenerationRuntimeJob(session *models.EcommerceVi
 		IdempotencyKey:  idempotencyKey,
 		ChargeSessionID: chargeContextID(chargeCtx),
 		InputManifest:   mustJSON(manifest),
+		RouteSnapshot:   mustJSON(generationRuntimeRouteSnapshot(version)),
 		Metadata: mustJSON(map[string]any{
 			"product_id": session.ProductID,
 			"sku_code":   session.SKUCode,
@@ -625,9 +644,10 @@ func (s *Service) createPlatformGenerationRuntimeJob(session *models.EcommerceVi
 	}
 	version.Blockers = removeGenerationExecutionBlockers(version.Blockers)
 	version.Metadata = mergeObjectMaps(version.Metadata, map[string]any{
-		"platform_source_type": "visual_generation",
-		"platform_source_id":   version.VersionID,
-		"runtime_task_type":    "image_generation",
+		"platform_source_type":  "visual_generation",
+		"platform_source_id":    version.VersionID,
+		"runtime_task_type":     "image_generation",
+		"runtime_provider_code": runtimeJob.ProviderCode,
 	})
 	return nil
 }
@@ -665,7 +685,47 @@ func chargeContextID(ctx *billinggate.Context) string {
 	if ctx == nil {
 		return ""
 	}
-	return ctx.ChargeSessionID
+	return strings.TrimSpace(ctx.ChargeSessionID)
+}
+
+func generationRuntimeRouteSnapshot(version *GenerationVersionDTO) map[string]any {
+	providerCode := generationProviderCode(versionMetadata(version))
+	preferred := []string{"comfyui_bridge", "gemini_image_generation", "volcengine"}
+	if providerCode != "" {
+		preferred = append([]string{providerCode}, preferred...)
+	}
+	route := map[string]any{
+		"objective":           "quality",
+		"preferred_providers": compactUniqueStrings(preferred),
+	}
+	if version == nil || len(version.Metadata) == 0 {
+		return route
+	}
+	if value := strings.TrimSpace(metadataString(version.Metadata, "objective")); value != "" {
+		route["objective"] = value
+	}
+	if raw, ok := version.Metadata["preferred_providers"]; ok {
+		switch typed := raw.(type) {
+		case []string:
+			if providers := compactUniqueStrings(typed); len(providers) > 0 {
+				route["preferred_providers"] = providers
+			}
+		case []any:
+			providers := make([]string, 0, len(typed))
+			for _, item := range typed {
+				providers = append(providers, strings.TrimSpace(fmt.Sprint(item)))
+			}
+			if providers = compactUniqueStrings(providers); len(providers) > 0 {
+				route["preferred_providers"] = providers
+			}
+		case string:
+			parts := strings.Split(typed, ",")
+			if providers := compactUniqueStrings(parts); len(providers) > 0 {
+				route["preferred_providers"] = providers
+			}
+		}
+	}
+	return route
 }
 
 func generationRuntimeIdempotencyKey(session *models.EcommerceVisualWorkflowSession, version *GenerationVersionDTO) string {
@@ -1783,6 +1843,7 @@ func (s *Service) createPlatformDeconstructionRuntimeJob(item *models.EcommerceV
 	runtimeJob, err := s.runtimeCreator.CreateRuntimeJob(platform.CreateRuntimeJobInput{
 		ProductCode:    "ecommerce",
 		TaskType:       "image_understanding",
+		ProviderCode:   deconstructionProviderCode(decodeObject(item.Metadata)),
 		ProviderMode:   "async",
 		OrganizationID: item.OrganizationID,
 		UserID:         item.UserID,
@@ -1878,7 +1939,11 @@ func (s *Service) platformDeconstructionRuntimeInputManifest(item *models.Ecomme
 		if strings.TrimSpace(fmt.Sprint(asset["source_url"])) == "" && strings.TrimSpace(src.SourceRef) != "" {
 			asset["source_url"] = src.SourceRef
 		}
-		if strings.TrimSpace(fmt.Sprint(asset["source_url"])) == "" {
+		if strings.TrimSpace(fmt.Sprint(asset["source_url"])) == "" && strings.TrimSpace(src.StorageKey) != "" {
+			asset["storage_key"] = src.StorageKey
+		}
+		hasUsableSource := strings.TrimSpace(fmt.Sprint(asset["source_url"])) != "" || strings.TrimSpace(fmt.Sprint(asset["storage_key"])) != ""
+		if !hasUsableSource {
 			continue
 		}
 		sourceAssets = append(sourceAssets, asset)
@@ -1945,9 +2010,7 @@ func resolveDualTrackSourceReferences(sources []models.EcommerceVisualSourceRefe
 		for i := range sources {
 			if sources[i].ID == requestedSourceID {
 				matched = true
-				if sources[i].ID == reference.ID {
-					primary = reference
-				}
+				primary = &sources[i]
 				break
 			}
 		}
@@ -2065,9 +2128,49 @@ func sanitizedDeconstructionManifest(manifest map[string]any) map[string]any {
 func sanitizeDeconstructionRequestMetadata(raw map[string]any) map[string]any {
 	cleaned, _ := sanitizeDeconstructionMetadataValue(raw).(map[string]any)
 	if cleaned == nil {
-		return map[string]any{}
+		cleaned = map[string]any{}
+	}
+	if provider := deconstructionProviderCode(raw); provider != "" {
+		cleaned["provider_code"] = provider
 	}
 	return cleaned
+}
+
+func generationProviderCode(metadata map[string]any) string {
+	provider := strings.TrimSpace(metadataString(metadata, "provider_code"))
+	if provider == "" {
+		provider = strings.TrimSpace(metadataString(metadata, "generation_provider_code"))
+	}
+	if provider == "" {
+		if uiConfig, ok := metadata["ui_execution_config"].(map[string]any); ok {
+			provider = strings.TrimSpace(metadataString(uiConfig, "generation_provider_code"))
+			if provider == "" {
+				if providerConfig, ok := uiConfig["provider_config"].(map[string]any); ok {
+					provider = strings.TrimSpace(metadataString(providerConfig, "generation_provider_code"))
+				}
+			}
+		}
+	}
+	switch provider {
+	case "", "auto", "default":
+		return ""
+	case "comfyui_bridge", "gemini_image_generation", "volcengine":
+		return provider
+	default:
+		return ""
+	}
+}
+
+func deconstructionProviderCode(metadata map[string]any) string {
+	provider := strings.TrimSpace(metadataString(metadata, "provider_code"))
+	switch provider {
+	case "", "auto", "default":
+		return ""
+	case "comfyui_bridge", "gemini_visual_understanding":
+		return provider
+	default:
+		return ""
+	}
 }
 
 func sanitizeDeconstructionMetadataValue(raw any) any {
@@ -2210,6 +2313,9 @@ func (s *Service) InternalRecordDeconstructionResults(jobID string, input Intern
 	sourceIndex := deconstructionResultSourceIndex(sourceRefs)
 	if len(elementInputs) == 0 && item.Status == models.VisualDeconstructionStatusCompleted {
 		elementInputs = fallbackVisualResultElementsFromProviderText(input, sourceRefs)
+	}
+	if item.Status == models.VisualDeconstructionStatusCompleted {
+		elementInputs = projectSingleImageUnderstandingElements(item, elementInputs, sourceIndex)
 	}
 	if item.Status == models.VisualDeconstructionStatusCompleted && jobRequiresDualTrackResultCoverage(item) && visualProviderText(input) != "" {
 		elementInputs = ensureDualTrackVisualResultElements(elementInputs, input, sourceRefs)
@@ -2698,6 +2804,9 @@ func normalizeResultElementSourceProjection(input InternalResultElementRequest, 
 	}
 	trustedRole, ok := sourceIndex[sourceReferenceID]
 	if !ok {
+		if role != "" && !strings.HasPrefix(sourceReferenceID, "vsr_") {
+			return role, "", nil
+		}
 		return "", "", fmt.Errorf("%w: source_reference_id %q does not belong to this visual workflow session", ErrInternalCallbackInvalid, sourceReferenceID)
 	}
 	if role == "" {
@@ -2726,7 +2835,51 @@ func validateDualTrackResultCoverage(job *models.EcommerceVisualDeconstructionJo
 	return nil
 }
 
+func projectSingleImageUnderstandingElements(job *models.EcommerceVisualDeconstructionJob, elements []InternalResultElementRequest, sourceIndex map[string]string) []InternalResultElementRequest {
+	metadata := decodeObject(job.Metadata)
+	if !strings.EqualFold(fmt.Sprint(metadata["image_understanding_policy"]), "single_image_per_runtime_job") {
+		return elements
+	}
+	primarySourceID := strings.TrimSpace(job.SourceReferenceID)
+	if primarySourceID == "" {
+		manifest := decodeObject(job.InputManifestJSON)
+		primarySourceID = strings.TrimSpace(fmt.Sprint(manifest["source_reference_id"]))
+	}
+	if primarySourceID == "" {
+		return elements
+	}
+	primaryRole := sourceIndex[primarySourceID]
+	if primaryRole != "sku" && primaryRole != "reference" {
+		return elements
+	}
+	out := make([]InternalResultElementRequest, 0, len(elements))
+	for _, element := range elements {
+		role := strings.ToLower(strings.TrimSpace(element.SourceRole))
+		if role == "" {
+			if rawRole, _ := element.Metadata["source_role"].(string); rawRole != "" {
+				role = strings.ToLower(strings.TrimSpace(rawRole))
+			}
+		}
+		if role != "" && role != primaryRole {
+			continue
+		}
+		element.SourceRole = primaryRole
+		element.SourceReferenceID = primarySourceID
+		if element.Metadata == nil {
+			element.Metadata = map[string]any{}
+		}
+		element.Metadata["source_role"] = primaryRole
+		element.Metadata["source_reference_id"] = primarySourceID
+		out = append(out, element)
+	}
+	return out
+}
+
 func jobRequiresDualTrackResultCoverage(job *models.EcommerceVisualDeconstructionJob) bool {
+	metadata := decodeObject(job.Metadata)
+	if strings.EqualFold(fmt.Sprint(metadata["image_understanding_policy"]), "single_image_per_runtime_job") {
+		return false
+	}
 	manifest := decodeObject(job.InputManifestJSON)
 	if strings.EqualFold(fmt.Sprint(manifest["input_mode"]), "dual_track_sources") {
 		return true
@@ -3129,7 +3282,7 @@ func (s *Service) ApplyAttentionTree(orgID, sessionID string, req ApplyAttention
 		if err != nil {
 			return nil, err
 		}
-		selected := decision.Decision == "keep" || decision.Decision == "replace"
+		selected := decision.Decision == "keep" || decision.Decision == "replace" || decision.Decision == "crop"
 		item.Selected = selected
 		item.Confirmed = decision.Decision != "needs_review"
 		if decision.Decision == "needs_review" {
@@ -3505,7 +3658,7 @@ func applyAttentionDecisionToElement(item *models.EcommerceVisualDeconstructionE
 
 func validAttentionDecision(v string) bool {
 	switch strings.TrimSpace(v) {
-	case "keep", "replace", "drop", "needs_review":
+	case "keep", "replace", "drop", "crop", "needs_review":
 		return true
 	default:
 		return false
@@ -3622,7 +3775,9 @@ func (s *Service) CreateGenerationVersion(orgID, sessionID string, req CreateGen
 	}
 	session.GenerationVersionsJSON = encoded
 	session.CurrentStage = models.VisualWorkflowStageGeneration
-	if session.Status == models.VisualWorkflowStatusDraft || session.Status == models.VisualWorkflowStatusReady {
+	if nextStatus := visualWorkflowStatusForGeneration(version.Status); nextStatus != "" {
+		session.Status = nextStatus
+	} else if version.Status == "contract_needed" || version.Status == "blocked" {
 		session.Status = models.VisualWorkflowStatusBlocked
 	}
 	if err := s.repo.SaveSession(session); err != nil {
@@ -4891,7 +5046,8 @@ func validVisualSourceStatus(v string) bool {
 	switch v {
 	case models.VisualSourceStatusReady,
 		models.VisualSourceStatusPending,
-		models.VisualSourceStatusContractNeeded:
+		models.VisualSourceStatusContractNeeded,
+		models.VisualSourceStatusArchived:
 		return true
 	default:
 		return false

@@ -130,6 +130,15 @@ func (h *Handler) UpdateSourceReference(c *gin.Context) {
 	response.JSONSuccess(c, sourceDTO(item))
 }
 
+func (h *Handler) ArchiveSourceReference(c *gin.Context) {
+	item, err := h.service.ArchiveSourceReference(c.GetString("orgID"), c.Param("session_id"), c.Param("source_reference_id"))
+	if err != nil {
+		response.JSONError(c, response.CodeInvalidParameter, err.Error())
+		return
+	}
+	response.JSONSuccess(c, sourceDTO(item))
+}
+
 func (h *Handler) CreateDeconstructionJob(c *gin.Context) {
 	var req CreateDeconstructionJobRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

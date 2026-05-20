@@ -912,10 +912,20 @@ func (s *Service) runtimeSourceAssetsForIDs(orgID string, assetIDs []string) ([]
 }
 
 func assetUsableForGeneration(width, height int) bool {
+	// Historical/user-uploaded source assets can have unknown dimensions when the
+	// frontend did not send width/height during /assets/source registration. Treat
+	// missing dimensions as unknown-but-usable and only reject images whose known
+	// dimensions are below the provider minimum.
+	if width <= 0 || height <= 0 {
+		return true
+	}
 	return width >= 14 && height >= 14
 }
 
 func fanoutSlotPrompt(base string, metadata map[string]any) string {
+	if composed := promptCompositionTextFromMetadata(metadata); composed != "" {
+		return composed
+	}
 	parts := []string{strings.TrimSpace(base)}
 	if scene := metadataString(metadata, "scene_tag"); scene != "" {
 		parts = append(parts, "Image type / scene: "+scene)
@@ -926,8 +936,65 @@ func fanoutSlotPrompt(base string, metadata map[string]any) string {
 	return strings.TrimSpace(strings.Join(compactUniqueStrings(parts), "\n"))
 }
 
+func promptCompositionTextFromMetadata(metadata map[string]any) string {
+	if metadata == nil {
+		return ""
+	}
+	composition, _ := metadata["prompt_composition"].(map[string]any)
+	if composition == nil {
+		return ""
+	}
+	return metadataString(composition, "composed_prompt_text")
+}
+
+func promptCompositionNegativeTextFromMetadata(metadata map[string]any) string {
+	if metadata == nil {
+		return ""
+	}
+	composition, _ := metadata["prompt_composition"].(map[string]any)
+	if composition == nil {
+		return ""
+	}
+	return metadataString(composition, "negative_prompt_text")
+}
+
+func buildFanoutPromptComposition(base, sceneTag, detailRequirement, negativeRequirement string, promptVariables map[string]any) map[string]any {
+	composer, _ := promptVariables["prompt_composer"].(map[string]any)
+	templateText := metadataString(composer, "template_prompt_text")
+	if templateText == "" {
+		templateText = strings.TrimSpace(detailRequirement)
+	}
+	diyText := metadataString(composer, "diy_prompt_text")
+	negativeText := strings.Join(compactUniqueStrings([]string{strings.TrimSpace(negativeRequirement), metadataString(composer, "negative_prompt_text")}), "\n")
+	sections := []map[string]any{}
+	for _, section := range []struct{ title, text string }{
+		{"基础出图要求", base},
+		{"素材模板结果", templateText},
+		{"手动填入结果", diyText},
+	} {
+		if strings.TrimSpace(section.text) != "" {
+			sections = append(sections, map[string]any{"title": section.title, "text": strings.TrimSpace(section.text)})
+		}
+	}
+	parts := []string{}
+	for _, section := range sections {
+		parts = append(parts, fmt.Sprintf("%s：%s", section["title"], section["text"]))
+	}
+	if strings.TrimSpace(sceneTag) != "" {
+		parts = append(parts, "图片类型/场景："+strings.TrimSpace(sceneTag))
+	}
+	return map[string]any{
+		"template_prompt_text": templateText,
+		"diy_prompt_text":      diyText,
+		"negative_prompt_text": negativeText,
+		"prompt_sections":      sections,
+		"composed_prompt_text": strings.TrimSpace(strings.Join(compactUniqueStrings(parts), "\n")),
+	}
+}
+
 func fanoutNegativePrompt(base string, metadata map[string]any) string {
-	negative := metadataString(metadata, "negative_requirement")
+	negativeParts := []string{metadataString(metadata, "negative_requirement"), promptCompositionNegativeTextFromMetadata(metadata)}
+	negative := strings.Join(compactUniqueStrings(negativeParts), "\n")
 	if negative == "" {
 		return strings.TrimSpace(base)
 	}
@@ -968,7 +1035,7 @@ func promptPlanRuntimeText(session *models.EcommerceVisualWorkflowSession, versi
 	if promptPlan == nil {
 		return ""
 	}
-	for _, key := range []string{"final_prompt", "user_prompt", "positive_prompt", "generation_prompt", "prompt", "creative_brief"} {
+	for _, key := range []string{"composed_prompt_text", "final_prompt", "user_prompt", "positive_prompt", "generation_prompt", "prompt", "creative_brief"} {
 		if text := metadataString(promptPlan.Metadata, key); strings.TrimSpace(text) != "" {
 			return strings.TrimSpace(text)
 		}
@@ -3453,6 +3520,142 @@ func buildIntentFusionInputManifest(sources []IntentSourceReferenceDTO, selectio
 	}
 }
 
+func promptCompositionFromIntentFusion(intent *IntentSpecDTO, manifest map[string]any) map[string]any {
+	if intent == nil || manifest == nil {
+		return map[string]any{}
+	}
+	skuText := promptComposerAnalysisText("SKU 解析结果", manifestEntries(manifest["sku_facts"]))
+	referenceText := promptComposerAnalysisText("参考素材解析结果", manifestEntries(manifest["reference_strategies"]))
+	selectionText := promptComposerSelectionText(intent.Selections)
+	biasText := promptComposerBiasText(intent.Requirements["attribute_drift"])
+	sections := []map[string]any{}
+	for _, section := range []struct{ title, text string }{
+		{"SKU 解析结果", skuText},
+		{"参考素材解析结果", referenceText},
+		{"四问选择", selectionText},
+		{"侧重配置", biasText},
+	} {
+		if strings.TrimSpace(section.text) != "" {
+			sections = append(sections, map[string]any{"title": section.title, "text": section.text})
+		}
+	}
+	parts := make([]string, 0, len(sections))
+	for _, section := range sections {
+		parts = append(parts, fmt.Sprintf("%s：%s", section["title"], section["text"]))
+	}
+	return map[string]any{
+		"sku_analysis_text":       skuText,
+		"reference_analysis_text": referenceText,
+		"selection_intent_text":   selectionText,
+		"bias_intent_text":        biasText,
+		"prompt_sections":         sections,
+		"composed_prompt_text":    strings.TrimSpace(strings.Join(compactUniqueStrings(parts), "\n")),
+	}
+}
+
+func manifestEntries(raw any) []map[string]any {
+	out := []map[string]any{}
+	switch typed := raw.(type) {
+	case []map[string]any:
+		return typed
+	case []any:
+		for _, item := range typed {
+			if entry, ok := item.(map[string]any); ok {
+				out = append(out, entry)
+			}
+		}
+	}
+	return out
+}
+
+func promptComposerAnalysisText(prefix string, entries []map[string]any) string {
+	parts := []string{}
+	for _, entry := range entries {
+		label := strings.TrimSpace(fmt.Sprint(entry["label"]))
+		value := ""
+		if valueMap, ok := entry["value"].(map[string]any); ok {
+			for _, key := range []string{"description", "summary", "text", "style", "shape", "material", "color"} {
+				if text := strings.TrimSpace(fmt.Sprint(valueMap[key])); text != "" && text != "<nil>" {
+					value = text
+					break
+				}
+			}
+		}
+		line := strings.TrimSpace(strings.Join(compactUniqueStrings([]string{label, value}), "："))
+		if line != "" {
+			parts = append(parts, line)
+		}
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return strings.TrimSpace(strings.Join(compactUniqueStrings(parts), "；"))
+}
+
+func promptComposerSelectionText(selections []IntentElementDTO) string {
+	parts := []string{}
+	for _, selection := range selections {
+		metadata := selection.Metadata
+		slot := metadataString(metadata, "prompt_slot")
+		if slot == "" && fmt.Sprint(metadata["fixed_prompt_question"]) != "true" {
+			continue
+		}
+		label := strings.TrimSpace(selection.Label)
+		if label == "" {
+			label = strings.TrimSpace(selection.ElementKey)
+		}
+		decision := strings.TrimSpace(selection.Decision)
+		switch slot {
+		case "sku_product":
+			if decision == "keep" || decision == "replace" {
+				parts = append(parts, "保留 SKU 原图产品："+label)
+			} else if decision == "drop" {
+				parts = append(parts, "不要使用 SKU 原图产品："+label)
+			}
+		case "sku_background":
+			if decision == "keep" || decision == "replace" {
+				parts = append(parts, "保留 SKU 原图背景："+label)
+			} else if decision == "drop" {
+				parts = append(parts, "不要使用 SKU 原图背景："+label)
+			}
+		case "reference_product":
+			if decision == "keep" || decision == "replace" {
+				parts = append(parts, "参考素材产品进入画面："+label)
+			} else if decision == "drop" {
+				parts = append(parts, "不要使用参考素材产品："+label)
+			}
+		case "reference_background":
+			if decision == "keep" || decision == "replace" {
+				parts = append(parts, "采用参考素材背景风格："+label)
+			} else if decision == "drop" {
+				parts = append(parts, "不要使用参考素材背景："+label)
+			}
+		default:
+			if decision != "" && label != "" {
+				parts = append(parts, decision+"："+label)
+			}
+		}
+	}
+	return strings.TrimSpace(strings.Join(compactUniqueStrings(parts), "；"))
+}
+
+func promptComposerBiasText(raw any) string {
+	controls, _ := raw.(map[string]any)
+	if controls == nil {
+		return ""
+	}
+	skuWeight := intFromAny(controls["sku_weight"], intFromAny(controls["sku_bias"], -1))
+	referenceWeight := intFromAny(controls["reference_weight"], intFromAny(controls["reference_bias"], -1))
+	parts := []string{}
+	if skuWeight >= 0 {
+		parts = append(parts, fmt.Sprintf("侧重 SKU 原图 %d%%", skuWeight))
+	}
+	if referenceWeight >= 0 {
+		parts = append(parts, fmt.Sprintf("侧重参考素材 %d%%", referenceWeight))
+	}
+	return strings.Join(parts, "，")
+}
+
 func promptPlanFromIntentFusion(session *models.EcommerceVisualWorkflowSession, intent *IntentSpecDTO, manifest map[string]any) *PromptPlanDTO {
 	status := "blocked"
 	blockers := []ReadinessBlocker{}
@@ -3469,10 +3672,10 @@ func promptPlanFromIntentFusion(session *models.EcommerceVisualWorkflowSession, 
 		SceneType:         intent.SceneType,
 		TemplateID:        strings.TrimSpace(session.TemplateID),
 		TemplateVersionID: strings.TrimSpace(session.TemplateVersionID),
-		Variables: map[string]any{
+		Variables: mergeObjectMaps(map[string]any{
 			"intent_input_manifest": manifest,
 			"attribute_drift":       intent.Requirements["attribute_drift"],
-		},
+		}, promptCompositionFromIntentFusion(intent, manifest)),
 		SourceAssets: promptPlanSourceAssetsFromIntentSources(intent.Source.SourceReferences),
 		Blockers:     blockers,
 		Metadata: map[string]any{
@@ -3868,6 +4071,7 @@ func (s *Service) CreateGenerationFanout(orgID, sessionID string, req CreateGene
 		templateVersionID := pair.templateVersionID
 		fanoutTaskID := fmt.Sprintf("%s:%02d", fanoutID, slotIndex+1)
 		providerConfig := sanitizeGenerationManifestValue(req.ProviderConfig)
+		basePrompt := promptPlanRuntimeText(session, nil, &promptPlan)
 		metadata := mergeObjectMaps(req.Metadata, map[string]any{
 			"source":               "sandbox_generation_fanout",
 			"idempotency_key":      fmt.Sprintf("generation-fanout:%s:%s:%02d:%s:%s", session.ID, fanoutID, slotIndex+1, sourceID, templateID),
@@ -3881,6 +4085,7 @@ func (s *Service) CreateGenerationFanout(orgID, sessionID string, req CreateGene
 			"scene_tag":            pair.sceneTag,
 			"detail_requirement":   pair.detailRequirement,
 			"negative_requirement": pair.negativeRequirement,
+			"prompt_composition":   buildFanoutPromptComposition(basePrompt, pair.sceneTag, pair.detailRequirement, pair.negativeRequirement, req.PromptVariables),
 			"requested_variants":   clampInt(req.RequestedVariants, 1, 4),
 			"execution_config": map[string]any{
 				"max_concurrency":  executionConfig.MaxConcurrency,

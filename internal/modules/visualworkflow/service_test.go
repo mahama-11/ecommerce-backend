@@ -2462,6 +2462,135 @@ func TestCreateGenerationFanoutCreatesMatrixRuntimeJobs(t *testing.T) {
 	}
 }
 
+func TestCreateGenerationFanoutAllowsStoredSourceAssetWithUnknownDimensions(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_fanout_unknown_dims", "org_fanout_unknown_dims", "SKU-FU")
+	asset := models.EcommerceAsset{ID: "asset_unknown_dims", OrganizationID: "org_fanout_unknown_dims", UserID: "user_fanout_unknown_dims", AssetType: "image", SourceType: "upload", StorageKey: "store/unknown.png", MimeType: "image/png", FileName: "unknown.png", Width: 0, Height: 0, Metadata: "{}"}
+	if err := db.Create(&asset).Error; err != nil {
+		t.Fatalf("seed asset: %v", err)
+	}
+	session, err := service.CreateSession("user_fanout_unknown_dims", "org_fanout_unknown_dims", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	model, err := service.repo.GetSession("org_fanout_unknown_dims", session.ID)
+	if err != nil {
+		t.Fatalf("get session: %v", err)
+	}
+	model.PromptPlanJSON = encodePromptPlan(&PromptPlanDTO{SchemaVersion: promptPlanSchemaVersion, Status: "ready", PromptID: "prompt_unknown_dims", TemplateID: "tpl_base", Variables: map[string]any{"prompt": "Generate ecommerce hero"}, SourceAssets: []PromptPlanSourceAssetDTO{{AssetID: "asset_unknown_dims", Role: "sku"}}})
+	if err := service.repo.SaveSession(model); err != nil {
+		t.Fatalf("save prompt plan: %v", err)
+	}
+	fake := &fakeRuntimeCapabilityReader{matrix: readyVisualGenerationMatrix()}
+	service.WithRuntimeOrchestrator(fake)
+	resp, err := service.CreateGenerationFanout("org_fanout_unknown_dims", session.ID, CreateGenerationFanoutRequest{
+		TemplateSlots:     []GenerationFanoutTemplateSlotRequest{{SourceAssetID: "asset_unknown_dims", TemplateID: "tpl_a", SceneTag: "主图"}},
+		RequestedVariants: 1,
+	})
+	if err != nil {
+		t.Fatalf("create fanout with unknown dimensions should pass: %v", err)
+	}
+	if len(resp.Items) != 1 || len(fake.createInputs) != 1 {
+		t.Fatalf("expected one runtime job for unknown dimension asset, resp=%+v inputs=%d", resp, len(fake.createInputs))
+	}
+}
+
+func TestPromptComposerFromFixedQuestionsPersistsSections(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_prompt_composer", "org_prompt_composer", "SKU-PC")
+	session, err := service.CreateSession("user_prompt_composer", "org_prompt_composer", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	for _, src := range []CreateSourceReferenceRequest{
+		{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://sku", Metadata: map[string]any{"source_role": "sku"}},
+		{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://reference", Metadata: map[string]any{"source_role": "reference"}},
+	} {
+		if _, err := service.CreateSourceReference("user_prompt_composer", "org_prompt_composer", session.ID, src); err != nil {
+			t.Fatalf("create source: %v", err)
+		}
+	}
+	for _, element := range []models.EcommerceVisualDeconstructionElement{
+		{ID: "vde_pc_sku_product", OrganizationID: "org_prompt_composer", SessionID: session.ID, JobID: "vdj_pc", ElementType: "product", ElementKey: "sku_product", Label: "SKU 梳子主体", ValueJSON: toJSONForTest(map[string]any{"description": "木柄宽齿梳主体，保留完整轮廓"}), Metadata: toJSONForTest(map[string]any{"source_role": "sku"})},
+		{ID: "vde_pc_sku_bg", OrganizationID: "org_prompt_composer", SessionID: session.ID, JobID: "vdj_pc", ElementType: "background", ElementKey: "sku_background", Label: "SKU 白底", ValueJSON: toJSONForTest(map[string]any{"description": "普通白色拍摄背景"}), Metadata: toJSONForTest(map[string]any{"source_role": "sku"})},
+		{ID: "vde_pc_ref_product", OrganizationID: "org_prompt_composer", SessionID: session.ID, JobID: "vdj_pc", ElementType: "product", ElementKey: "reference_product", Label: "参考香薰瓶", ValueJSON: toJSONForTest(map[string]any{"description": "参考图里的香薰瓶不要进入画面"}), Metadata: toJSONForTest(map[string]any{"source_role": "reference"})},
+		{ID: "vde_pc_ref_bg", OrganizationID: "org_prompt_composer", SessionID: session.ID, JobID: "vdj_pc", ElementType: "background", ElementKey: "reference_background", Label: "参考木质浴室", ValueJSON: toJSONForTest(map[string]any{"description": "暖色木质浴室台面与柔和自然光"}), Metadata: toJSONForTest(map[string]any{"source_role": "reference"})},
+	} {
+		if err := db.Create(&element).Error; err != nil {
+			t.Fatalf("seed element: %v", err)
+		}
+	}
+	_, err = service.ApplyAttentionTree("org_prompt_composer", session.ID, ApplyAttentionTreeRequest{Decisions: []AttentionDecisionInput{
+		{ElementID: "vde_pc_sku_product", Decision: "keep", Question: "要不要 SKU 产品？", Answer: "yes", Metadata: map[string]any{"fixed_prompt_question": true, "prompt_slot": "sku_product"}},
+		{ElementID: "vde_pc_sku_bg", Decision: "drop", Question: "要不要 SKU 背景？", Answer: "no", Metadata: map[string]any{"fixed_prompt_question": true, "prompt_slot": "sku_background"}},
+		{ElementID: "vde_pc_ref_product", Decision: "drop", Question: "要不要参考素材产品？", Answer: "no", Metadata: map[string]any{"fixed_prompt_question": true, "prompt_slot": "reference_product"}},
+		{ElementID: "vde_pc_ref_bg", Decision: "keep", Question: "要不要参考素材背景？", Answer: "yes", Metadata: map[string]any{"fixed_prompt_question": true, "prompt_slot": "reference_background"}},
+	}, DriftControls: map[string]any{"sku_weight": 30, "reference_weight": 70}})
+	if err != nil {
+		t.Fatalf("apply fixed question decisions: %v", err)
+	}
+	model, err := service.repo.GetSession("org_prompt_composer", session.ID)
+	if err != nil {
+		t.Fatalf("reload session: %v", err)
+	}
+	plan := decodePromptPlan(model.PromptPlanJSON, model)
+	finalPrompt, _ := plan.Variables["composed_prompt_text"].(string)
+	for _, want := range []string{"SKU 解析结果", "参考素材解析结果", "四问选择", "侧重配置", "SKU 梳子主体", "参考木质浴室", "不要使用 SKU 原图背景", "侧重参考素材 70%"} {
+		if !strings.Contains(finalPrompt, want) {
+			t.Fatalf("composed prompt missing %q: %s", want, finalPrompt)
+		}
+	}
+	sections, _ := plan.Variables["prompt_sections"].([]any)
+	if len(sections) < 4 {
+		t.Fatalf("expected prompt_sections to persist composer parts, got %#v", plan.Variables["prompt_sections"])
+	}
+}
+
+func TestCreateGenerationFanoutUsesPromptComposerFinalPrompt(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_fanout_composer", "org_fanout_composer", "SKU-FC")
+	asset := models.EcommerceAsset{ID: "asset_fanout_composer", OrganizationID: "org_fanout_composer", UserID: "user_fanout_composer", AssetType: "image", SourceType: "upload", StorageKey: "store/composer.png", MimeType: "image/png", FileName: "composer.png", Width: 1024, Height: 1024, Metadata: "{}"}
+	if err := db.Create(&asset).Error; err != nil {
+		t.Fatalf("seed asset: %v", err)
+	}
+	session, err := service.CreateSession("user_fanout_composer", "org_fanout_composer", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	model, err := service.repo.GetSession("org_fanout_composer", session.ID)
+	if err != nil {
+		t.Fatalf("get session: %v", err)
+	}
+	model.PromptPlanJSON = encodePromptPlan(&PromptPlanDTO{SchemaVersion: promptPlanSchemaVersion, Status: "ready", PromptID: "prompt_composer", TemplateID: "tpl_base", Variables: map[string]any{"composed_prompt_text": "基础要求：保留 SKU 产品，采用参考素材背景。"}, SourceAssets: []PromptPlanSourceAssetDTO{{AssetID: "asset_fanout_composer", Role: "sku"}}})
+	if err := service.repo.SaveSession(model); err != nil {
+		t.Fatalf("save prompt plan: %v", err)
+	}
+	fake := &fakeRuntimeCapabilityReader{matrix: readyVisualGenerationMatrix()}
+	service.WithRuntimeOrchestrator(fake)
+	_, err = service.CreateGenerationFanout("org_fanout_composer", session.ID, CreateGenerationFanoutRequest{
+		TemplateSlots:   []GenerationFanoutTemplateSlotRequest{{SourceAssetID: "asset_fanout_composer", TemplateID: "tpl_lifestyle", SceneTag: "生活方式图", DetailRequirement: "模板要求：浴室台面构图", NegativeRequirement: "不要文字水印"}},
+		PromptVariables: map[string]any{"prompt_composer": map[string]any{"diy_prompt_text": "手动补充：高端酒店氛围", "negative_prompt_text": "不要畸形手指"}},
+	})
+	if err != nil {
+		t.Fatalf("create fanout: %v", err)
+	}
+	if len(fake.createInputs) != 1 {
+		t.Fatalf("expected one runtime job, got %d", len(fake.createInputs))
+	}
+	manifest := decodeObject(fake.createInputs[0].InputManifest)
+	promptSnapshot, _ := manifest["prompt_snapshot"].(map[string]any)
+	userPrompt := fmt.Sprint(promptSnapshot["user_prompt"])
+	for _, want := range []string{"基础要求", "模板要求：浴室台面构图", "手动补充：高端酒店氛围"} {
+		if !strings.Contains(userPrompt, want) {
+			t.Fatalf("runtime user_prompt missing %q: %s", want, userPrompt)
+		}
+	}
+	stylePrompt := fmt.Sprint(promptSnapshot["style_prompt"])
+	if !strings.Contains(stylePrompt, "不要文字水印") || !strings.Contains(stylePrompt, "不要畸形手指") {
+		t.Fatalf("runtime negative prompt missing slot/manual negatives: %s", stylePrompt)
+	}
+}
+
 func TestCreateGenerationFanoutHonorsExplicitTemplateSlots(t *testing.T) {
 	service, _, db := setupVisualWorkflowTest(t)
 	product := seedProduct(t, db, "prod_fanout_slots", "org_fanout_slots", "SKU-FS")

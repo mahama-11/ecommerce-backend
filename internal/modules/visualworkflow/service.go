@@ -1045,21 +1045,7 @@ func promptPlanRuntimeText(session *models.EcommerceVisualWorkflowSession, versi
 			}
 		}
 	}
-	payload := map[string]any{
-		"task":        "Generate ecommerce SKU visual assets from the current backend-approved prompt plan.",
-		"prompt_id":   promptPlan.PromptID,
-		"scene_type":  promptPlan.SceneType,
-		"template_id": promptPlan.TemplateID,
-		"variables":   promptPlan.Variables,
-	}
-	if session != nil {
-		payload["product_id"] = session.ProductID
-		payload["sku_code"] = session.SKUCode
-	}
-	if version != nil && strings.TrimSpace(version.RefinementInstruction) != "" {
-		payload["refinement_instruction"] = version.RefinementInstruction
-	}
-	return mustJSON(payload)
+	return ""
 }
 
 func sanitizedGenerationManifest(session *models.EcommerceVisualWorkflowSession, version *GenerationVersionDTO, promptPlan *PromptPlanDTO, intentSpec *IntentSpecDTO) map[string]any {
@@ -1355,66 +1341,71 @@ func (s *Service) HasIntentPlannerSession(sessionID string) bool {
 }
 
 func (s *Service) CreatePromptPlannerJob(orgID, sessionID string, req CreatePromptPlannerJobRequest) (*PromptPlannerJobResponse, error) {
+	// V1 prompt planning is intentionally deterministic: it composes the page-one
+	// business facts (SKU analysis, reference analysis, fixed choices, drift
+	// controls) into a traceable prompt plan. LLM-based structured optimization is
+	// reserved for a later product version so generation never falls back to raw
+	// internal JSON when the planner model omits composed_prompt_text.
+	if err := s.refreshIntentInputManifest(orgID, sessionID, req.DriftControls); err != nil {
+		session, getErr := s.repo.GetSession(orgID, sessionID)
+		if getErr != nil {
+			return nil, err
+		}
+		return s.persistPromptPlannerBlocked(session, "INTENT_INPUT_REQUIRED", err.Error())
+	}
 	session, err := s.repo.GetSession(orgID, sessionID)
 	if err != nil {
 		return nil, err
 	}
-	if s.capabilityReader == nil || s.runtimeCreator == nil {
-		return s.persistPromptPlannerBlocked(session, "PLATFORM_CAPABILITY_UNAVAILABLE", "Platform prompt planning runtime is not configured")
+	plan := decodePromptPlan(session.PromptPlanJSON, session)
+	if strings.TrimSpace(plan.Status) != "ready" {
+		code := "INTENT_INPUT_REQUIRED"
+		message := "Complete image analysis and four prep choices before generating the image plan."
+		if len(plan.Blockers) > 0 {
+			code = strings.TrimSpace(plan.Blockers[0].Code)
+			message = strings.TrimSpace(plan.Blockers[0].Message)
+		}
+		return s.persistPromptPlannerBlocked(session, code, message)
 	}
-	intentSpec := decodeIntentSpec(session.IntentSpecJSON, session)
-	if strings.TrimSpace(intentSpec.SchemaVersion) == "" {
-		return s.persistPromptPlannerBlocked(session, "INTENT_SPEC_REQUIRED", "Intent spec is required before prompt planning")
+	if text, ok := plan.Variables["composed_prompt_text"].(string); !ok || strings.TrimSpace(text) == "" {
+		return s.persistPromptPlannerBlocked(session, "PROMPT_COMPOSITION_REQUIRED", "Image plan composition is missing; regenerate after completing Prep choices.")
 	}
-	matrix, err := s.capabilityReader.ListRuntimeCapabilities("ecommerce", "prompt_planning")
-	if err != nil {
-		return s.persistPromptPlannerBlocked(session, "PLATFORM_CAPABILITY_CHECK_FAILED", safePlatformCapabilityErrorMessage)
+	if strings.TrimSpace(plan.TemplateID) == "" {
+		plan.TemplateID = strings.TrimSpace(req.TemplateID)
 	}
-	capability, ok := runtimeCapabilityForTask(matrix, "prompt_planning")
-	if !ok || !runtimeCapabilityIsReady(capability) {
-		return s.persistPromptPlannerBlocked(session, "PLATFORM_CAPABILITY_UNAVAILABLE", "Platform prompt_planning runtime is not ready")
+	if strings.TrimSpace(plan.TemplateID) == "" {
+		plan.TemplateID = strings.TrimSpace(session.TemplateID)
 	}
-	existingPlan := decodePromptPlan(session.PromptPlanJSON, session)
-	manifest := map[string]any{
-		"input_mode": "ecommerce_visual_prompt_planning",
-		"prompt_snapshot": map[string]any{
-			"provider":    "minimax_text",
-			"user_prompt": buildPromptPlannerPrompt(session, &intentSpec, &existingPlan, req),
-		},
-		"params_snapshot": map[string]any{"response_format": "json", "temperature": 0.2},
-		"output_contract": map[string]any{"schema": "visual_prompt_plan.v1", "required_fields": []string{"schema_version", "status", "prompt_id", "scene_type", "variables", "metadata.prompt_diff"}},
+	if strings.TrimSpace(plan.TemplateID) == "" {
+		plan.TemplateID = "tpl_product_visual_generation_v1"
 	}
-	idempotencyKey := strings.TrimSpace(req.IdempotencyKey)
-	if idempotencyKey == "" {
-		idempotencyKey = fmt.Sprintf("prompt-planner:%s:%x", session.ID, sha256.Sum256([]byte(mustJSON(manifest))))
+	if strings.TrimSpace(plan.SceneType) == "" {
+		plan.SceneType = strings.TrimSpace(req.Marketplace)
 	}
-	runtimeJob, err := s.runtimeCreator.CreateRuntimeJob(platform.CreateRuntimeJobInput{
-		ProductCode:    "ecommerce",
-		TaskType:       "prompt_planning",
-		ProviderMode:   "async",
-		OrganizationID: session.OrganizationID,
-		UserID:         session.UserID,
-		SourceType:     "visual_prompt_planning",
-		SourceID:       session.ID,
-		IdempotencyKey: "ecommerce:visual_prompt_planning:" + idempotencyKey,
-		InputManifest:  mustJSON(sanitizeGenerationManifestValue(manifest)),
-		Metadata:       mustJSON(map[string]any{"product_id": session.ProductID, "sku_code": session.SKUCode, "session_id": session.ID}),
-		Priority:       90,
-		MaxAttempts:    2,
-		TimeoutSeconds: 300,
-	})
-	if err != nil {
-		return s.persistPromptPlannerBlocked(session, "PLATFORM_RUNTIME_CREATE_FAILED", safePlatformRuntimeJobCreateErrorMessage)
+	if strings.TrimSpace(plan.SceneType) == "" {
+		plan.SceneType = "product_visual_generation"
+	}
+	if err := s.attachPromptCenterSnapshot(session, &plan); err != nil {
+		return s.persistPromptPlannerBlocked(session, "PROMPT_SNAPSHOT_FAILED", safePlatformRuntimeJobCreateErrorMessage)
 	}
 	metadata := decodeObject(session.Metadata)
-	metadata["prompt_planner"] = map[string]any{"runtime_job_id": runtimeJob.ID, "status": runtimeJob.Status, "stage": runtimeJob.Stage, "progress": 5, "idempotency_key": idempotencyKey}
+	metadata["prompt_planner"] = map[string]any{
+		"status":          "completed",
+		"stage":           "deterministic_composed",
+		"progress":        100,
+		"prompt_id":       plan.PromptID,
+		"idempotency_key": strings.TrimSpace(req.IdempotencyKey),
+		"source":          "deterministic_v1",
+	}
+	plan.Metadata = mergeObjectMaps(plan.Metadata, map[string]any{"source": "backend_intent_fusion", "planner_mode": "deterministic_v1", "updated_from": "generate_image_plan"})
+	session.PromptPlanJSON = encodePromptPlan(&plan)
 	session.Metadata = mustJSON(sanitizeGenerationManifestValue(metadata))
 	session.CurrentStage = models.VisualWorkflowStagePrompt
-	session.Status = models.VisualWorkflowStatusProcessing
+	session.Status = models.VisualWorkflowStatusReady
 	if err := s.repo.SaveSession(session); err != nil {
 		return nil, err
 	}
-	return &PromptPlannerJobResponse{SessionID: session.ID, RuntimeJobID: runtimeJob.ID, Status: runtimeJob.Status, Stage: runtimeJob.Stage, Progress: 5, IdempotencyKey: idempotencyKey}, nil
+	return &PromptPlannerJobResponse{SessionID: session.ID, Status: "completed", Stage: "deterministic_composed", Progress: 100, IdempotencyKey: strings.TrimSpace(req.IdempotencyKey)}, nil
 }
 
 func (s *Service) persistPromptPlannerBlocked(session *models.EcommerceVisualWorkflowSession, code, message string) (*PromptPlannerJobResponse, error) {

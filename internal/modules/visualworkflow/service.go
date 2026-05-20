@@ -3459,6 +3459,8 @@ func intentSelectionsFromElements(elements []models.EcommerceVisualDeconstructio
 func buildIntentFusionInputManifest(sources []IntentSourceReferenceDTO, selections []IntentElementDTO, elements []models.EcommerceVisualDeconstructionElement) map[string]any {
 	skuFacts := make([]map[string]any, 0)
 	referenceStrategies := make([]map[string]any, 0)
+	rawSkuFactCount := 0
+	rawReferenceStrategyCount := 0
 	for i := range elements {
 		metadata := sanitizeDeconstructionRequestMetadata(decodeObject(elements[i].Metadata))
 		role := metadataString(metadata, "source_role")
@@ -3474,9 +3476,15 @@ func buildIntentFusionInputManifest(sources []IntentSourceReferenceDTO, selectio
 		}
 		switch role {
 		case "sku":
-			skuFacts = append(skuFacts, entry)
+			rawSkuFactCount++
+			if promptUsableDeconstructionElement(elements[i], entry) {
+				skuFacts = append(skuFacts, entry)
+			}
 		case "reference":
-			referenceStrategies = append(referenceStrategies, entry)
+			rawReferenceStrategyCount++
+			if promptUsableDeconstructionElement(elements[i], entry) {
+				referenceStrategies = append(referenceStrategies, entry)
+			}
 		}
 	}
 	ready := len(sources) >= 2 && len(skuFacts) > 0 && len(referenceStrategies) > 0 && len(selections) > 0
@@ -3486,28 +3494,42 @@ func buildIntentFusionInputManifest(sources []IntentSourceReferenceDTO, selectio
 		readiness = "ready"
 	} else {
 		if len(skuFacts) == 0 {
-			blockers = append(blockers, ReadinessBlocker{Code: "SKU_FACTS_REQUIRED", Target: "intent_input", Message: "SKU fact elements are required before prompt planning."})
+			code := "SKU_FACTS_REQUIRED"
+			message := "SKU image analysis is required before image-plan composition."
+			if rawSkuFactCount > 0 {
+				code = "SKU_ANALYSIS_QUALITY_REQUIRED"
+				message = "SKU image analysis is empty or low confidence; re-run image analysis before image-plan composition."
+			}
+			blockers = append(blockers, ReadinessBlocker{Code: code, Target: "intent_input", Message: message})
 		}
 		if len(referenceStrategies) == 0 {
-			blockers = append(blockers, ReadinessBlocker{Code: "REFERENCE_STRATEGIES_REQUIRED", Target: "intent_input", Message: "Reference strategy elements are required before prompt planning."})
+			code := "REFERENCE_STRATEGIES_REQUIRED"
+			message := "Reference image analysis is required before image-plan composition."
+			if rawReferenceStrategyCount > 0 {
+				code = "REFERENCE_ANALYSIS_QUALITY_REQUIRED"
+				message = "Reference image analysis is empty or low confidence; re-run image analysis before image-plan composition."
+			}
+			blockers = append(blockers, ReadinessBlocker{Code: code, Target: "intent_input", Message: message})
 		}
 		if len(selections) == 0 {
-			blockers = append(blockers, ReadinessBlocker{Code: "ATTENTION_DECISION_REQUIRED", Target: "intent_input", Message: "Keep/Replace/Drop decisions are required before prompt planning."})
+			blockers = append(blockers, ReadinessBlocker{Code: "ATTENTION_DECISION_REQUIRED", Target: "intent_input", Message: "Four prep choices are required before image-plan composition."})
 		}
 	}
 	return map[string]any{
-		"schema_version":           "visual-intent-input.v1",
-		"source_references":        sources,
-		"selections":               selections,
-		"selection_count":          len(selections),
-		"sku_facts":                skuFacts,
-		"sku_fact_count":           len(skuFacts),
-		"reference_strategies":     referenceStrategies,
-		"reference_strategy_count": len(referenceStrategies),
-		"decision_tree":            decisionTreeProjection(selections),
-		"readiness":                readiness,
-		"blockers":                 blockers,
-		"requires_prompt_diff":     true,
+		"schema_version":               "visual-intent-input.v1",
+		"source_references":            sources,
+		"selections":                   selections,
+		"selection_count":              len(selections),
+		"sku_facts":                    skuFacts,
+		"sku_fact_count":               len(skuFacts),
+		"raw_sku_fact_count":           rawSkuFactCount,
+		"reference_strategies":         referenceStrategies,
+		"reference_strategy_count":     len(referenceStrategies),
+		"raw_reference_strategy_count": rawReferenceStrategyCount,
+		"decision_tree":                decisionTreeProjection(selections),
+		"readiness":                    readiness,
+		"blockers":                     blockers,
+		"requires_prompt_diff":         true,
 	}
 }
 
@@ -3563,15 +3585,7 @@ func promptComposerAnalysisText(prefix string, entries []map[string]any) string 
 	parts := []string{}
 	for _, entry := range entries {
 		label := strings.TrimSpace(fmt.Sprint(entry["label"]))
-		value := ""
-		if valueMap, ok := entry["value"].(map[string]any); ok {
-			for _, key := range []string{"description", "summary", "text", "style", "shape", "material", "color"} {
-				if text := strings.TrimSpace(fmt.Sprint(valueMap[key])); text != "" && text != "<nil>" {
-					value = text
-					break
-				}
-			}
-		}
+		value := promptComposerValueText(entry["value"])
 		line := strings.TrimSpace(strings.Join(compactUniqueStrings([]string{label, value}), "："))
 		if line != "" {
 			parts = append(parts, line)
@@ -3581,6 +3595,48 @@ func promptComposerAnalysisText(prefix string, entries []map[string]any) string 
 		return ""
 	}
 	return strings.TrimSpace(strings.Join(compactUniqueStrings(parts), "；"))
+}
+
+func promptComposerValueText(raw any) string {
+	valueMap, ok := raw.(map[string]any)
+	if !ok {
+		text := strings.TrimSpace(fmt.Sprint(raw))
+		if promptComposerLooksLikeInternalJSON(text) {
+			return ""
+		}
+		return text
+	}
+	for _, key := range []string{"description", "summary", "text", "provider_text", "style", "shape", "material", "color", "value", "label"} {
+		text := strings.TrimSpace(fmt.Sprint(valueMap[key]))
+		if text == "" || text == "<nil>" || promptComposerLooksLikeInternalJSON(text) {
+			continue
+		}
+		return text
+	}
+	return ""
+}
+
+func promptComposerLooksLikeInternalJSON(text string) bool {
+	trimmed := strings.TrimSpace(text)
+	if trimmed == "" {
+		return false
+	}
+	if strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[") {
+		return true
+	}
+	lower := strings.ToLower(trimmed)
+	return strings.Contains(lower, "deconstruction_elements") || strings.Contains(lower, "source_reference_id") || strings.Contains(lower, "provider_job_id")
+}
+
+func promptUsableDeconstructionElement(element models.EcommerceVisualDeconstructionElement, entry map[string]any) bool {
+	readiness := strings.ToLower(strings.TrimSpace(element.Readiness))
+	if readiness == "needs_review" || readiness == "failed" || readiness == "blocked" || readiness == "invalid" {
+		return false
+	}
+	if element.Confidence > 0 && element.Confidence < 0.6 {
+		return false
+	}
+	return strings.TrimSpace(promptComposerValueText(entry["value"])) != ""
 }
 
 func promptComposerSelectionText(selections []IntentElementDTO) string {

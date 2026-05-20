@@ -2308,36 +2308,62 @@ func TestAttentionDecisionRefreshesIntentInputManifest(t *testing.T) {
 	}
 }
 
-func TestCreatePromptPlannerJobCreatesPlatformTextRuntime(t *testing.T) {
+func TestCreatePromptPlannerJobComposesDeterministicPromptWithoutTextRuntime(t *testing.T) {
 	service, _, db := setupVisualWorkflowTest(t)
 	product := seedProduct(t, db, "prod_prompt_planner", "org_prompt_planner", "SKU-P")
 	session, err := service.CreateSession("user_prompt_planner", "org_prompt_planner", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
 	if err != nil {
 		t.Fatalf("create session: %v", err)
 	}
-	sessionModel, err := service.repo.GetSession("org_prompt_planner", session.ID)
-	if err != nil {
-		t.Fatalf("get session: %v", err)
+	for _, src := range []CreateSourceReferenceRequest{
+		{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://sku", Metadata: map[string]any{"source_role": "sku"}},
+		{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://reference", Metadata: map[string]any{"source_role": "reference"}},
+	} {
+		if _, err := service.CreateSourceReference("user_prompt_planner", "org_prompt_planner", session.ID, src); err != nil {
+			t.Fatalf("create source: %v", err)
+		}
 	}
-	sessionModel.IntentSpecJSON = toJSONForTest(IntentSpecDTO{SchemaVersion: intentSpecSchemaVersion, SceneType: "hero", Requirements: map[string]any{"marketplace": "amazon"}})
-	if err := service.repo.SaveSession(sessionModel); err != nil {
-		t.Fatalf("save intent spec: %v", err)
+	for _, element := range []models.EcommerceVisualDeconstructionElement{
+		{ID: "vde_pp_sku", OrganizationID: "org_prompt_planner", SessionID: session.ID, JobID: "vdj_pp", ElementType: "product", ElementKey: "sku_product", Label: "SKU 木柄梳子", ValueJSON: toJSONForTest(map[string]any{"description": "木头柄气垫梳，白色背景"}), Metadata: toJSONForTest(map[string]any{"source_role": "sku"})},
+		{ID: "vde_pp_ref", OrganizationID: "org_prompt_planner", SessionID: session.ID, JobID: "vdj_pp", ElementType: "background", ElementKey: "reference_background", Label: "参考柳条篮场景", ValueJSON: toJSONForTest(map[string]any{"description": "柳条编织篮与自然光背景"}), Metadata: toJSONForTest(map[string]any{"source_role": "reference"})},
+	} {
+		if err := db.Create(&element).Error; err != nil {
+			t.Fatalf("seed element: %v", err)
+		}
 	}
-	fake := &fakeRuntimeCapabilityReader{matrix: readyPromptPlanningMatrix(), runtimeJob: &platform.RuntimeJob{ID: "runtime-prompt-plan-1", ProductCode: "ecommerce", TaskType: "prompt_planning", Status: "queued", Stage: "queued"}}
-	service.WithRuntimeOrchestrator(fake)
-	resp, err := service.CreatePromptPlannerJob("org_prompt_planner", session.ID, CreatePromptPlannerJobRequest{PromptID: "prompt_v2", Marketplace: "amazon", Locale: "en-US", DriftControls: map[string]any{"style_strength": 0.6}, IdempotencyKey: "prompt-plan-1"})
+	if _, err := service.ApplyAttentionTree("org_prompt_planner", session.ID, ApplyAttentionTreeRequest{Decisions: []AttentionDecisionInput{
+		{ElementID: "vde_pp_sku", Decision: "keep", Metadata: map[string]any{"fixed_prompt_question": true, "prompt_slot": "sku_product"}},
+		{ElementID: "vde_pp_ref", Decision: "keep", Metadata: map[string]any{"fixed_prompt_question": true, "prompt_slot": "reference_background"}},
+	}, DriftControls: map[string]any{"sku_weight": 30, "reference_weight": 70}}); err != nil {
+		t.Fatalf("apply decisions: %v", err)
+	}
+	promptFake := &fakePromptSnapshotCreator{response: &promptcenter.PromptRunResponse{PromptID: "prompt_v1_deterministic", ProductID: product.ID, SKUCode: product.SKUCode, TemplateID: "tpl_p1_t01", TemplateVersionID: "tpl_p1_t01_v1", SceneType: "product_composite", Status: "validated"}}
+	service.WithPromptSnapshotCreator(promptFake)
+	fakeRuntime := &fakeRuntimeCapabilityReader{matrix: readyPromptPlanningMatrix(), runtimeJob: &platform.RuntimeJob{ID: "runtime-should-not-be-created"}}
+	service.WithRuntimeOrchestrator(fakeRuntime)
+	resp, err := service.CreatePromptPlannerJob("org_prompt_planner", session.ID, CreatePromptPlannerJobRequest{Marketplace: "amazon", Locale: "zh-CN", IdempotencyKey: "prompt-plan-1"})
 	if err != nil {
 		t.Fatalf("create prompt planner: %v", err)
 	}
-	if resp.RuntimeJobID != "runtime-prompt-plan-1" || len(fake.createInputs) != 1 {
-		t.Fatalf("expected runtime job creation, resp=%+v inputs=%d", resp, len(fake.createInputs))
+	if resp.RuntimeJobID != "" || len(fakeRuntime.createInputs) != 0 {
+		t.Fatalf("V1 prompt planner must not create text runtime, resp=%+v inputs=%d", resp, len(fakeRuntime.createInputs))
 	}
-	input := fake.createInputs[0]
-	if input.TaskType != "prompt_planning" || input.SourceType != "visual_prompt_planning" || input.SourceID != session.ID {
-		t.Fatalf("unexpected prompt planner runtime input: %+v", input)
+	model, err := service.repo.GetSession("org_prompt_planner", session.ID)
+	if err != nil {
+		t.Fatalf("reload session: %v", err)
 	}
-	if strings.Contains(input.InputManifest, "provider_job_id") || strings.Contains(input.InputManifest, "storage_key") || strings.Contains(input.InputManifest, "billing") {
-		t.Fatalf("prompt planner manifest leaked forbidden execution metadata: %s", input.InputManifest)
+	plan := decodePromptPlan(model.PromptPlanJSON, model)
+	finalPrompt, _ := plan.Variables["composed_prompt_text"].(string)
+	for _, want := range []string{"SKU 解析结果", "参考素材解析结果", "四问选择", "侧重配置", "木头柄气垫梳", "柳条编织篮", "侧重参考素材 70%"} {
+		if !strings.Contains(finalPrompt, want) {
+			t.Fatalf("deterministic prompt missing %q: %s", want, finalPrompt)
+		}
+	}
+	if strings.Contains(finalPrompt, "{\"") || strings.Contains(finalPrompt, "prompt_id") {
+		t.Fatalf("deterministic prompt leaked raw JSON/internal fields: %s", finalPrompt)
+	}
+	if plan.PromptID != "prompt_v1_deterministic" || metadataString(plan.Metadata, "planner_mode") != "deterministic_v1" {
+		t.Fatalf("prompt plan snapshot/mode not persisted: %+v", plan)
 	}
 }
 

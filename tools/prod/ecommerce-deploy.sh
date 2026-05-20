@@ -74,7 +74,15 @@ build_phase() {
   local out="$OUT_DEFAULT"
   local method="docker"
   log "BUILD start image=$IMG"
-  docker buildx build --platform linux/amd64 -t "$IMG" "$REPO_ROOT"
+  local build_args=()
+  if [ -n "${GOPROXY:-}" ]; then
+    build_args+=(--build-arg "GOPROXY=$GOPROXY")
+  fi
+  if [ -n "${DOCKER_BUILD_ARGS:-}" ]; then
+    # shellcheck disable=SC2206
+    build_args+=($DOCKER_BUILD_ARGS)
+  fi
+  docker buildx build --platform linux/amd64 "${build_args[@]}" -t "$IMG" "$REPO_ROOT"
   docker save "$IMG" | gzip > "$out"
   printf '%s\n' "$out" > "$OUT_STATE"
   printf '%s\n' "$method" > "$METHOD_STATE"

@@ -2367,6 +2367,54 @@ func TestCreatePromptPlannerJobComposesDeterministicPromptWithoutTextRuntime(t *
 	}
 }
 
+func TestCreatePromptPlannerJobBlocksLowQualityImageAnalysis(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_prompt_quality", "org_prompt_quality", "SKU-Q")
+	session, err := service.CreateSession("user_prompt_quality", "org_prompt_quality", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	for _, src := range []CreateSourceReferenceRequest{
+		{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://sku", Metadata: map[string]any{"source_role": "sku"}},
+		{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://reference", Metadata: map[string]any{"source_role": "reference"}},
+	} {
+		if _, err := service.CreateSourceReference("user_prompt_quality", "org_prompt_quality", session.ID, src); err != nil {
+			t.Fatalf("create source: %v", err)
+		}
+	}
+	for _, element := range []models.EcommerceVisualDeconstructionElement{
+		{ID: "vde_quality_sku", OrganizationID: "org_prompt_quality", SessionID: session.ID, JobID: "vdj_quality", ElementType: "product_fact", ElementKey: "provider_visual_description", Label: "Provider visual description", Confidence: 0.5, Readiness: "needs_review", ValueJSON: toJSONForTest(map[string]any{"provider_text": "{\"deconstruction_elements\":[],\"source_role\":\"\",\"source_reference_id\":\"\"}"}), Metadata: toJSONForTest(map[string]any{"source_role": "sku", "decision": "keep", "fixed_prompt_question": true, "prompt_slot": "sku_product"})},
+		{ID: "vde_quality_ref", OrganizationID: "org_prompt_quality", SessionID: session.ID, JobID: "vdj_quality", ElementType: "reference_strategy", ElementKey: "style", Label: "Reference style", Confidence: 0, Readiness: "needs_review", ValueJSON: toJSONForTest(map[string]any{"style": "minimalist product photography on white background"}), Metadata: toJSONForTest(map[string]any{"source_role": "reference", "decision": "keep", "fixed_prompt_question": true, "prompt_slot": "reference_background"})},
+	} {
+		if err := db.Create(&element).Error; err != nil {
+			t.Fatalf("seed element: %v", err)
+		}
+	}
+	resp, err := service.CreatePromptPlannerJob("org_prompt_quality", session.ID, CreatePromptPlannerJobRequest{Marketplace: "amazon", Locale: "zh-CN", IdempotencyKey: "prompt-plan-quality"})
+	if err != nil {
+		t.Fatalf("create prompt planner: %v", err)
+	}
+	if resp.Status != "contract_needed" {
+		t.Fatalf("expected low-quality prompt plan to be blocked, got %+v", resp)
+	}
+	model, err := service.repo.GetSession("org_prompt_quality", session.ID)
+	if err != nil {
+		t.Fatalf("reload session: %v", err)
+	}
+	plan := decodePromptPlan(model.PromptPlanJSON, model)
+	codes := []string{}
+	for _, blocker := range plan.Blockers {
+		codes = append(codes, blocker.Code)
+	}
+	joined := strings.Join(codes, ",")
+	if !strings.Contains(joined, "SKU_ANALYSIS_QUALITY_REQUIRED") || !strings.Contains(joined, "REFERENCE_ANALYSIS_QUALITY_REQUIRED") {
+		t.Fatalf("expected quality blockers, got plan=%+v", plan)
+	}
+	if strings.Contains(fmt.Sprint(plan.Variables["composed_prompt_text"]), "deconstruction_elements") {
+		t.Fatalf("low-quality raw provider payload leaked into prompt variables: %+v", plan.Variables)
+	}
+}
+
 func TestPromptPlannerResultUpdatesPromptPlanFromTrustedCallback(t *testing.T) {
 	service, _, db := setupVisualWorkflowTest(t)
 	product := seedProduct(t, db, "prod_prompt_result", "org_prompt_result", "SKU-PR")

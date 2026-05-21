@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"ecommerce-service/internal/billinggate"
@@ -75,6 +76,7 @@ type Service struct {
 	capabilityReader RuntimeCapabilityReader
 	runtimeCreator   RuntimeJobCreator
 	promptCreator    PromptSnapshotCreator
+	generationLocks  sync.Map
 }
 
 func NewService(repo *repository.VisualWorkflowRepository, productRepo *repository.ProductCenterRepository, assetRepo *repository.ImageRuntimeRepository) *Service {
@@ -690,7 +692,7 @@ func chargeContextID(ctx *billinggate.Context) string {
 
 func generationRuntimeRouteSnapshot(version *GenerationVersionDTO) map[string]any {
 	providerCode := generationProviderCode(versionMetadata(version))
-	preferred := []string{"comfyui_bridge", "gemini_image_generation", "volcengine"}
+	preferred := []string{"comfyui_bridge", "gemini_image_generation", "minimax_image_generation", "volcengine"}
 	if providerCode != "" {
 		preferred = append([]string{providerCode}, preferred...)
 	}
@@ -778,6 +780,7 @@ func (s *Service) platformRuntimeInputManifest(session *models.EcommerceVisualWo
 		}
 	}
 	sourceAssetIDs := make([]string, 0, len(bindings))
+	referenceSourceAssetIDs := make([]string, 0, len(bindings))
 	sourceAssets := make([]map[string]any, 0, len(bindings))
 	for _, binding := range bindings {
 		assetID := strings.TrimSpace(binding.AssetID)
@@ -789,6 +792,9 @@ func (s *Service) platformRuntimeInputManifest(session *models.EcommerceVisualWo
 			continue
 		}
 		sourceAssetIDs = append(sourceAssetIDs, asset.ID)
+		if strings.Contains(strings.ToLower(strings.TrimSpace(binding.Slot)), "reference") {
+			referenceSourceAssetIDs = append(referenceSourceAssetIDs, asset.ID)
+		}
 		sourceAssets = append(sourceAssets, map[string]any{
 			"id":          asset.ID,
 			"storage_key": asset.StorageKey,
@@ -798,7 +804,7 @@ func (s *Service) platformRuntimeInputManifest(session *models.EcommerceVisualWo
 		})
 	}
 	if fanoutSourceID := metadataString(version.Metadata, "source_asset_id"); fanoutSourceID != "" {
-		if ids, assets := s.runtimeSourceAssetsForIDs(session.OrganizationID, []string{fanoutSourceID}); len(ids) > 0 {
+		if ids, assets := s.runtimeSourceAssetsForIDs(session.OrganizationID, fanoutFirstSourceAssetIDs(fanoutSourceID, referenceSourceAssetIDs)); len(ids) > 0 {
 			sourceAssetIDs = ids
 			sourceAssets = assets
 		}
@@ -836,6 +842,7 @@ func (s *Service) platformRuntimeInputManifestFromPromptPlan(manifest map[string
 		return nil, fmt.Errorf("Prompt plan snapshot is not executable")
 	}
 	sourceAssetIDs := make([]string, 0, len(promptPlan.SourceAssets))
+	referenceSourceAssetIDs := make([]string, 0, len(promptPlan.SourceAssets))
 	sourceAssets := make([]map[string]any, 0, len(promptPlan.SourceAssets))
 	for _, binding := range promptPlan.SourceAssets {
 		assetID := strings.TrimSpace(binding.AssetID)
@@ -850,6 +857,9 @@ func (s *Service) platformRuntimeInputManifestFromPromptPlan(manifest map[string
 			continue
 		}
 		sourceAssetIDs = append(sourceAssetIDs, asset.ID)
+		if strings.EqualFold(strings.TrimSpace(binding.Role), "reference") {
+			referenceSourceAssetIDs = append(referenceSourceAssetIDs, asset.ID)
+		}
 		sourceAssets = append(sourceAssets, map[string]any{
 			"id":          asset.ID,
 			"storage_key": asset.StorageKey,
@@ -860,7 +870,7 @@ func (s *Service) platformRuntimeInputManifestFromPromptPlan(manifest map[string
 		})
 	}
 	if fanoutSourceID := metadataString(version.Metadata, "source_asset_id"); fanoutSourceID != "" {
-		if ids, assets := s.runtimeSourceAssetsForIDs(session.OrganizationID, []string{fanoutSourceID}); len(ids) > 0 {
+		if ids, assets := s.runtimeSourceAssetsForIDs(session.OrganizationID, fanoutFirstSourceAssetIDs(fanoutSourceID, referenceSourceAssetIDs)); len(ids) > 0 {
 			sourceAssetIDs = ids
 			sourceAssets = assets
 		}
@@ -909,6 +919,12 @@ func (s *Service) runtimeSourceAssetsForIDs(orgID string, assetIDs []string) ([]
 		})
 	}
 	return ids, assets
+}
+
+func fanoutFirstSourceAssetIDs(primary string, existing []string) []string {
+	ids := []string{strings.TrimSpace(primary)}
+	ids = append(ids, existing...)
+	return compactUniqueStrings(ids)
 }
 
 func assetUsableForGeneration(width, height int) bool {
@@ -960,9 +976,9 @@ func promptCompositionNegativeTextFromMetadata(metadata map[string]any) string {
 
 func buildFanoutPromptComposition(base, sceneTag, detailRequirement, negativeRequirement string, promptVariables map[string]any) map[string]any {
 	composer, _ := promptVariables["prompt_composer"].(map[string]any)
-	templateText := metadataString(composer, "template_prompt_text")
+	templateText := strings.Join(compactUniqueStrings([]string{metadataString(composer, "template_prompt_text"), fanoutDiversityInstruction(sceneTag, detailRequirement)}), "\n")
 	if templateText == "" {
-		templateText = strings.TrimSpace(detailRequirement)
+		templateText = strings.Join(compactUniqueStrings([]string{strings.TrimSpace(detailRequirement), fanoutDiversityInstruction(sceneTag, detailRequirement)}), "\n")
 	}
 	diyText := metadataString(composer, "diy_prompt_text")
 	negativeText := strings.Join(compactUniqueStrings([]string{strings.TrimSpace(negativeRequirement), metadataString(composer, "negative_prompt_text")}), "\n")
@@ -992,6 +1008,19 @@ func buildFanoutPromptComposition(base, sceneTag, detailRequirement, negativeReq
 	}
 }
 
+func fanoutDiversityInstruction(sceneTag, detailRequirement string) string {
+	scene := strings.TrimSpace(sceneTag)
+	detail := strings.TrimSpace(detailRequirement)
+	identifier := strings.TrimSpace(scene)
+	if identifier == "" {
+		identifier = detail
+	}
+	if identifier == "" {
+		identifier = "当前槽位"
+	}
+	return fmt.Sprintf("强制差异化：当前槽位=%s；槽位要求=%s；不得与其他槽位构图相同，必须在背景、画幅、镜头距离、光线氛围和商品呈现方式上形成清晰差异。", identifier, defaultString(detail, identifier))
+}
+
 func fanoutNegativePrompt(base string, metadata map[string]any) string {
 	negativeParts := []string{metadataString(metadata, "negative_requirement"), promptCompositionNegativeTextFromMetadata(metadata)}
 	negative := strings.Join(compactUniqueStrings(negativeParts), "\n")
@@ -1013,16 +1042,37 @@ func mergeAllowedGenerationRuntimeParams(params map[string]any, metadata map[str
 		uiConfig = execConfig
 	}
 	providerConfig, _ := uiConfig["provider_config"].(map[string]any)
+	if modelID := strings.TrimSpace(metadataString(providerConfig, "model_id")); modelID != "" {
+		params["model"] = modelID
+	}
+	if providerCode := strings.TrimSpace(metadataString(providerConfig, "generation_provider_code")); providerCode != "" {
+		params["generation_provider_code"] = providerCode
+		if providerCode == "minimax_image_generation" {
+			params["minimax_subject_type"] = "character"
+		}
+	}
 	resolutionID, _ := providerConfig["resolution_id"].(string)
 	switch strings.TrimSpace(resolutionID) {
 	case "1024-square":
 		params["width"] = 1024
 		params["height"] = 1024
 		params["resolution_id"] = "1024-square"
+		params["aspect_ratio"] = "1:1"
 	case "720-wide":
 		params["width"] = 1280
 		params["height"] = 720
 		params["resolution_id"] = "720-wide"
+		params["aspect_ratio"] = "16:9"
+	case "768x1024-poster":
+		params["width"] = 768
+		params["height"] = 1024
+		params["resolution_id"] = "768x1024-poster"
+		params["aspect_ratio"] = "3:4"
+	case "1365x768-wide":
+		params["width"] = 1365
+		params["height"] = 768
+		params["resolution_id"] = "1365x768-wide"
+		params["aspect_ratio"] = "16:9"
 	}
 	for _, key := range []string{"scene_tag", "detail_requirement", "negative_requirement"} {
 		if text := metadataString(metadata, key); text != "" {
@@ -1346,7 +1396,7 @@ func (s *Service) CreatePromptPlannerJob(orgID, sessionID string, req CreateProm
 	// controls) into a traceable prompt plan. LLM-based structured optimization is
 	// reserved for a later product version so generation never falls back to raw
 	// internal JSON when the planner model omits composed_prompt_text.
-	if err := s.refreshIntentInputManifest(orgID, sessionID, req.DriftControls); err != nil {
+	if err := s.refreshIntentInputManifest(orgID, sessionID, req.DriftControls, req.PromptVariables); err != nil {
 		session, getErr := s.repo.GetSession(orgID, sessionID)
 		if getErr != nil {
 			return nil, err
@@ -1954,6 +2004,34 @@ func (s *Service) createPlatformDeconstructionRuntimeJob(item *models.EcommerceV
 	return s.repo.SaveDeconstructionJob(item)
 }
 
+const sharedImageUnderstandingPrompt = `你是电商商品图像理解引擎。请解析这张图片，只返回合法 JSON，不要 markdown，不要解释。
+
+必须返回两个固定的结构性回答，字段必须存在：
+1. 图片中的产品信息：写入 product_info，描述商品主体、品类、形状、颜色、材质、纹理、可见文字/Logo、关键卖点、遮挡/不确定信息。
+2. 图片中的背景信息：写入 background_info，描述场景、背景物体、光影、构图、色彩氛围、风格、可替换/应保留的背景元素。
+
+可以额外发散补充 additional_observations，但不得省略 product_info 和 background_info。
+返回格式：{"deconstruction_elements":[{"source_role":"sku|reference","source_reference_id":"SOURCE_REFERENCE_ID","element_type":"product_fact","element_key":"product_info","label":"图片中的产品信息","value":{"description":"...","attributes":["..."],"uncertainty":["..."]},"confidence":0.0,"readiness":"ready|needs_review"},{"source_role":"sku|reference","source_reference_id":"SOURCE_REFERENCE_ID","element_type":"background","element_key":"background_info","label":"图片中的背景信息","value":{"description":"...","scene":"...","lighting":"...","composition":"...","style":"...","keep":["..."],"replaceable":["..."]},"confidence":0.0,"readiness":"ready|needs_review"}],"additional_observations":[{"element_key":"...","label":"...","value":{"description":"..."},"confidence":0.0}]}。
+请使用请求中提供的 source_reference_id；如果无法判断某项，请保留字段并在 uncertainty 中说明。`
+
+func visualDeconstructionUnderstandingPrompt() string {
+	return sharedImageUnderstandingPrompt
+}
+
+func visualDeconstructionUnderstandingPromptForSource(sourceRole, sourceReferenceID string) string {
+	role := strings.ToLower(strings.TrimSpace(sourceRole))
+	if role != "sku" && role != "reference" {
+		role = "reference"
+	}
+	sourceReferenceID = strings.TrimSpace(sourceReferenceID)
+	if sourceReferenceID == "" {
+		sourceReferenceID = "当前 source_reference_id"
+	}
+	prompt := strings.ReplaceAll(sharedImageUnderstandingPrompt, "sku|reference", role)
+	prompt = strings.ReplaceAll(prompt, "SOURCE_REFERENCE_ID", sourceReferenceID)
+	return prompt + fmt.Sprintf("\n\n本次只解析当前这一张图片：source_role 必须填写 %s，source_reference_id 必须填写 %s。返回 JSON 中不要照抄占位符。", role, sourceReferenceID)
+}
+
 func (s *Service) platformDeconstructionRuntimeInputManifest(item *models.EcommerceVisualDeconstructionJob, businessManifest map[string]any) (map[string]any, error) {
 	if item == nil {
 		return nil, fmt.Errorf("deconstruction job is required")
@@ -1964,6 +2042,7 @@ func (s *Service) platformDeconstructionRuntimeInputManifest(item *models.Ecomme
 	}
 	sourceAssets := make([]map[string]any, 0, len(sources))
 	sourceAssetIDs := make([]string, 0, len(sources))
+	primarySourceRole := ""
 	for i := range sources {
 		src := sources[i]
 		if src.Status != models.VisualSourceStatusReady || src.ResolveStatus != models.VisualSourceStatusReady {
@@ -1974,6 +2053,7 @@ func (s *Service) platformDeconstructionRuntimeInputManifest(item *models.Ecomme
 		}
 		metadata := sanitizeDeconstructionRequestMetadata(decodeObject(src.Metadata))
 		role := sourceRoleFromMetadata(metadata, src.SourceKind)
+		primarySourceRole = role
 		asset := map[string]any{
 			"id":                  strings.TrimSpace(src.AssetID),
 			"source_reference_id": src.ID,
@@ -2009,6 +2089,7 @@ func (s *Service) platformDeconstructionRuntimeInputManifest(item *models.Ecomme
 	if len(sourceAssets) == 0 {
 		return nil, fmt.Errorf("deconstruction runtime requires at least one resolved source asset")
 	}
+	understandingPrompt := visualDeconstructionUnderstandingPromptForSource(primarySourceRole, item.SourceReferenceID)
 	return map[string]any{
 		"input_mode":                  "dual_track_sources",
 		"source_role_output_required": true,
@@ -2018,13 +2099,16 @@ func (s *Service) platformDeconstructionRuntimeInputManifest(item *models.Ecomme
 		"source_asset_ids":            sourceAssetIDs,
 		"source_assets":               sourceAssets,
 		"prompt_snapshot": map[string]any{
-			"user_prompt": "Look at the provided ecommerce image and return only strict JSON: {\"deconstruction_elements\":[{\"source_role\":\"sku\",\"source_reference_id\":\"SOURCE_REFERENCE_ID\",\"element_type\":\"product_fact\",\"element_key\":\"visual_description\",\"label\":\"Visual description\",\"value\":{\"description\":\"what is visible in the image\"},\"confidence\":0.8,\"readiness\":\"ready\"},{\"source_role\":\"reference\",\"source_reference_id\":\"SOURCE_REFERENCE_ID\",\"element_type\":\"reference_strategy\",\"element_key\":\"style\",\"label\":\"Reference style\",\"value\":{\"style\":\"visible style cues\"},\"confidence\":0.8,\"readiness\":\"ready\"}]}. Use the source_reference_id values supplied in the request metadata when possible. Do not include markdown.",
+			"user_prompt": understandingPrompt,
 		},
 		"params_snapshot": map[string]any{
-			"schema_version":     "ecommerce.visual_deconstruction.runtime.v1",
-			"required_tracks":    []string{"sku", "reference"},
-			"requested_elements": businessManifest["requested_elements"],
-			"output_schema":      "visual-deconstruction.v2",
+			"schema_version":       "ecommerce.visual_deconstruction.runtime.v1",
+			"required_tracks":      []string{"sku", "reference"},
+			"requested_elements":   businessManifest["requested_elements"],
+			"output_schema":        "visual-deconstruction.v2",
+			"understanding_prompt": understandingPrompt,
+			"required_fixed_keys":  []string{"product_info", "background_info"},
+			"optional_extra_key":   "additional_observations",
 		},
 		"ecommerce_snapshot": businessManifest,
 	}, nil
@@ -2209,10 +2293,20 @@ func generationProviderCode(metadata map[string]any) string {
 			}
 		}
 	}
+	if provider == "" {
+		if execConfig, ok := metadata["execution_config"].(map[string]any); ok {
+			provider = strings.TrimSpace(metadataString(execConfig, "generation_provider_code"))
+			if provider == "" {
+				if providerConfig, ok := execConfig["provider_config"].(map[string]any); ok {
+					provider = strings.TrimSpace(metadataString(providerConfig, "generation_provider_code"))
+				}
+			}
+		}
+	}
 	switch provider {
 	case "", "auto", "default":
 		return ""
-	case "comfyui_bridge", "gemini_image_generation", "volcengine":
+	case "comfyui_bridge", "gemini_image_generation", "minimax_image_generation", "volcengine":
 		return provider
 	default:
 		return ""
@@ -2319,7 +2413,7 @@ func (s *Service) InternalUpdateDeconstructionRuntime(jobID string, input Intern
 	if stage := strings.TrimSpace(input.Stage); stage != "" {
 		item.Stage = stage
 	}
-	if message := strings.TrimSpace(input.StageMessage); message != "" {
+	if message := userFacingVisualRuntimeMessage(input.StageMessage); message != "" {
 		item.StageMessage = message
 	}
 	if input.Progress != nil {
@@ -2331,7 +2425,7 @@ func (s *Service) InternalUpdateDeconstructionRuntime(jobID string, input Intern
 	if code := strings.TrimSpace(input.ErrorCode); code != "" {
 		item.ErrorCode = code
 	}
-	if message := strings.TrimSpace(input.ErrorMessage); message != "" {
+	if message := userFacingVisualRuntimeMessage(input.ErrorMessage); message != "" {
 		item.ErrorMessage = message
 	}
 	applyVisualDeconstructionCompletionTimestamps(item)
@@ -2359,9 +2453,9 @@ func (s *Service) InternalRecordDeconstructionResults(jobID string, input Intern
 	} else {
 		item.Stage = visualResultStage(item.Status)
 	}
-	item.StageMessage = defaultString(strings.TrimSpace(input.StageMessage), visualResultStageMessage(item.Status))
+	item.StageMessage = defaultString(userFacingVisualRuntimeMessage(input.StageMessage), visualResultStageMessage(item.Status))
 	item.ErrorCode = strings.TrimSpace(input.ErrorCode)
-	item.ErrorMessage = strings.TrimSpace(input.ErrorMessage)
+	item.ErrorMessage = userFacingVisualRuntimeMessage(input.ErrorMessage)
 	applyVisualDeconstructionCompletionTimestamps(item)
 
 	sourceRefs, err := s.repo.ListSourceReferences(item.OrganizationID, item.SessionID)
@@ -2406,6 +2500,18 @@ func (s *Service) InternalRecordDeconstructionResults(jobID string, input Intern
 		return nil, err
 	}
 	return item, nil
+}
+
+func userFacingVisualRuntimeMessage(message string) string {
+	text := strings.TrimSpace(message)
+	if text == "" {
+		return ""
+	}
+	lower := strings.ToLower(text)
+	if strings.Contains(lower, "traceback") || strings.Contains(lower, "provider_submit_failed") || strings.Contains(lower, "python") || strings.Contains(lower, "comfyui bridge request failed") || strings.Contains(lower, "gemini") {
+		return "图片识别服务暂时不可用，请稍后重试；系统不会用假结果继续下一步。"
+	}
+	return text
 }
 
 func (s *Service) SaveGenerationVersionAsTemplate(userID, orgID, sessionID, versionID string, req SaveGenerationTemplateRequest) (*SaveGenerationTemplateResponse, error) {
@@ -2510,8 +2616,19 @@ func (s *Service) HasGenerationVersion(versionID string) bool {
 	if strings.TrimSpace(versionID) == "" {
 		return false
 	}
-	_, _, _, err := s.findGenerationVersionByID(strings.TrimSpace(versionID))
+	_, _, _, err := s.findGenerationVersionByCallbackID(strings.TrimSpace(versionID))
 	return err == nil
+}
+
+func (s *Service) lockGenerationVersionSession(callbackID string) (func(), error) {
+	session, _, _, err := s.findGenerationVersionByCallbackID(strings.TrimSpace(callbackID))
+	if err != nil {
+		return nil, err
+	}
+	lockValue, _ := s.generationLocks.LoadOrStore(session.ID, &sync.Mutex{})
+	lock := lockValue.(*sync.Mutex)
+	lock.Lock()
+	return lock.Unlock, nil
 }
 
 func (s *Service) findGenerationVersionByCallbackID(callbackID string) (*models.EcommerceVisualWorkflowSession, []GenerationVersionDTO, int, error) {
@@ -2536,6 +2653,11 @@ func (s *Service) findGenerationVersionByCallbackID(callbackID string) (*models.
 }
 
 func (s *Service) InternalUpdateGenerationRuntime(versionID string, input InternalRuntimeUpdateRequest) (*GenerationVersionDTO, error) {
+	unlock, err := s.lockGenerationVersionSession(versionID)
+	if err != nil {
+		return nil, err
+	}
+	defer unlock()
 	session, versions, idx, err := s.findGenerationVersionByCallbackID(strings.TrimSpace(versionID))
 	if err != nil {
 		return nil, err
@@ -2545,6 +2667,12 @@ func (s *Service) InternalUpdateGenerationRuntime(versionID string, input Intern
 		normalizedStatus := normalizeGenerationRuntimeCallbackStatus(status)
 		if normalizedStatus == "" {
 			return nil, fmt.Errorf("%w: unsupported generation runtime status %q", ErrInternalCallbackInvalid, status)
+		}
+		if normalizedStatus == "processing" && (version.Status == "completed" || len(version.ResultAssets) > 0) {
+			normalizedStatus = version.Status
+			if normalizedStatus == "" {
+				normalizedStatus = "completed"
+			}
 		}
 		version.Status = normalizedStatus
 	}
@@ -2577,6 +2705,11 @@ func (s *Service) InternalUpdateGenerationRuntime(versionID string, input Intern
 }
 
 func (s *Service) InternalRecordGenerationResults(versionID string, input InternalRecordResultsRequest) (*GenerationVersionDTO, error) {
+	unlock, err := s.lockGenerationVersionSession(versionID)
+	if err != nil {
+		return nil, err
+	}
+	defer unlock()
 	session, versions, idx, err := s.findGenerationVersionByCallbackID(strings.TrimSpace(versionID))
 	if err != nil {
 		return nil, err
@@ -2917,6 +3050,9 @@ func projectSingleImageUnderstandingElements(job *models.EcommerceVisualDeconstr
 			if rawRole, _ := element.Metadata["source_role"].(string); rawRole != "" {
 				role = strings.ToLower(strings.TrimSpace(rawRole))
 			}
+		}
+		if role != "" && role != "sku" && role != "reference" {
+			role = ""
 		}
 		if role != "" && role != primaryRole {
 			continue
@@ -3317,7 +3453,7 @@ func (s *Service) UpdateElement(orgID, sessionID, elementID string, req UpdateEl
 		return nil, err
 	}
 	if strings.TrimSpace(req.Decision) != "" || req.Metadata != nil || len(req.GroupPath) > 0 || strings.TrimSpace(req.TargetAssetID) != "" {
-		if err := s.refreshIntentInputManifest(orgID, sessionID, nil); err != nil {
+		if err := s.refreshIntentInputManifest(orgID, sessionID, nil, nil); err != nil {
 			return nil, err
 		}
 	}
@@ -3356,13 +3492,13 @@ func (s *Service) ApplyAttentionTree(orgID, sessionID string, req ApplyAttention
 		}
 		out = append(out, *item)
 	}
-	if err := s.refreshIntentInputManifest(orgID, sessionID, req.DriftControls); err != nil {
+	if err := s.refreshIntentInputManifest(orgID, sessionID, req.DriftControls, nil); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (s *Service) refreshIntentInputManifest(orgID, sessionID string, driftControls map[string]any) error {
+func (s *Service) refreshIntentInputManifest(orgID, sessionID string, driftControls map[string]any, promptVariables map[string]any) error {
 	session, err := s.repo.GetSession(orgID, sessionID)
 	if err != nil {
 		return err
@@ -3384,7 +3520,7 @@ func (s *Service) refreshIntentInputManifest(orgID, sessionID string, driftContr
 		intent.Source.AssetRelationID = ""
 		intent.Source.SourceRef = ""
 	}
-	intent.Selections = intentSelectionsFromElements(elements)
+	intent.Selections = mergeIntentSelections(intentSelectionsFromElements(elements), fixedPromptQuestionSelections(intent.Selections))
 	if intent.Requirements == nil {
 		intent.Requirements = map[string]any{}
 	}
@@ -3394,7 +3530,7 @@ func (s *Service) refreshIntentInputManifest(orgID, sessionID string, driftContr
 	if intent.Metadata == nil {
 		intent.Metadata = map[string]any{}
 	}
-	inputManifest := buildIntentFusionInputManifest(intent.Source.SourceReferences, intent.Selections, elements)
+	inputManifest := buildIntentFusionInputManifest(intent.Source.SourceReferences, intent.Selections, elements, promptVariables)
 	intent.Metadata["input_manifest"] = sanitizeGenerationManifestValue(inputManifest)
 	applyIntentSpecDefaults(&intent, session)
 	if err := validateIntentSpec(&intent); err != nil {
@@ -3456,7 +3592,66 @@ func intentSelectionsFromElements(elements []models.EcommerceVisualDeconstructio
 	return out
 }
 
-func buildIntentFusionInputManifest(sources []IntentSourceReferenceDTO, selections []IntentElementDTO, elements []models.EcommerceVisualDeconstructionElement) map[string]any {
+func fixedPromptQuestionSelections(selections []IntentElementDTO) []IntentElementDTO {
+	out := make([]IntentElementDTO, 0, len(selections))
+	for _, selection := range selections {
+		metadata := selection.Metadata
+		slot := metadataString(metadata, "prompt_slot")
+		if slot == "" && strings.HasPrefix(selection.ElementID, "fixed:") {
+			slot = strings.TrimPrefix(selection.ElementID, "fixed:")
+			if metadata == nil {
+				metadata = map[string]any{}
+			}
+			metadata["prompt_slot"] = slot
+		}
+		if slot == "" || strings.TrimSpace(selection.Decision) == "" {
+			continue
+		}
+		if fmt.Sprint(metadata["fixed_prompt_question"]) != "true" && !strings.HasPrefix(selection.ElementID, "fixed:") {
+			continue
+		}
+		selection.Metadata = metadata
+		if strings.TrimSpace(selection.ElementKey) == "" {
+			selection.ElementKey = slot
+		}
+		out = append(out, selection)
+	}
+	return out
+}
+
+func mergeIntentSelections(primary []IntentElementDTO, fixed []IntentElementDTO) []IntentElementDTO {
+	out := make([]IntentElementDTO, 0, len(primary)+len(fixed))
+	seen := map[string]bool{}
+	selectionKey := func(selection IntentElementDTO) string {
+		if slot := metadataString(selection.Metadata, "prompt_slot"); slot != "" {
+			return "slot:" + slot
+		}
+		if strings.TrimSpace(selection.ElementID) != "" {
+			return "element:" + strings.TrimSpace(selection.ElementID)
+		}
+		return "key:" + strings.TrimSpace(selection.ElementKey)
+	}
+	for _, selection := range primary {
+		key := selectionKey(selection)
+		if key == "key:" || seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, selection)
+	}
+	for _, selection := range fixed {
+		key := selectionKey(selection)
+		if key == "key:" || seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, selection)
+	}
+	return out
+}
+
+func buildIntentFusionInputManifest(sources []IntentSourceReferenceDTO, selections []IntentElementDTO, elements []models.EcommerceVisualDeconstructionElement, promptVariables map[string]any) map[string]any {
+	_ = promptVariables
 	skuFacts := make([]map[string]any, 0)
 	referenceStrategies := make([]map[string]any, 0)
 	rawSkuFactCount := 0
@@ -3487,39 +3682,31 @@ func buildIntentFusionInputManifest(sources []IntentSourceReferenceDTO, selectio
 			}
 		}
 	}
-	ready := len(sources) >= 2 && len(skuFacts) > 0 && len(referenceStrategies) > 0 && len(selections) > 0
+	if len(skuFacts) == 0 {
+		skuFacts = append(skuFacts, promptFallbackIntentEntry("sku", sources, rawSkuFactCount))
+	}
+	if len(referenceStrategies) == 0 {
+		referenceStrategies = append(referenceStrategies, promptFallbackIntentEntry("reference", sources, rawReferenceStrategyCount))
+	}
+	ready := len(sources) >= 2 && len(selections) > 0
 	readiness := "blocked"
 	blockers := []ReadinessBlocker{}
 	if ready {
 		readiness = "ready"
 	} else {
-		if len(skuFacts) == 0 {
-			code := "SKU_FACTS_REQUIRED"
-			message := "SKU image analysis is required before image-plan composition."
-			if rawSkuFactCount > 0 {
-				code = "SKU_ANALYSIS_QUALITY_REQUIRED"
-				message = "SKU image analysis is empty or low confidence; re-run image analysis before image-plan composition."
-			}
-			blockers = append(blockers, ReadinessBlocker{Code: code, Target: "intent_input", Message: message})
-		}
-		if len(referenceStrategies) == 0 {
-			code := "REFERENCE_STRATEGIES_REQUIRED"
-			message := "Reference image analysis is required before image-plan composition."
-			if rawReferenceStrategyCount > 0 {
-				code = "REFERENCE_ANALYSIS_QUALITY_REQUIRED"
-				message = "Reference image analysis is empty or low confidence; re-run image analysis before image-plan composition."
-			}
-			blockers = append(blockers, ReadinessBlocker{Code: code, Target: "intent_input", Message: message})
+		if len(sources) < 2 {
+			blockers = append(blockers, ReadinessBlocker{Code: "DUAL_TRACK_SOURCE_REQUIRED", Target: "source_references", Message: "SKU and reference images are required before image-plan composition."})
 		}
 		if len(selections) == 0 {
 			blockers = append(blockers, ReadinessBlocker{Code: "ATTENTION_DECISION_REQUIRED", Target: "intent_input", Message: "Four prep choices are required before image-plan composition."})
 		}
 	}
+	safeSelections := sanitizeIntentSelectionsForPrompt(selections)
 	return map[string]any{
 		"schema_version":               "visual-intent-input.v1",
 		"source_references":            sources,
-		"selections":                   selections,
-		"selection_count":              len(selections),
+		"selections":                   safeSelections,
+		"selection_count":              len(safeSelections),
 		"sku_facts":                    skuFacts,
 		"sku_fact_count":               len(skuFacts),
 		"raw_sku_fact_count":           rawSkuFactCount,
@@ -3533,12 +3720,63 @@ func buildIntentFusionInputManifest(sources []IntentSourceReferenceDTO, selectio
 	}
 }
 
+func promptFallbackIntentEntry(role string, sources []IntentSourceReferenceDTO, rawCount int) map[string]any {
+	description := "按当前已上传图片直接生成出图方案；图片理解结果不足时，仅使用可见商品轮廓、参考素材氛围和用户已确认的取舍选择，不再要求额外确认。"
+	label := "图片输入"
+	elementType := "reference_strategy"
+	elementKey := "fallback_reference_strategy"
+	if role == "sku" {
+		label = "SKU 图片输入"
+		elementType = "product_fact"
+		elementKey = "fallback_sku_fact"
+		description = "按当前 SKU 图片直接生成出图方案；保持商品主体完整清晰，无法确认的细节按常规电商商品图处理。"
+	} else if role == "reference" {
+		label = "参考素材输入"
+		description = "按当前参考素材直接生成出图方案；只参考整体氛围、场景、光线和构图关系，不强制复刻不清晰细节。"
+	}
+	sourceReferenceID := ""
+	for _, source := range sources {
+		if strings.TrimSpace(source.Role) == role {
+			sourceReferenceID = source.SourceReferenceID
+			break
+		}
+	}
+	return map[string]any{
+		"element_id":          "fallback:" + role,
+		"element_type":        elementType,
+		"element_key":         elementKey,
+		"label":               label,
+		"source_role":         role,
+		"source_reference_id": sourceReferenceID,
+		"decision":            "keep",
+		"confidence":          0,
+		"readiness":           "fallback",
+		"raw_element_count":   rawCount,
+		"value": map[string]any{
+			"description": description,
+			"summary":     description,
+		},
+	}
+}
+
+func sanitizeIntentSelectionsForPrompt(selections []IntentElementDTO) []IntentElementDTO {
+	out := make([]IntentElementDTO, 0, len(selections))
+	for _, selection := range selections {
+		if promptComposerValueText(selection.Value) == "" {
+			selection.Value = map[string]any{"description": ""}
+		}
+		out = append(out, selection)
+	}
+	return out
+}
+
 func promptCompositionFromIntentFusion(intent *IntentSpecDTO, manifest map[string]any) map[string]any {
 	if intent == nil || manifest == nil {
 		return map[string]any{}
 	}
-	skuText := promptComposerAnalysisText("SKU 解析结果", manifestEntries(manifest["sku_facts"]))
-	referenceText := promptComposerAnalysisText("参考素材解析结果", manifestEntries(manifest["reference_strategies"]))
+	slotDecisions := promptComposerSlotDecisions(intent.Selections)
+	skuText := promptComposerAnalysisText("SKU 解析结果", filterPromptComposerAnalysisEntries(manifestEntries(manifest["sku_facts"]), "sku", slotDecisions))
+	referenceText := promptComposerAnalysisText("参考素材解析结果", filterPromptComposerAnalysisEntries(manifestEntries(manifest["reference_strategies"]), "reference", slotDecisions))
 	selectionText := promptComposerSelectionText(intent.Selections)
 	biasText := promptComposerBiasText(intent.Requirements["attribute_drift"])
 	sections := []map[string]any{}
@@ -3579,6 +3817,51 @@ func manifestEntries(raw any) []map[string]any {
 		}
 	}
 	return out
+}
+
+func promptComposerSlotDecisions(selections []IntentElementDTO) map[string]string {
+	decisions := map[string]string{}
+	for _, selection := range selections {
+		slot := metadataString(selection.Metadata, "prompt_slot")
+		if slot == "" {
+			continue
+		}
+		decision := strings.ToLower(strings.TrimSpace(selection.Decision))
+		if decision == "" {
+			continue
+		}
+		decisions[slot] = decision
+	}
+	return decisions
+}
+
+func filterPromptComposerAnalysisEntries(entries []map[string]any, role string, slotDecisions map[string]string) []map[string]any {
+	if len(entries) == 0 || len(slotDecisions) == 0 {
+		return entries
+	}
+	out := make([]map[string]any, 0, len(entries))
+	for _, entry := range entries {
+		dimension := promptComposerEntryDimension(entry)
+		if dimension != "" && slotDecisions[role+"_"+dimension] == "drop" {
+			continue
+		}
+		out = append(out, entry)
+	}
+	return out
+}
+
+func promptComposerEntryDimension(entry map[string]any) string {
+	elementType := strings.ToLower(strings.TrimSpace(fmt.Sprint(entry["element_type"])))
+	elementKey := strings.ToLower(strings.TrimSpace(fmt.Sprint(entry["element_key"])))
+	label := strings.ToLower(strings.TrimSpace(fmt.Sprint(entry["label"])))
+	combined := strings.Join([]string{elementType, elementKey, label}, " ")
+	if strings.Contains(combined, "background") || strings.Contains(combined, "scene") || strings.Contains(combined, "style") || strings.Contains(combined, "lighting") || strings.Contains(combined, "composition") || strings.Contains(combined, "reference_strategy") {
+		return "background"
+	}
+	if strings.Contains(combined, "product") || strings.Contains(combined, "sku") || strings.Contains(combined, "visual_description") || strings.Contains(combined, "product_fact") || strings.Contains(combined, "material") || strings.Contains(combined, "geometry") {
+		return "product"
+	}
+	return ""
 }
 
 func promptComposerAnalysisText(prefix string, entries []map[string]any) string {
@@ -3630,13 +3913,25 @@ func promptComposerLooksLikeInternalJSON(text string) bool {
 
 func promptUsableDeconstructionElement(element models.EcommerceVisualDeconstructionElement, entry map[string]any) bool {
 	readiness := strings.ToLower(strings.TrimSpace(element.Readiness))
-	if readiness == "needs_review" || readiness == "failed" || readiness == "blocked" || readiness == "invalid" {
+	if readiness == "failed" || readiness == "blocked" || readiness == "invalid" {
 		return false
 	}
-	if element.Confidence > 0 && element.Confidence < 0.6 {
+	if strings.TrimSpace(promptComposerValueText(entry["value"])) == "" {
 		return false
 	}
-	return strings.TrimSpace(promptComposerValueText(entry["value"])) != ""
+	role := strings.ToLower(strings.TrimSpace(fmt.Sprint(entry["source_role"])))
+	if role == "reference" {
+		// Reference style/background analysis is still useful even when the image
+		// understanding confidence is weak. Keep the real parsed semantics instead
+		// of replacing them with generic fallback copy.
+		return true
+	}
+	// Preserve the safer SKU behavior: weak product analysis should fall back to
+	// visible-product-safe wording instead of over-trusting low-confidence details.
+	if readiness == "needs_review" || (element.Confidence > 0 && element.Confidence < 0.6) {
+		return false
+	}
+	return true
 }
 
 func promptComposerSelectionText(selections []IntentElementDTO) string {
@@ -3706,12 +4001,20 @@ func promptComposerBiasText(raw any) string {
 func promptPlanFromIntentFusion(session *models.EcommerceVisualWorkflowSession, intent *IntentSpecDTO, manifest map[string]any) *PromptPlanDTO {
 	status := "blocked"
 	blockers := []ReadinessBlocker{}
-	if strings.TrimSpace(fmt.Sprint(manifest["readiness"])) == "ready" {
+	ready := strings.TrimSpace(fmt.Sprint(manifest["readiness"])) == "ready"
+	if ready {
 		status = "ready"
 	} else if rawBlockers, ok := manifest["blockers"].([]ReadinessBlocker); ok {
 		blockers = rawBlockers
 	} else {
 		blockers = []ReadinessBlocker{{Code: "INTENT_INPUT_REQUIRED", Target: "prompt_plan", Message: "Backend intent fusion input is not ready."}}
+	}
+	variables := map[string]any{
+		"intent_input_manifest": manifest,
+		"attribute_drift":       intent.Requirements["attribute_drift"],
+	}
+	if ready {
+		variables = mergeObjectMaps(variables, promptCompositionFromIntentFusion(intent, manifest))
 	}
 	plan := &PromptPlanDTO{
 		SchemaVersion:     promptPlanSchemaVersion,
@@ -3719,12 +4022,9 @@ func promptPlanFromIntentFusion(session *models.EcommerceVisualWorkflowSession, 
 		SceneType:         intent.SceneType,
 		TemplateID:        strings.TrimSpace(session.TemplateID),
 		TemplateVersionID: strings.TrimSpace(session.TemplateVersionID),
-		Variables: mergeObjectMaps(map[string]any{
-			"intent_input_manifest": manifest,
-			"attribute_drift":       intent.Requirements["attribute_drift"],
-		}, promptCompositionFromIntentFusion(intent, manifest)),
-		SourceAssets: promptPlanSourceAssetsFromIntentSources(intent.Source.SourceReferences),
-		Blockers:     blockers,
+		Variables:         variables,
+		SourceAssets:      promptPlanSourceAssetsFromIntentSources(intent.Source.SourceReferences),
+		Blockers:          blockers,
 		Metadata: map[string]any{
 			"source":               "backend_intent_fusion",
 			"requires_prompt_diff": true,
@@ -4036,6 +4336,32 @@ func (s *Service) CreateGenerationVersion(orgID, sessionID string, req CreateGen
 	return &version, nil
 }
 
+func fanoutTemplateProviderConfig(templateID string) map[string]any {
+	switch strings.TrimSpace(templateID) {
+	case "industrial-poster":
+		return map[string]any{"resolution_id": "768x1024-poster"}
+	case "lifestyle-scene":
+		return map[string]any{"resolution_id": "1365x768-wide"}
+	case "amazon-hero":
+		return map[string]any{"resolution_id": "1024-square"}
+	default:
+		return map[string]any{}
+	}
+}
+
+func fanoutTemplateDetailRequirement(templateID string) string {
+	switch strings.TrimSpace(templateID) {
+	case "amazon-hero":
+		return "模板：amazon-hero；Amazon 主图；纯白背景，主体居中，完整商品轮廓，禁止场景道具。"
+	case "industrial-poster":
+		return "模板：industrial-poster；工业风营销海报；深色背景，强对比光影，海报式纵向构图，突出质感和卖点。"
+	case "lifestyle-scene":
+		return "模板：lifestyle-scene；真实使用场景；横向生活方式构图，桌面/居家环境，强调使用氛围与代入感。"
+	default:
+		return ""
+	}
+}
+
 func (s *Service) CreateGenerationFanout(orgID, sessionID string, req CreateGenerationFanoutRequest) (*CreateGenerationFanoutResponse, error) {
 	session, err := s.repo.GetSession(orgID, sessionID)
 	if err != nil {
@@ -4101,6 +4427,7 @@ func (s *Service) CreateGenerationFanout(orgID, sessionID string, req CreateGene
 	if fanoutID == "" {
 		fanoutID = buildID("gfb")
 	}
+	fanoutRunID := buildID("gfr")
 	executionConfig := GenerationFanoutExecutionConfigDTO{
 		MaxConcurrency: clampInt(req.MaxConcurrency, 1, MaxGenerationFanoutTasks),
 		RetryOnFailure: req.RetryOnFailure,
@@ -4116,13 +4443,16 @@ func (s *Service) CreateGenerationFanout(orgID, sessionID string, req CreateGene
 		sourceID := pair.sourceID
 		templateID := pair.templateID
 		templateVersionID := pair.templateVersionID
-		fanoutTaskID := fmt.Sprintf("%s:%02d", fanoutID, slotIndex+1)
-		providerConfig := sanitizeGenerationManifestValue(req.ProviderConfig)
+		fanoutTaskID := fmt.Sprintf("%s:%s:%02d", fanoutID, fanoutRunID, slotIndex+1)
+		providerConfig, _ := sanitizeGenerationManifestValue(req.ProviderConfig).(map[string]any)
+		providerConfig = mergeObjectMaps(providerConfig, fanoutTemplateProviderConfig(templateID))
 		basePrompt := promptPlanRuntimeText(session, nil, &promptPlan)
+		detailRequirement := defaultString(pair.detailRequirement, fanoutTemplateDetailRequirement(templateID))
 		metadata := mergeObjectMaps(req.Metadata, map[string]any{
 			"source":               "sandbox_generation_fanout",
-			"idempotency_key":      fmt.Sprintf("generation-fanout:%s:%s:%02d:%s:%s", session.ID, fanoutID, slotIndex+1, sourceID, templateID),
+			"idempotency_key":      fmt.Sprintf("generation-fanout:%s:%s:%s:%02d:%s:%s", session.ID, fanoutID, fanoutRunID, slotIndex+1, sourceID, templateID),
 			"fanout_id":            fanoutID,
+			"fanout_run_id":        fanoutRunID,
 			"fanout_task_id":       fanoutTaskID,
 			"fanout_index":         slotIndex,
 			"fanout_total":         total,
@@ -4130,9 +4460,9 @@ func (s *Service) CreateGenerationFanout(orgID, sessionID string, req CreateGene
 			"template_id":          strings.TrimSpace(templateID),
 			"template_version_id":  templateVersionID,
 			"scene_tag":            pair.sceneTag,
-			"detail_requirement":   pair.detailRequirement,
+			"detail_requirement":   detailRequirement,
 			"negative_requirement": pair.negativeRequirement,
-			"prompt_composition":   buildFanoutPromptComposition(basePrompt, pair.sceneTag, pair.detailRequirement, pair.negativeRequirement, req.PromptVariables),
+			"prompt_composition":   buildFanoutPromptComposition(basePrompt, pair.sceneTag, detailRequirement, pair.negativeRequirement, req.PromptVariables),
 			"requested_variants":   clampInt(req.RequestedVariants, 1, 4),
 			"execution_config": map[string]any{
 				"max_concurrency":  executionConfig.MaxConcurrency,

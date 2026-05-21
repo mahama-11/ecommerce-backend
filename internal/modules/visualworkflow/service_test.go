@@ -1485,6 +1485,44 @@ func TestGenerationVersionRejectsArtifactsBeforeRuntimeCreate(t *testing.T) {
 	}
 }
 
+func TestCreateGenerationFanoutRepeatedExplicitRunsUseFreshVersionIdempotency(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_fanout_repeat", "org_fanout_repeat", "SKU-FANOUT-REPEAT")
+	if err := db.Create(&models.EcommerceAsset{ID: "asset_fanout_repeat", OrganizationID: "org_fanout_repeat", UserID: "user_fanout_repeat", AssetType: "image", SourceType: "upload", StorageKey: "source/fanout-repeat.png", MimeType: "image/png", Width: 640, Height: 640, FileName: "fanout-repeat.png", Metadata: "{}"}).Error; err != nil {
+		t.Fatalf("seed source asset: %v", err)
+	}
+	session, err := service.CreateSession("user_fanout_repeat", "org_fanout_repeat", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	session.PromptPlanJSON = `{"schema_version":"visual_prompt_plan.v1","status":"ready","prompt_id":"prompt_fanout_repeat","variables":{"composed_prompt_text":"ready prompt"}}`
+	if err := db.Save(session).Error; err != nil {
+		t.Fatalf("save prompt plan: %v", err)
+	}
+	req := CreateGenerationFanoutRequest{
+		IdempotencyKey: "same-ui-batch-key",
+		TemplateSlots:  []GenerationFanoutTemplateSlotRequest{{SourceAssetID: "asset_fanout_repeat", TemplateID: "amazon-hero", SceneTag: "主图"}},
+	}
+	first, err := service.CreateGenerationFanout("org_fanout_repeat", session.ID, req)
+	if err != nil {
+		t.Fatalf("create first fanout: %v", err)
+	}
+	second, err := service.CreateGenerationFanout("org_fanout_repeat", session.ID, req)
+	if err != nil {
+		t.Fatalf("create second fanout: %v", err)
+	}
+	firstVersion := first.Items[0].GenerationVersion
+	secondVersion := second.Items[0].GenerationVersion
+	if firstVersion.VersionID == secondVersion.VersionID {
+		t.Fatalf("repeated explicit fanout should create a fresh generation version, got same %s", firstVersion.VersionID)
+	}
+	firstKey := metadataString(firstVersion.Metadata, "idempotency_key")
+	secondKey := metadataString(secondVersion.Metadata, "idempotency_key")
+	if firstKey == "" || secondKey == "" || firstKey == secondKey {
+		t.Fatalf("expected fresh per-run idempotency keys, got first=%q second=%q", firstKey, secondKey)
+	}
+}
+
 func TestCreateGenerationVersionCreatesPlatformRuntimeJobWhenCapabilityReady(t *testing.T) {
 	service, _, db := setupVisualWorkflowTest(t)
 	product := seedProduct(t, db, "prod_gen_ready", "org_1", "SKU-GEN-READY")
@@ -2246,6 +2284,44 @@ func TestCreateDeconstructionJobUsesDualTrackRuntimeManifest(t *testing.T) {
 	}
 }
 
+func TestCreateDeconstructionJobInjectsSharedFixedUnderstandingPrompt(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_fixed_prompt", "org_fixed_prompt", "SKU-FIXED-PROMPT")
+	orchestrator := &fakeRuntimeCapabilityReader{
+		matrix:     testCapabilityMatrix(platform.RuntimeCapabilityItem{TaskType: "image_understanding", Status: "available", Available: true, ContractStatus: "ready"}),
+		runtimeJob: &platform.RuntimeJob{ID: "runtime-fixed-prompt", ProductCode: "ecommerce", TaskType: "image_understanding", Status: "processing", Stage: "queued"},
+	}
+	service.WithRuntimeOrchestrator(orchestrator)
+	session, err := service.CreateSession("user_fixed_prompt", "org_fixed_prompt", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	source := seedDualTrackSourceReferencesForTest(t, service, "user_fixed_prompt", "org_fixed_prompt", session.ID)
+	_, err = service.CreateDeconstructionJob("user_fixed_prompt", "org_fixed_prompt", session.ID, CreateDeconstructionJobRequest{SourceReferenceID: source.ID, RequestedElements: []string{"product_info", "background_info"}})
+	if err != nil {
+		t.Fatalf("create deconstruction job: %v", err)
+	}
+	if len(orchestrator.createInputs) != 1 {
+		t.Fatalf("expected one runtime create input, got %d", len(orchestrator.createInputs))
+	}
+	manifest := decodeObject(orchestrator.createInputs[0].InputManifest)
+	promptSnapshot, _ := manifest["prompt_snapshot"].(map[string]any)
+	paramsSnapshot, _ := manifest["params_snapshot"].(map[string]any)
+	userPrompt := fmt.Sprint(promptSnapshot["user_prompt"])
+	understandingPrompt := fmt.Sprint(paramsSnapshot["understanding_prompt"])
+	for _, prompt := range []string{userPrompt, understandingPrompt} {
+		if !strings.Contains(prompt, "图片中的产品信息") || !strings.Contains(prompt, "图片中的背景信息") {
+			t.Fatalf("shared image understanding prompt missing fixed product/background requirements: %s", prompt)
+		}
+		if !strings.Contains(prompt, "product_info") || !strings.Contains(prompt, "background_info") || !strings.Contains(prompt, "additional_observations") {
+			t.Fatalf("shared image understanding prompt missing stable JSON keys: %s", prompt)
+		}
+	}
+	if userPrompt != understandingPrompt {
+		t.Fatalf("prompt_snapshot.user_prompt and params_snapshot.understanding_prompt should use the same shared prompt\nuser=%s\nunderstanding=%s", userPrompt, understandingPrompt)
+	}
+}
+
 func TestAttentionDecisionRefreshesIntentInputManifest(t *testing.T) {
 	service, _, db := setupVisualWorkflowTest(t)
 	product := seedProduct(t, db, "prod_intent_input", "org_intent_input", "SKU-I")
@@ -2367,7 +2443,7 @@ func TestCreatePromptPlannerJobComposesDeterministicPromptWithoutTextRuntime(t *
 	}
 }
 
-func TestCreatePromptPlannerJobBlocksLowQualityImageAnalysis(t *testing.T) {
+func TestCreatePromptPlannerJobDirectlyComposesWeakImageAnalysis(t *testing.T) {
 	service, _, db := setupVisualWorkflowTest(t)
 	product := seedProduct(t, db, "prod_prompt_quality", "org_prompt_quality", "SKU-Q")
 	session, err := service.CreateSession("user_prompt_quality", "org_prompt_quality", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
@@ -2390,28 +2466,145 @@ func TestCreatePromptPlannerJobBlocksLowQualityImageAnalysis(t *testing.T) {
 			t.Fatalf("seed element: %v", err)
 		}
 	}
+	service.WithPromptSnapshotCreator(&fakePromptSnapshotCreator{response: &promptcenter.PromptRunResponse{PromptID: "prompt_quality_direct", ProductID: product.ID, SKUCode: product.SKUCode, TemplateID: "tpl_quality_direct", SceneType: "product_composite", Status: "validated"}})
 	resp, err := service.CreatePromptPlannerJob("org_prompt_quality", session.ID, CreatePromptPlannerJobRequest{Marketplace: "amazon", Locale: "zh-CN", IdempotencyKey: "prompt-plan-quality"})
 	if err != nil {
 		t.Fatalf("create prompt planner: %v", err)
 	}
-	if resp.Status != "contract_needed" {
-		t.Fatalf("expected low-quality prompt plan to be blocked, got %+v", resp)
+	if resp.Status != "completed" {
+		t.Fatalf("expected weak image analysis to compose directly, got %+v", resp)
 	}
 	model, err := service.repo.GetSession("org_prompt_quality", session.ID)
 	if err != nil {
 		t.Fatalf("reload session: %v", err)
 	}
 	plan := decodePromptPlan(model.PromptPlanJSON, model)
-	codes := []string{}
-	for _, blocker := range plan.Blockers {
-		codes = append(codes, blocker.Code)
+	if len(plan.Blockers) != 0 {
+		t.Fatalf("weak image analysis should not create quality blockers: %+v", plan.Blockers)
 	}
-	joined := strings.Join(codes, ",")
-	if !strings.Contains(joined, "SKU_ANALYSIS_QUALITY_REQUIRED") || !strings.Contains(joined, "REFERENCE_ANALYSIS_QUALITY_REQUIRED") {
-		t.Fatalf("expected quality blockers, got plan=%+v", plan)
+	finalPrompt, _ := plan.Variables["composed_prompt_text"].(string)
+	for _, want := range []string{"按当前 SKU 图片直接生成", "minimalist product photography on white background"} {
+		if !strings.Contains(finalPrompt, want) {
+			t.Fatalf("prompt missing %q: %s", want, finalPrompt)
+		}
 	}
-	if strings.Contains(fmt.Sprint(plan.Variables["composed_prompt_text"]), "deconstruction_elements") {
-		t.Fatalf("low-quality raw provider payload leaked into prompt variables: %+v", plan.Variables)
+	if strings.Contains(finalPrompt, "按当前参考素材直接生成") {
+		t.Fatalf("non-empty weak reference analysis should not be replaced by fallback: %s", finalPrompt)
+	}
+	if strings.Contains(fmt.Sprint(plan.Variables), "deconstruction_elements") {
+		t.Fatalf("raw provider payload leaked into prompt variables: %+v", plan.Variables)
+	}
+}
+
+func TestCreatePromptPlannerJobUsesFallbackWhenImageAnalysisIsWeak(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_prompt_ref_override", "org_prompt_ref_override", "SKU-REF-OVERRIDE")
+	session, err := service.CreateSession("user_prompt_ref_override", "org_prompt_ref_override", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	for _, src := range []CreateSourceReferenceRequest{
+		{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://sku", Metadata: map[string]any{"source_role": "sku"}},
+		{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://reference", Metadata: map[string]any{"source_role": "reference"}},
+	} {
+		if _, err := service.CreateSourceReference("user_prompt_ref_override", "org_prompt_ref_override", session.ID, src); err != nil {
+			t.Fatalf("create source: %v", err)
+		}
+	}
+	for _, element := range []models.EcommerceVisualDeconstructionElement{
+		{ID: "vde_ref_override_sku", OrganizationID: "org_prompt_ref_override", SessionID: session.ID, JobID: "vdj_ref_override", ElementType: "product_fact", ElementKey: "sku_product", Label: "SKU 主体", Confidence: 0.92, Readiness: "ready", ValueJSON: toJSONForTest(map[string]any{"description": "白色头戴式耳机，主体清晰"}), Metadata: toJSONForTest(map[string]any{"source_role": "sku", "decision": "keep", "fixed_prompt_question": true, "prompt_slot": "sku_product"})},
+		{ID: "vde_ref_override_ref", OrganizationID: "org_prompt_ref_override", SessionID: session.ID, JobID: "vdj_ref_override", ElementType: "reference_strategy", ElementKey: "style", Label: "Reference style", Confidence: 0.3, Readiness: "needs_review", ValueJSON: toJSONForTest(map[string]any{"style": "dark lifestyle desk scene"}), Metadata: toJSONForTest(map[string]any{"source_role": "reference", "decision": "keep", "fixed_prompt_question": true, "prompt_slot": "reference_background"})},
+	} {
+		if err := db.Create(&element).Error; err != nil {
+			t.Fatalf("seed element: %v", err)
+		}
+	}
+	promptFake := &fakePromptSnapshotCreator{response: &promptcenter.PromptRunResponse{PromptID: "prompt_ref_override", ProductID: product.ID, SKUCode: product.SKUCode, TemplateID: "tpl_ref_override", SceneType: "product_composite", Status: "validated"}}
+	service.WithPromptSnapshotCreator(promptFake)
+	resp, err := service.CreatePromptPlannerJob("org_prompt_ref_override", session.ID, CreatePromptPlannerJobRequest{Marketplace: "amazon", Locale: "zh-CN", IdempotencyKey: "prompt-plan-ref-override"})
+	if err != nil {
+		t.Fatalf("create fallback prompt planner: %v", err)
+	}
+	if resp.Status != "completed" {
+		t.Fatalf("expected fallback reference composition to complete, got %+v", resp)
+	}
+	model, err := service.repo.GetSession("org_prompt_ref_override", session.ID)
+	if err != nil {
+		t.Fatalf("reload session: %v", err)
+	}
+	plan := decodePromptPlan(model.PromptPlanJSON, model)
+	finalPrompt, _ := plan.Variables["composed_prompt_text"].(string)
+	if !strings.Contains(finalPrompt, "dark lifestyle desk scene") {
+		t.Fatalf("weak reference analysis missing from prompt: %s", finalPrompt)
+	}
+	if strings.Contains(finalPrompt, "按当前参考素材直接生成") {
+		t.Fatalf("non-empty weak reference analysis should not be replaced by fallback: %s", finalPrompt)
+	}
+
+	blockedSession, err := service.CreateSession("user_prompt_ref_override", "org_prompt_ref_override", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create second session: %v", err)
+	}
+	for _, src := range []CreateSourceReferenceRequest{
+		{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://sku-low", Metadata: map[string]any{"source_role": "sku"}},
+		{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://reference-low", Metadata: map[string]any{"source_role": "reference"}},
+	} {
+		if _, err := service.CreateSourceReference("user_prompt_ref_override", "org_prompt_ref_override", blockedSession.ID, src); err != nil {
+			t.Fatalf("create blocked source: %v", err)
+		}
+	}
+	for _, element := range []models.EcommerceVisualDeconstructionElement{
+		{ID: "vde_ref_override_low_sku", OrganizationID: "org_prompt_ref_override", SessionID: blockedSession.ID, JobID: "vdj_ref_override_low", ElementType: "product_fact", ElementKey: "sku_product", Label: "SKU 低可信", Confidence: 0.2, Readiness: "needs_review", ValueJSON: toJSONForTest(map[string]any{"description": "模糊耳机"}), Metadata: toJSONForTest(map[string]any{"source_role": "sku", "decision": "keep", "fixed_prompt_question": true, "prompt_slot": "sku_product"})},
+		{ID: "vde_ref_override_ok_ref", OrganizationID: "org_prompt_ref_override", SessionID: blockedSession.ID, JobID: "vdj_ref_override_low", ElementType: "reference_strategy", ElementKey: "style", Label: "参考风格", Confidence: 0.2, Readiness: "needs_review", ValueJSON: toJSONForTest(map[string]any{"style": "dark desk"}), Metadata: toJSONForTest(map[string]any{"source_role": "reference", "decision": "keep", "fixed_prompt_question": true, "prompt_slot": "reference_background"})},
+	} {
+		if err := db.Create(&element).Error; err != nil {
+			t.Fatalf("seed blocked element: %v", err)
+		}
+	}
+	overrideResp, err := service.CreatePromptPlannerJob("org_prompt_ref_override", blockedSession.ID, CreatePromptPlannerJobRequest{Marketplace: "amazon", Locale: "zh-CN", IdempotencyKey: "prompt-plan-fallback"})
+	if err != nil {
+		t.Fatalf("create fallback prompt planner: %v", err)
+	}
+	if overrideResp.Status != "completed" {
+		t.Fatalf("expected fallback prompt composition to complete, got %+v", overrideResp)
+	}
+	model, err = service.repo.GetSession("org_prompt_ref_override", blockedSession.ID)
+	if err != nil {
+		t.Fatalf("reload override session: %v", err)
+	}
+	plan = decodePromptPlan(model.PromptPlanJSON, model)
+	finalPrompt, _ = plan.Variables["composed_prompt_text"].(string)
+	for _, want := range []string{"按当前 SKU 图片直接生成", "dark desk"} {
+		if !strings.Contains(finalPrompt, want) {
+			t.Fatalf("weak/fallback analysis prompt missing %q: %s", want, finalPrompt)
+		}
+	}
+	if strings.Contains(finalPrompt, "模糊耳机") {
+		t.Fatalf("weak SKU analysis should not override safe SKU fallback: %s", finalPrompt)
+	}
+}
+
+func TestMergeIntentSelectionsPreservesFixedPromptQuestions(t *testing.T) {
+	primary := []IntentElementDTO{{
+		ElementID:   "vde_sku_real",
+		ElementKey:  "sku_product",
+		ElementType: "product_fact",
+		Decision:    "keep",
+		Metadata:    map[string]any{"prompt_slot": "sku_product", "fixed_prompt_question": true},
+	}}
+	persisted := []IntentElementDTO{
+		{ElementID: "fixed:sku_product", ElementKey: "sku_product", ElementType: "product_fact", Decision: "drop", Metadata: map[string]any{"fixed_prompt_question": true, "prompt_slot": "sku_product"}},
+		{ElementID: "fixed:reference_background", ElementKey: "reference_background", ElementType: "background", Decision: "keep", Metadata: map[string]any{"fixed_prompt_question": true, "prompt_slot": "reference_background"}},
+	}
+	merged := mergeIntentSelections(primary, fixedPromptQuestionSelections(persisted))
+	if len(merged) != 2 {
+		t.Fatalf("expected real selection plus non-duplicate fixed prompt question, got %+v", merged)
+	}
+	if merged[0].ElementID != "vde_sku_real" || merged[1].ElementID != "fixed:reference_background" {
+		t.Fatalf("unexpected merge order/content: %+v", merged)
+	}
+	if text := promptComposerSelectionText(merged); !strings.Contains(text, "采用参考素材背景风格") || strings.Contains(text, "fixed:sku_product") {
+		t.Fatalf("fixed prompt question text did not preserve the expected virtual slot only: %s", text)
 	}
 }
 
@@ -2620,6 +2813,175 @@ func TestPromptComposerFromFixedQuestionsPersistsSections(t *testing.T) {
 	}
 }
 
+func TestBuildIntentFusionInputManifestKeepsNonEmptyNeedsReviewReferenceAnalysis(t *testing.T) {
+	manifest := buildIntentFusionInputManifest(
+		[]IntentSourceReferenceDTO{{SourceReferenceID: "vsr_ref", Role: "reference"}, {SourceReferenceID: "vsr_sku", Role: "sku"}},
+		[]IntentElementDTO{{ElementID: "fixed:reference_background", Decision: "keep", Label: "采用参考背景", Metadata: map[string]any{"fixed_prompt_question": true, "prompt_slot": "reference_background"}}},
+		[]models.EcommerceVisualDeconstructionElement{
+			{ID: "vde_sku", ElementType: "product_fact", ElementKey: "visual_description", Label: "Visual description", Confidence: 0.95, Readiness: "ready", ValueJSON: toJSONForTest(map[string]any{"description": "purple earbuds"}), Metadata: toJSONForTest(map[string]any{"source_role": "sku"})},
+			{ID: "vde_ref", ElementType: "reference_strategy", ElementKey: "style", Label: "Reference style", Confidence: 0, Readiness: "needs_review", ValueJSON: toJSONForTest(map[string]any{"style": "minimalist product photography against white background with clean lines and soft shadows"}), Metadata: toJSONForTest(map[string]any{"source_role": "reference", "source_reference_id": "vsr_ref"})},
+		},
+		nil,
+	)
+	entries := manifestEntries(manifest["reference_strategies"])
+	if len(entries) != 1 {
+		t.Fatalf("expected one reference strategy, got %#v", manifest["reference_strategies"])
+	}
+	text := promptComposerAnalysisText("参考素材解析结果", entries)
+	if !strings.Contains(text, "minimalist product photography against white background with clean lines and soft shadows") {
+		t.Fatalf("expected real weak reference analysis in prompt text, got %q from %#v", text, entries)
+	}
+	if strings.Contains(text, "按当前参考素材直接生成出图方案") {
+		t.Fatalf("non-empty reference analysis should not be replaced by fallback: %q", text)
+	}
+}
+
+func TestPromptComposerIncludesWeakReferenceAnalysisWhenUserKeepsReferenceStyle(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_reference_prompt", "org_reference_prompt", "SKU-RP")
+	session, err := service.CreateSession("user_reference_prompt", "org_reference_prompt", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	for _, src := range []CreateSourceReferenceRequest{
+		{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://sku", Metadata: map[string]any{"source_role": "sku"}},
+		{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://reference", Metadata: map[string]any{"source_role": "reference"}},
+	} {
+		if _, err := service.CreateSourceReference("user_reference_prompt", "org_reference_prompt", session.ID, src); err != nil {
+			t.Fatalf("create source reference: %v", err)
+		}
+	}
+	for _, element := range []models.EcommerceVisualDeconstructionElement{
+		{ID: "vde_rp_sku", OrganizationID: "org_reference_prompt", SessionID: session.ID, JobID: "vdj_rp", ElementType: "product_fact", ElementKey: "visual_description", Label: "Visual description", Confidence: 0.95, Readiness: "ready", ValueJSON: toJSONForTest(map[string]any{"description": "purple earbuds with charging case"}), Metadata: toJSONForTest(map[string]any{"source_role": "sku"})},
+		{ID: "vde_rp_ref_product", OrganizationID: "org_reference_prompt", SessionID: session.ID, JobID: "vdj_rp", ElementType: "product_fact", ElementKey: "product_info", Label: "图片中的产品信息", Confidence: 0.8, Readiness: "ready", ValueJSON: toJSONForTest(map[string]any{"description": "一款黑色头戴式耳机，带麦克风支架和线缆。"}), Metadata: toJSONForTest(map[string]any{"source_role": "reference"})},
+		{ID: "vde_rp_ref", OrganizationID: "org_reference_prompt", SessionID: session.ID, JobID: "vdj_rp", ElementType: "reference_strategy", ElementKey: "style", Label: "Reference style", Confidence: 0, Readiness: "needs_review", ValueJSON: toJSONForTest(map[string]any{"style": "minimalist product photography against white background with clean lines and soft shadows"}), Metadata: toJSONForTest(map[string]any{"source_role": "reference"})},
+	} {
+		if err := db.Create(&element).Error; err != nil {
+			t.Fatalf("seed element: %v", err)
+		}
+	}
+	_, err = service.UpdateSession("org_reference_prompt", session.ID, UpdateSessionRequest{IntentSpec: &IntentSpecDTO{
+		SchemaVersion: "visual_intent_spec.v1",
+		Selections: []IntentElementDTO{
+			{ElementID: "fixed:sku_product", Decision: "keep", Label: "保留 SKU 原图产品", Metadata: map[string]any{"fixed_prompt_question": true, "prompt_slot": "sku_product", "source_element_id": "vde_rp_sku"}},
+			{ElementID: "fixed:sku_background", Decision: "drop", Label: "保留 SKU 原图背景", Metadata: map[string]any{"fixed_prompt_question": true, "prompt_slot": "sku_background", "source_element_id": "vde_rp_sku"}},
+			{ElementID: "fixed:reference_product", Decision: "drop", Label: "使用参考素材产品", Metadata: map[string]any{"fixed_prompt_question": true, "prompt_slot": "reference_product", "source_element_id": "vde_rp_ref_product"}},
+			{ElementID: "fixed:reference_background", Decision: "keep", Label: "采用参考素材背景", Metadata: map[string]any{"fixed_prompt_question": true, "prompt_slot": "reference_background", "source_element_id": "vde_rp_ref"}},
+		},
+	}})
+	if err == nil {
+		err = service.refreshIntentInputManifest("org_reference_prompt", session.ID, nil, nil)
+	}
+	if err != nil {
+		t.Fatalf("apply fixed choices: %v", err)
+	}
+	model, err := service.repo.GetSession("org_reference_prompt", session.ID)
+	if err != nil {
+		t.Fatalf("reload session: %v", err)
+	}
+	plan := decodePromptPlan(model.PromptPlanJSON, model)
+	finalPrompt, _ := plan.Variables["composed_prompt_text"].(string)
+	if strings.Contains(finalPrompt, "minimalist product photography against white background with clean lines and soft shadows") {
+		// OK: selected reference background/style semantics should still enter the composed prompt.
+	} else {
+		t.Fatalf("reference analysis should enter composed prompt, got: %s", finalPrompt)
+	}
+	if strings.Contains(finalPrompt, "一款黑色头戴式耳机") {
+		t.Fatalf("dropped reference product should not enter reference analysis prompt: %s", finalPrompt)
+	}
+	if strings.Contains(finalPrompt, "按当前参考素材直接生成出图方案") {
+		t.Fatalf("reference fallback should not replace non-empty reference analysis: %s", finalPrompt)
+	}
+}
+
+func TestSingleImageUnderstandingProjectsProviderPlaceholderRoleToPrimarySource(t *testing.T) {
+	job := &models.EcommerceVisualDeconstructionJob{
+		SourceReferenceID: "vsr_ref_primary",
+		Metadata:          toJSONForTest(map[string]any{"image_understanding_policy": "single_image_per_runtime_job"}),
+	}
+	sourceIndex := map[string]string{"vsr_ref_primary": "reference"}
+	elements := projectSingleImageUnderstandingElements(job, []InternalResultElementRequest{{
+		SourceRole:        "sku|reference",
+		SourceReferenceID: "SOURCE_REFERENCE_ID",
+		ElementType:       "background",
+		ElementKey:        "background_info",
+		Label:             "图片中的背景信息",
+		Value:             map[string]any{"description": "白色背景，柔和光线，极简商业摄影"},
+		Readiness:         "ready",
+	}}, sourceIndex)
+	if len(elements) != 1 {
+		t.Fatalf("placeholder provider role should be projected to primary source, got %#v", elements)
+	}
+	if elements[0].SourceRole != "reference" || elements[0].SourceReferenceID != "vsr_ref_primary" {
+		t.Fatalf("expected reference projection, got role=%q source=%q", elements[0].SourceRole, elements[0].SourceReferenceID)
+	}
+}
+
+func TestVisualDeconstructionPromptUsesConcreteSourceRoleAndID(t *testing.T) {
+	prompt := visualDeconstructionUnderstandingPromptForSource("reference", "vsr_ref_primary")
+	if strings.Contains(prompt, "sku|reference") || strings.Contains(prompt, "SOURCE_REFERENCE_ID") {
+		t.Fatalf("prompt should not ask provider to echo placeholder role/id: %s", prompt)
+	}
+	for _, want := range []string{"source_role 必须填写 reference", "source_reference_id 必须填写 vsr_ref_primary"} {
+		if !strings.Contains(prompt, want) {
+			t.Fatalf("prompt missing concrete source instruction %q: %s", want, prompt)
+		}
+	}
+}
+
+func TestCreatePromptPlannerJobUsesFallbackWhenManualTextMissing(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_low_quality_placeholder", "org_low_quality_placeholder", "SKU-LQP")
+	session, err := service.CreateSession("user_low_quality_placeholder", "org_low_quality_placeholder", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	for _, src := range []CreateSourceReferenceRequest{
+		{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://sku", Metadata: map[string]any{"source_role": "sku"}},
+		{SourceKind: models.VisualSourceKindUpload, SourceRef: "upload://reference", Metadata: map[string]any{"source_role": "reference"}},
+	} {
+		if _, err := service.CreateSourceReference("user_low_quality_placeholder", "org_low_quality_placeholder", session.ID, src); err != nil {
+			t.Fatalf("create source reference: %v", err)
+		}
+	}
+	for _, element := range []models.EcommerceVisualDeconstructionElement{
+		{ID: "vde_lqp_sku", OrganizationID: "org_low_quality_placeholder", SessionID: session.ID, JobID: "vdj_lqp", ElementType: "product_fact", ElementKey: "provider_visual_description", Label: "weak sku", Confidence: 0.1, Readiness: "needs_review", ValueJSON: toJSONForTest(map[string]any{"provider_text": "{}"}), Metadata: toJSONForTest(map[string]any{"source_role": "sku"})},
+		{ID: "vde_lqp_ref", OrganizationID: "org_low_quality_placeholder", SessionID: session.ID, JobID: "vdj_lqp", ElementType: "reference_strategy", ElementKey: "style", Label: "weak ref", Confidence: 0.1, Readiness: "needs_review", ValueJSON: toJSONForTest(map[string]any{"style": ""}), Metadata: toJSONForTest(map[string]any{"source_role": "reference"})},
+	} {
+		if err := db.Create(&element).Error; err != nil {
+			t.Fatalf("seed low quality element: %v", err)
+		}
+	}
+	_, err = service.ApplyAttentionTree("org_low_quality_placeholder", session.ID, ApplyAttentionTreeRequest{Decisions: []AttentionDecisionInput{
+		{ElementID: "vde_lqp_sku", Decision: "keep", Question: "保留 SKU 原图产品？", Answer: "要", Metadata: map[string]any{"fixed_prompt_question": true, "prompt_slot": "sku_product"}},
+		{ElementID: "vde_lqp_sku", Decision: "drop", Question: "保留 SKU 原图背景？", Answer: "不要", Metadata: map[string]any{"fixed_prompt_question": true, "prompt_slot": "sku_background"}},
+		{ElementID: "vde_lqp_ref", Decision: "drop", Question: "使用参考素材产品？", Answer: "不要", Metadata: map[string]any{"fixed_prompt_question": true, "prompt_slot": "reference_product"}},
+		{ElementID: "vde_lqp_ref", Decision: "keep", Question: "采用参考素材背景？", Answer: "要", Metadata: map[string]any{"fixed_prompt_question": true, "prompt_slot": "reference_background"}},
+	}})
+	if err != nil {
+		t.Fatalf("apply fixed choices: %v", err)
+	}
+	service.WithPromptSnapshotCreator(&fakePromptSnapshotCreator{response: &promptcenter.PromptRunResponse{PromptID: "prompt_lq_default", ProductID: product.ID, SKUCode: product.SKUCode, TemplateID: "tpl_lq_default", SceneType: "product_composite", Status: "validated"}})
+	resp, err := service.CreatePromptPlannerJob("org_low_quality_placeholder", session.ID, CreatePromptPlannerJobRequest{Marketplace: "amazon", Locale: "zh-CN", IdempotencyKey: "prompt-placeholder"})
+	if err != nil {
+		t.Fatalf("prompt planner with fallback image intent should not error: %v", err)
+	}
+	if resp.Status != "completed" {
+		t.Fatalf("expected fallback prompt composition to complete, got %+v", resp)
+	}
+	model, err := service.repo.GetSession("org_low_quality_placeholder", session.ID)
+	if err != nil {
+		t.Fatalf("reload session: %v", err)
+	}
+	plan := decodePromptPlan(model.PromptPlanJSON, model)
+	finalPrompt, _ := plan.Variables["composed_prompt_text"].(string)
+	for _, want := range []string{"按当前 SKU 图片直接生成", "按当前参考素材直接生成"} {
+		if !strings.Contains(finalPrompt, want) {
+			t.Fatalf("fallback prompt missing %q: %s", want, finalPrompt)
+		}
+	}
+}
+
 func TestCreateGenerationFanoutUsesPromptComposerFinalPrompt(t *testing.T) {
 	service, _, db := setupVisualWorkflowTest(t)
 	product := seedProduct(t, db, "prod_fanout_composer", "org_fanout_composer", "SKU-FC")
@@ -2662,6 +3024,67 @@ func TestCreateGenerationFanoutUsesPromptComposerFinalPrompt(t *testing.T) {
 	stylePrompt := fmt.Sprint(promptSnapshot["style_prompt"])
 	if !strings.Contains(stylePrompt, "不要文字水印") || !strings.Contains(stylePrompt, "不要畸形手指") {
 		t.Fatalf("runtime negative prompt missing slot/manual negatives: %s", stylePrompt)
+	}
+}
+
+func TestCreateGenerationFanoutIncludesReferenceAssetsAndTemplateSpecificRuntimeParams(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_fanout_diversity", "org_fanout_diversity", "SKU-FD")
+	for _, asset := range []models.EcommerceAsset{
+		{ID: "asset_diversity_sku", OrganizationID: "org_fanout_diversity", UserID: "user_fanout_diversity", AssetType: "image", SourceType: "upload", StorageKey: "store/sku.png", MimeType: "image/png", FileName: "sku.png", Width: 1200, Height: 1200, Metadata: toJSONForTest(map[string]any{"source_role": "sku"})},
+		{ID: "asset_diversity_ref", OrganizationID: "org_fanout_diversity", UserID: "user_fanout_diversity", AssetType: "image", SourceType: "upload", StorageKey: "store/ref.png", MimeType: "image/png", FileName: "ref.png", Width: 1200, Height: 1200, Metadata: toJSONForTest(map[string]any{"source_role": "reference"})},
+	} {
+		if err := db.Create(&asset).Error; err != nil {
+			t.Fatalf("seed asset: %v", err)
+		}
+	}
+	session, err := service.CreateSession("user_fanout_diversity", "org_fanout_diversity", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	model, err := service.repo.GetSession("org_fanout_diversity", session.ID)
+	if err != nil {
+		t.Fatalf("get session: %v", err)
+	}
+	model.PromptPlanJSON = encodePromptPlan(&PromptPlanDTO{SchemaVersion: promptPlanSchemaVersion, Status: "ready", PromptID: "prompt_diversity", TemplateID: "tpl_base", Variables: map[string]any{"composed_prompt_text": "基础要求：白色头戴式耳机，参考深色桌面氛围与侧逆光。"}, SourceAssets: []PromptPlanSourceAssetDTO{{AssetID: "asset_diversity_sku", Role: "sku"}, {AssetID: "asset_diversity_ref", Role: "reference"}}})
+	if err := service.repo.SaveSession(model); err != nil {
+		t.Fatalf("save prompt plan: %v", err)
+	}
+	fake := &fakeRuntimeCapabilityReader{matrix: readyVisualGenerationMatrix()}
+	service.WithRuntimeOrchestrator(fake)
+	_, err = service.CreateGenerationFanout("org_fanout_diversity", session.ID, CreateGenerationFanoutRequest{
+		IdempotencyKey: "fanout-diversity",
+		TemplateSlots: []GenerationFanoutTemplateSlotRequest{
+			{SourceAssetID: "asset_diversity_sku", TemplateID: "amazon-hero", SceneTag: "主图"},
+			{SourceAssetID: "asset_diversity_sku", TemplateID: "industrial-poster", SceneTag: "海报"},
+			{SourceAssetID: "asset_diversity_sku", TemplateID: "lifestyle-scene", SceneTag: "使用图"},
+		},
+		RequestedVariants: 1,
+		ProviderConfig:    map[string]any{"resolution_id": "1024-square"},
+	})
+	if err != nil {
+		t.Fatalf("create fanout diversity: %v", err)
+	}
+	wantDims := map[string]string{"amazon-hero": "1024x1024", "industrial-poster": "768x1024", "lifestyle-scene": "1365x768"}
+	for _, input := range fake.createInputs {
+		manifest := decodeObject(input.InputManifest)
+		params, _ := manifest["params_snapshot"].(map[string]any)
+		templateID := fmt.Sprint(params["template_id"])
+		gotDims := fmt.Sprintf("%vx%v", params["width"], params["height"])
+		if gotDims != wantDims[templateID] {
+			t.Fatalf("template %s should use distinct runtime dimensions %s, got %s params=%#v", templateID, wantDims[templateID], gotDims, params)
+		}
+		sourceIDs, _ := manifest["source_asset_ids"].([]any)
+		if len(sourceIDs) != 2 || fmt.Sprint(sourceIDs[0]) != "asset_diversity_sku" || fmt.Sprint(sourceIDs[1]) != "asset_diversity_ref" {
+			t.Fatalf("fanout runtime should include selected SKU plus reference asset, got %#v", sourceIDs)
+		}
+		promptSnapshot, _ := manifest["prompt_snapshot"].(map[string]any)
+		userPrompt := fmt.Sprint(promptSnapshot["user_prompt"])
+		for _, want := range []string{"强制差异化", "不得与其他槽位构图相同", templateID} {
+			if !strings.Contains(userPrompt, want) {
+				t.Fatalf("fanout prompt missing diversity marker %q for template %s: %s", want, templateID, userPrompt)
+			}
+		}
 	}
 }
 
@@ -2869,6 +3292,22 @@ func TestGenerationProviderCodeAllowsFrontendSelectableProviders(t *testing.T) {
 	}
 	if got := generationProviderCode(metadata); got != "gemini_image_generation" {
 		t.Fatalf("expected gemini provider code, got %q", got)
+	}
+	metadata = map[string]any{
+		"ui_execution_config": map[string]any{
+			"provider_config": map[string]any{"generation_provider_code": "minimax_image_generation"},
+		},
+	}
+	if got := generationProviderCode(metadata); got != "minimax_image_generation" {
+		t.Fatalf("expected minimax provider code, got %q", got)
+	}
+	metadata = map[string]any{
+		"execution_config": map[string]any{
+			"provider_config": map[string]any{"generation_provider_code": "minimax_image_generation"},
+		},
+	}
+	if got := generationProviderCode(metadata); got != "minimax_image_generation" {
+		t.Fatalf("expected minimax provider code from execution_config, got %q", got)
 	}
 	metadata["provider_code"] = "comfyui_bridge"
 	if got := generationProviderCode(metadata); got != "comfyui_bridge" {

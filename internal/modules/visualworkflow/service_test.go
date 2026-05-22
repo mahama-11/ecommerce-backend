@@ -2802,14 +2802,17 @@ func TestPromptComposerFromFixedQuestionsPersistsSections(t *testing.T) {
 	}
 	plan := decodePromptPlan(model.PromptPlanJSON, model)
 	finalPrompt, _ := plan.Variables["composed_prompt_text"].(string)
-	for _, want := range []string{"SKU 解析结果", "参考素材解析结果", "四问选择", "侧重配置", "SKU 梳子主体", "参考木质浴室", "不要使用 SKU 原图背景", "侧重参考素材 70%"} {
+	for _, want := range []string{"出图目标", "保留 SKU 商品主体完整清晰", "只更换或重建背景", "SKU 解析结果", "参考素材解析结果", "四问选择", "侧重配置", "必须避免", "SKU 梳子主体", "参考木质浴室", "不要使用 SKU 原图背景", "不要把参考素材中的产品", "侧重参考素材 70%"} {
 		if !strings.Contains(finalPrompt, want) {
 			t.Fatalf("composed prompt missing %q: %s", want, finalPrompt)
 		}
 	}
 	sections, _ := plan.Variables["prompt_sections"].([]any)
-	if len(sections) < 4 {
-		t.Fatalf("expected prompt_sections to persist composer parts, got %#v", plan.Variables["prompt_sections"])
+	if len(sections) < 6 {
+		t.Fatalf("expected prompt_sections to persist objective/facts/choices/negative parts, got %#v", plan.Variables["prompt_sections"])
+	}
+	if negative, _ := plan.Variables["negative_prompt_text"].(string); !strings.Contains(negative, "不要保留 SKU 原图背景") || !strings.Contains(negative, "不要把参考素材中的产品") {
+		t.Fatalf("expected purpose-specific negative prompt text, got %q", negative)
 	}
 }
 
@@ -3116,13 +3119,17 @@ func TestCreateGenerationFanoutHonorsExplicitTemplateSlots(t *testing.T) {
 	resp, err := service.CreateGenerationFanout("org_fanout_slots", session.ID, CreateGenerationFanoutRequest{
 		IdempotencyKey: "fanout-slots",
 		SourceAssetIDs: []string{"asset_slot_1", "asset_slot_2"},
-		TemplateIDs:    []string{"tpl_a", "tpl_b", "tpl_c"},
+		TemplateIDs:    []string{"amazon-hero", "industrial-poster", "lifestyle-scene"},
 		TemplateSlots: []GenerationFanoutTemplateSlotRequest{
-			{SourceAssetID: "asset_slot_1", TemplateID: "tpl_a", SceneTag: "主图", DetailRequirement: "主体完整且白底", NegativeRequirement: "不要文字水印"},
-			{SourceAssetID: "asset_slot_2", TemplateID: "tpl_b", SceneTag: "细节图", DetailRequirement: "突出金属纹理"},
-			{SourceAssetID: "asset_slot_1", TemplateID: "tpl_c", SceneTag: "使用图", DetailRequirement: "展示真实使用场景"},
+			{SourceAssetID: "asset_slot_1", TemplateID: "amazon-hero", SceneTag: "主图", DetailRequirement: "主体完整且白底", NegativeRequirement: "不要文字水印"},
+			{SourceAssetID: "asset_slot_2", TemplateID: "industrial-poster", SceneTag: "细节图", DetailRequirement: "突出金属纹理"},
+			{SourceAssetID: "asset_slot_1", TemplateID: "lifestyle-scene", SceneTag: "使用图", DetailRequirement: "展示真实使用场景"},
 		},
 		RequestedVariants: 1,
+		ProviderConfig: map[string]any{
+			"dimensions":      "1280×720",
+			"negative_prompt": "避免杂乱背景和主体丢失",
+		},
 	})
 	if err != nil {
 		t.Fatalf("create explicit fanout: %v", err)
@@ -3138,6 +3145,12 @@ func TestCreateGenerationFanoutHonorsExplicitTemplateSlots(t *testing.T) {
 		}
 		if fmt.Sprint(params["scene_tag"]) == "" || fmt.Sprint(params["detail_requirement"]) == "" {
 			t.Fatalf("explicit fanout slot requirements missing from runtime params: %#v", params)
+		}
+		if fmt.Sprint(params["width"]) != "1280" || fmt.Sprint(params["height"]) != "720" || fmt.Sprint(params["aspect_ratio"]) != "16:9" || fmt.Sprint(params["resolution_id"]) != "1280x720" {
+			t.Fatalf("frontend dimensions should reach runtime params without stale template resolution_id, got %#v", params)
+		}
+		if fmt.Sprint(params["negative_prompt"]) != "避免杂乱背景和主体丢失" {
+			t.Fatalf("frontend negative prompt should reach runtime params, got %#v", params)
 		}
 		promptSnapshot, _ := manifest["prompt_snapshot"].(map[string]any)
 		if !strings.Contains(fmt.Sprint(promptSnapshot["user_prompt"]), fmt.Sprint(params["detail_requirement"])) {

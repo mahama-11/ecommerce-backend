@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -1051,6 +1052,9 @@ func mergeAllowedGenerationRuntimeParams(params map[string]any, metadata map[str
 			params["minimax_subject_type"] = "character"
 		}
 	}
+	if negative := strings.TrimSpace(generationFirstNonEmpty(metadataString(providerConfig, "negative_prompt"), metadataString(providerConfig, "negative_requirement"), metadataString(providerConfig, "negative_prompt_text"), metadataString(providerConfig, "avoid"))); negative != "" {
+		params["negative_prompt"] = negative
+	}
 	resolutionID, _ := providerConfig["resolution_id"].(string)
 	switch strings.TrimSpace(resolutionID) {
 	case "1024-square":
@@ -1074,11 +1078,103 @@ func mergeAllowedGenerationRuntimeParams(params map[string]any, metadata map[str
 		params["resolution_id"] = "1365x768-wide"
 		params["aspect_ratio"] = "16:9"
 	}
+	if width, height, ok := generationDimensionsFromProviderConfig(providerConfig); ok {
+		params["width"] = width
+		params["height"] = height
+		params["aspect_ratio"] = generationAspectRatio(width, height)
+		// Explicit provider dimensions are the user's/template-slot contract. Keep
+		// resolution_id consistent so downstream runtimes that prioritize
+		// resolution_id do not silently ignore width/height.
+		params["resolution_id"] = fmt.Sprintf("%dx%d", width, height)
+	}
+	if aspect := strings.TrimSpace(generationFirstNonEmpty(metadataString(providerConfig, "aspect_ratio"), metadataString(providerConfig, "aspectRatio"), metadataString(providerConfig, "ratio"))); aspect != "" {
+		params["aspect_ratio"] = aspect
+	}
 	for _, key := range []string{"scene_tag", "detail_requirement", "negative_requirement"} {
 		if text := metadataString(metadata, key); text != "" {
 			params[key] = text
 		}
 	}
+}
+
+func generationDimensionsFromProviderConfig(providerConfig map[string]any) (int, int, bool) {
+	if providerConfig == nil {
+		return 0, 0, false
+	}
+	width := generationIntFromAny(providerConfig["width"])
+	height := generationIntFromAny(providerConfig["height"])
+	if width <= 0 || height <= 0 {
+		if dims, ok := providerConfig["dimensions"].(string); ok {
+			width, height = parseDimensionString(dims)
+		}
+	}
+	if width <= 0 || height <= 0 {
+		return 0, 0, false
+	}
+	return width, height, true
+}
+
+func generationFirstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
+}
+
+func parseDimensionString(value string) (int, int) {
+	trimmed := strings.TrimSpace(strings.ReplaceAll(value, "×", "x"))
+	parts := strings.Split(trimmed, "x")
+	if len(parts) != 2 {
+		return 0, 0
+	}
+	width, _ := strconv.Atoi(strings.TrimSpace(parts[0]))
+	height, _ := strconv.Atoi(strings.TrimSpace(parts[1]))
+	return width, height
+}
+
+func generationIntFromAny(value any) int {
+	switch typed := value.(type) {
+	case int:
+		return typed
+	case int64:
+		return int(typed)
+	case float64:
+		return int(typed)
+	case json.Number:
+		parsed, _ := typed.Int64()
+		return int(parsed)
+	case string:
+		parsed, _ := strconv.Atoi(strings.TrimSpace(typed))
+		return parsed
+	default:
+		return 0
+	}
+}
+
+func generationAspectRatio(width, height int) string {
+	if width <= 0 || height <= 0 {
+		return "1:1"
+	}
+	gcd := intGCD(width, height)
+	return fmt.Sprintf("%d:%d", width/gcd, height/gcd)
+}
+
+func intGCD(a, b int) int {
+	if a < 0 {
+		a = -a
+	}
+	if b < 0 {
+		b = -b
+	}
+	for b != 0 {
+		a, b = b, a%b
+	}
+	if a == 0 {
+		return 1
+	}
+	return a
 }
 
 func promptPlanRuntimeText(session *models.EcommerceVisualWorkflowSession, version *GenerationVersionDTO, promptPlan *PromptPlanDTO) string {
@@ -3775,16 +3871,22 @@ func promptCompositionFromIntentFusion(intent *IntentSpecDTO, manifest map[strin
 		return map[string]any{}
 	}
 	slotDecisions := promptComposerSlotDecisions(intent.Selections)
-	skuText := promptComposerAnalysisText("SKU 解析结果", filterPromptComposerAnalysisEntries(manifestEntries(manifest["sku_facts"]), "sku", slotDecisions))
-	referenceText := promptComposerAnalysisText("参考素材解析结果", filterPromptComposerAnalysisEntries(manifestEntries(manifest["reference_strategies"]), "reference", slotDecisions))
+	skuEntries := filterPromptComposerAnalysisEntries(manifestEntries(manifest["sku_facts"]), "sku", slotDecisions)
+	referenceEntries := filterPromptComposerAnalysisEntries(manifestEntries(manifest["reference_strategies"]), "reference", slotDecisions)
+	skuText := promptComposerAnalysisText("SKU 解析结果", skuEntries)
+	referenceText := promptComposerAnalysisText("参考素材解析结果", referenceEntries)
 	selectionText := promptComposerSelectionText(intent.Selections)
 	biasText := promptComposerBiasText(intent.Requirements["attribute_drift"])
+	objectiveText := promptComposerObjectiveText(slotDecisions, skuText, referenceText)
+	negativeText := promptComposerNegativeText(slotDecisions)
 	sections := []map[string]any{}
 	for _, section := range []struct{ title, text string }{
+		{"出图目标", objectiveText},
 		{"SKU 解析结果", skuText},
 		{"参考素材解析结果", referenceText},
 		{"四问选择", selectionText},
 		{"侧重配置", biasText},
+		{"必须避免", negativeText},
 	} {
 		if strings.TrimSpace(section.text) != "" {
 			sections = append(sections, map[string]any{"title": section.title, "text": section.text})
@@ -3795,13 +3897,53 @@ func promptCompositionFromIntentFusion(intent *IntentSpecDTO, manifest map[strin
 		parts = append(parts, fmt.Sprintf("%s：%s", section["title"], section["text"]))
 	}
 	return map[string]any{
+		"objective_text":          objectiveText,
 		"sku_analysis_text":       skuText,
 		"reference_analysis_text": referenceText,
 		"selection_intent_text":   selectionText,
 		"bias_intent_text":        biasText,
+		"negative_prompt_text":    negativeText,
 		"prompt_sections":         sections,
 		"composed_prompt_text":    strings.TrimSpace(strings.Join(compactUniqueStrings(parts), "\n")),
 	}
+}
+
+func promptComposerObjectiveText(slotDecisions map[string]string, skuText, referenceText string) string {
+	parts := []string{"保留 SKU 商品主体完整清晰；只更换或重建背景，不改变商品品类、轮廓、颜色、材质、Logo/文字和关键结构。"}
+	if slotDecisions["sku_product"] == "keep" || slotDecisions["sku_product"] == "replace" || slotDecisions["sku_product"] == "" {
+		if strings.TrimSpace(skuText) != "" {
+			parts = append(parts, "主体依据仅来自 SKU 商品图："+strings.TrimSpace(skuText))
+		} else {
+			parts = append(parts, "主体依据仅来自 SKU 商品图；以输入图中的可见商品轮廓和细节为准。")
+		}
+	}
+	if slotDecisions["reference_background"] == "keep" || slotDecisions["reference_background"] == "replace" {
+		if strings.TrimSpace(referenceText) != "" {
+			parts = append(parts, "背景/光线/构图依据来自参考素材："+strings.TrimSpace(referenceText))
+		} else {
+			parts = append(parts, "背景/光线/构图参考上传素材的整体氛围，不复刻参考图中的商品主体。")
+		}
+	} else if slotDecisions["sku_background"] == "keep" || slotDecisions["sku_background"] == "replace" {
+		parts = append(parts, "沿用 SKU 原图背景关系，保持电商商品图干净可售卖。")
+	} else {
+		parts = append(parts, "背景使用干净、有层次、无杂物的电商场景；突出商品，不抢主体。")
+	}
+	parts = append(parts, "画面必须是单一主商品，主体居中或稳定占据视觉中心，边缘完整，不裁切、不融化、不变形。")
+	return strings.Join(compactUniqueStrings(parts), " ")
+}
+
+func promptComposerNegativeText(slotDecisions map[string]string) string {
+	parts := []string{"不要丢失 SKU 主体；不要改变商品类型；不要生成杂乱背景；不要多出额外同类商品；不要文字水印、畸变、模糊、裁切、遮挡。"}
+	if slotDecisions["sku_background"] == "drop" {
+		parts = append(parts, "不要保留 SKU 原图背景。")
+	}
+	if slotDecisions["reference_product"] == "drop" {
+		parts = append(parts, "不要把参考素材中的产品、人物或无关物体带入画面。")
+	}
+	if slotDecisions["reference_background"] == "drop" {
+		parts = append(parts, "不要采用参考素材背景风格。")
+	}
+	return strings.Join(compactUniqueStrings(parts), " ")
 }
 
 func manifestEntries(raw any) []map[string]any {

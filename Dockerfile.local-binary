@@ -1,18 +1,9 @@
-FROM golang:1.25-alpine AS builder
-WORKDIR /src
-ARG GOPROXY=https://proxy.golang.org,direct
-ENV GOPROXY=${GOPROXY}
-COPY go.mod go.sum ./
-RUN go mod download
-COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o /out/ecommerce-service ./cmd/server
-
 FROM alpine:3.19
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 RUN apk add --no-cache ca-certificates tzdata wget
 RUN addgroup -g 1000 -S appuser && adduser -u 1000 -S appuser -G appuser
 WORKDIR /app
-COPY --from=builder /out/ecommerce-service ./ecommerce-service
+COPY ecommerce-service-linux ./ecommerce-service
 RUN chown -R appuser:appuser /app
 USER appuser
 ENV ECOMMERCE_PORT=8296

@@ -63,6 +63,30 @@ git pull --ff-only origin main
 
 `upload` copies the image artifact and `docker-compose.yml`. It does **not** upload prod config unless `--upload-prod-config` is explicitly provided.
 
+## Build behavior
+
+`ecommerce-deploy.sh build` uses a deterministic default module proxy for Docker and fallback builds:
+
+```bash
+DEPLOY_GOPROXY=https://goproxy.cn,direct
+```
+
+Override it only when needed:
+
+```bash
+DEPLOY_GOPROXY=https://proxy.golang.org,direct ./tools/prod/ecommerce-deploy.sh build --env prod
+```
+
+The build phase first attempts the normal multi-stage Docker build. If Docker build fails because of transient Go module or builder network fetch issues, it automatically falls back to:
+
+1. local `GOOS=linux GOARCH=amd64` Go binary build with the same `GOPROXY`;
+2. `Dockerfile.local-binary` runtime image;
+3. `docker save | gzip` artifact.
+
+Dry-run for `all` now previews the artifact that the build phase would create, not a stale `.deploy-state/image_tar` from a previous deploy.
+
+Production images do not embed `config.*.yaml`; `docker-compose.yml` bind-mounts the remote preserved `config.prod.yaml` at runtime.
+
 ## Drift layers
 
 `ecommerce-drift-check.sh` checks:

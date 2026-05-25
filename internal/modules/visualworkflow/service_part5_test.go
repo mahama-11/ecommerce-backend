@@ -96,6 +96,9 @@ func TestCreateGenerationFanoutCreatesMatrixRuntimeJobs(t *testing.T) {
 	seen := map[string]bool{}
 	for _, input := range fake.createInputs {
 		manifest := decodeObject(input.InputManifest)
+		if fmt.Sprint(manifest["input_mode"]) == "multi_image" {
+			t.Fatalf("default fanout runtime should not use multi_image input mode: %#v", manifest)
+		}
 		params, _ := manifest["params_snapshot"].(map[string]any)
 		if params["fanout_id"] != "fanout-1" || params["template_id"] == "" || params["source_asset_id"] == "" {
 			t.Fatalf("fanout params missing from manifest: %#v", params)
@@ -111,6 +114,71 @@ func TestCreateGenerationFanoutCreatesMatrixRuntimeJobs(t *testing.T) {
 	}
 	if len(seen) != 4 {
 		t.Fatalf("fanout matrix did not cover all source/template pairs: %#v", seen)
+	}
+}
+
+func TestCreateGenerationFanoutComfyUIMultiImageManifestUsesSelectedThenReferences(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_fanout_multi_image", "org_fanout_multi_image", "SKU-FMI")
+	for _, asset := range []models.EcommerceAsset{
+		{ID: "asset_multi_sku", OrganizationID: "org_fanout_multi_image", UserID: "user_fanout_multi_image", AssetType: "image", SourceType: "upload", StorageKey: "store/sku.png", MimeType: "image/png", FileName: "sku.png", Width: 1024, Height: 1024, Metadata: "{}"},
+		{ID: "asset_multi_reference", OrganizationID: "org_fanout_multi_image", UserID: "user_fanout_multi_image", AssetType: "image", SourceType: "upload", StorageKey: "store/reference.png", MimeType: "image/png", FileName: "reference.png", Width: 1024, Height: 1024, Metadata: "{}"},
+	} {
+		if err := db.Create(&asset).Error; err != nil {
+			t.Fatalf("seed asset: %v", err)
+		}
+	}
+	session, err := service.CreateSession("user_fanout_multi_image", "org_fanout_multi_image", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	model, err := service.repo.GetSession("org_fanout_multi_image", session.ID)
+	if err != nil {
+		t.Fatalf("get session: %v", err)
+	}
+	model.PromptPlanJSON = encodePromptPlan(&PromptPlanDTO{SchemaVersion: promptPlanSchemaVersion, Status: "ready", PromptID: "prompt_multi_image", TemplateID: "tpl_base", Variables: map[string]any{"prompt": "Generate ecommerce hero"}, SourceAssets: []PromptPlanSourceAssetDTO{{AssetID: "asset_multi_sku", Role: "sku"}, {AssetID: "asset_multi_reference", Role: "reference"}}})
+	if err := service.repo.SaveSession(model); err != nil {
+		t.Fatalf("save prompt plan: %v", err)
+	}
+	fake := &fakeRuntimeCapabilityReader{matrix: readyVisualGenerationMatrix()}
+	service.WithRuntimeOrchestrator(fake)
+	resp, err := service.CreateGenerationFanout("org_fanout_multi_image", session.ID, CreateGenerationFanoutRequest{
+		IdempotencyKey: "fanout-multi-image",
+		TemplateSlots:  []GenerationFanoutTemplateSlotRequest{{SourceAssetID: "asset_multi_sku", TemplateID: "tpl_multi", SceneTag: "主图"}},
+		ProviderConfig: map[string]any{
+			"generation_provider_code": "comfyui_bridge",
+			"comfyui_generation_mode":  "multi_image",
+			"resolution_id":            "1024-square",
+			"dimensions":               "1024×1024",
+			"width":                    1024,
+			"height":                   1024,
+		},
+	})
+	if err != nil {
+		t.Fatalf("create multi-image fanout: %v", err)
+	}
+	if len(resp.Items) != 1 || len(fake.createInputs) != 1 {
+		t.Fatalf("expected one multi-image runtime job, resp=%+v inputs=%d", resp, len(fake.createInputs))
+	}
+	manifest := decodeObject(fake.createInputs[0].InputManifest)
+	if fmt.Sprint(manifest["input_mode"]) != "multi_image" {
+		t.Fatalf("expected multi_image input_mode, got %#v", manifest["input_mode"])
+	}
+	sourceIDs, _ := manifest["source_asset_ids"].([]any)
+	if fmt.Sprint(sourceIDs) != "[asset_multi_sku asset_multi_reference]" {
+		t.Fatalf("source assets should preserve selected sku first then reference assets without padding, got %#v", manifest["source_asset_ids"])
+	}
+	for _, id := range sourceIDs {
+		if strings.Contains(strings.ToLower(fmt.Sprint(id)), "fake") || strings.Contains(strings.ToLower(fmt.Sprint(id)), "pad") {
+			t.Fatalf("runtime manifest should not include fake/padded source asset IDs: %#v", sourceIDs)
+		}
+	}
+	params, _ := manifest["params_snapshot"].(map[string]any)
+	want := map[string]string{"steps": "6", "cfg": "1", "denoise": "1", "width": "1280", "height": "720"}
+	for key, expected := range want {
+		if fmt.Sprint(params[key]) != expected {
+			t.Fatalf("expected default multi-image param %s=%s, got params=%#v", key, expected, params)
+		}
 	}
 }
 

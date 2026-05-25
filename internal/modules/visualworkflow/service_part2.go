@@ -155,6 +155,7 @@ func (s *Service) platformRuntimeInputManifest(session *models.EcommerceVisualWo
 	}
 	mergeAllowedGenerationRuntimeParams(paramsSnapshot, version.Metadata)
 	mergeFanoutGenerationRuntimeParams(paramsSnapshot, version.Metadata)
+	applyComfyUIMultiImageRuntimeManifestDefaults(manifest, paramsSnapshot, version.Metadata)
 	manifest["params_snapshot"] = paramsSnapshot
 	manifest["source_asset_ids"] = sourceAssetIDs
 	manifest["source_assets"] = sourceAssets
@@ -220,6 +221,7 @@ func (s *Service) platformRuntimeInputManifestFromPromptPlan(manifest map[string
 	}
 	mergeAllowedGenerationRuntimeParams(paramsSnapshot, version.Metadata)
 	mergeFanoutGenerationRuntimeParams(paramsSnapshot, version.Metadata)
+	applyComfyUIMultiImageRuntimeManifestDefaults(manifest, paramsSnapshot, version.Metadata)
 	manifest["params_snapshot"] = paramsSnapshot
 	manifest["source_asset_ids"] = sourceAssetIDs
 	manifest["source_assets"] = sourceAssets
@@ -253,6 +255,48 @@ func fanoutFirstSourceAssetIDs(primary string, existing []string) []string {
 	ids := []string{strings.TrimSpace(primary)}
 	ids = append(ids, existing...)
 	return compactUniqueStrings(ids)
+}
+
+func applyComfyUIMultiImageRuntimeManifestDefaults(manifest map[string]any, params map[string]any, metadata map[string]any) {
+	if manifest == nil || params == nil || !isComfyUIMultiImageRuntime(metadata) {
+		return
+	}
+	manifest["input_mode"] = "multi_image"
+	forceRuntimeParam(params, "steps", 6)
+	forceRuntimeParam(params, "cfg", 1.0)
+	forceRuntimeParam(params, "denoise", 1.0)
+	forceRuntimeParam(params, "width", 1280)
+	forceRuntimeParam(params, "height", 720)
+}
+
+func isComfyUIMultiImageRuntime(metadata map[string]any) bool {
+	if generationProviderCode(metadata) != "comfyui_bridge" {
+		return false
+	}
+	providerConfig := generationProviderConfigFromMetadata(metadata)
+	mode := strings.TrimSpace(generationFirstNonEmpty(metadataString(providerConfig, "comfyui_generation_mode"), metadataString(providerConfig, "input_mode")))
+	return mode == "multi_image"
+}
+
+func generationProviderConfigFromMetadata(metadata map[string]any) map[string]any {
+	if metadata == nil {
+		return nil
+	}
+	if providerConfig, ok := metadata["provider_config"].(map[string]any); ok {
+		return providerConfig
+	}
+	for _, key := range []string{"execution_config", "ui_execution_config"} {
+		if execConfig, ok := metadata[key].(map[string]any); ok {
+			if providerConfig, ok := execConfig["provider_config"].(map[string]any); ok {
+				return providerConfig
+			}
+		}
+	}
+	return nil
+}
+
+func forceRuntimeParam(params map[string]any, key string, value any) {
+	params[key] = value
 }
 
 func assetUsableForGeneration(width, height int) bool {

@@ -58,6 +58,30 @@ if [ "$DRY_RUN" != "1" ]; then
   printf '%s\n' "$PROD_TAG_IN" > "$TAG_STATE"
 fi
 
+require_clean_commit() {
+  (cd "$REPO_ROOT" && git rev-parse --verify HEAD >/dev/null) || fail "build_preflight_missing_git_commit"
+  local dirty
+  dirty="$(cd "$REPO_ROOT" && git status --porcelain=v1)"
+  if [ -n "$dirty" ]; then
+    echo "$dirty" >&2
+    fail "build_preflight_dirty_worktree commit_or_stash_before_build"
+  fi
+  GIT_SHA="$(cd "$REPO_ROOT" && git rev-parse HEAD)"
+  GIT_SHORT_SHA="$(cd "$REPO_ROOT" && git rev-parse --short=12 HEAD)"
+  GIT_BRANCH="$(cd "$REPO_ROOT" && git rev-parse --abbrev-ref HEAD)"
+  BUILD_CREATED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  log "BUILD_PREFLIGHT_PASS branch=$GIT_BRANCH sha=$GIT_SHA clean=true"
+}
+image_label_args() {
+  printf '%s
+' \
+    --label "org.opencontainers.image.revision=$GIT_SHA" \
+    --label "org.opencontainers.image.source=ecommerce-backend" \
+    --label "org.opencontainers.image.created=$BUILD_CREATED" \
+    --label "org.opencontainers.image.version=$GIT_SHORT_SHA" \
+    --label "com.agent.git.branch=$GIT_BRANCH"
+}
+
 placeholder_scan() {
   local file="$1"
   if grep -Eiq '(change-me|changeme|placeholder|example-secret|your-secret)' "$file"; then
@@ -70,6 +94,7 @@ build_phase() {
     log "DRY_RUN deploy.build image=$IMG out=$OUT_DEFAULT goproxy=${GOPROXY:-$DEFAULT_GOPROXY} fallback=local-binary"
     return 0
   fi
+  require_clean_commit
   require_cmd docker
   require_cmd go
   local out="$OUT_DEFAULT"
@@ -81,13 +106,13 @@ build_phase() {
     # shellcheck disable=SC2206
     build_args+=($DOCKER_BUILD_ARGS)
   fi
-  if docker buildx build --platform linux/amd64 "${build_args[@]}" -t "$IMG" "$REPO_ROOT"; then
+  if docker buildx build --platform linux/amd64 "${build_args[@]}" $(image_label_args) -t "$IMG" "$REPO_ROOT"; then
     method="docker"
   else
     warn "docker_build_failed fallback=local-binary"
     method="local-binary"
     (cd "$REPO_ROOT" && GOPROXY="${GOPROXY:-$DEFAULT_GOPROXY}" CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags='-s -w' -o ecommerce-service-linux ./cmd/server)
-    docker build -f "$REPO_ROOT/Dockerfile.local-binary" -t "$IMG" "$REPO_ROOT"
+    docker build $(image_label_args) -f "$REPO_ROOT/Dockerfile.local-binary" -t "$IMG" "$REPO_ROOT"
     rm -f "$REPO_ROOT/ecommerce-service-linux"
   fi
   docker save "$IMG" | gzip > "$out"

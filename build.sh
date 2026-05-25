@@ -15,10 +15,13 @@ LOCAL_PROD_DIR="artifacts/prod"
 
 send_files() {
   OUT_FILE="$1"
+  LANE="${2:-prod}"
   ssh -i "$SSH_KEY" "$REMOTE" "mkdir -p '$REMOTE_DIR' '$REMOTE_BASE'"
   scp -i "$SSH_KEY" "$OUT_FILE" "$REMOTE:$REMOTE_BASE/"
   scp -i "$SSH_KEY" docker-compose.yml "$REMOTE:$REMOTE_DIR/"
-  [ -f config.prod.yaml ] && scp -i "$SSH_KEY" config.prod.yaml "$REMOTE:$REMOTE_DIR/config.prod.yaml"
+  if [ "$LANE" = "prod" ] && [ -f config.prod.yaml ]; then
+    scp -i "$SSH_KEY" config.prod.yaml "$REMOTE:$REMOTE_DIR/config.prod.yaml"
+  fi
   [ -f config.dev.yaml ] && scp -i "$SSH_KEY" config.dev.yaml "$REMOTE:$REMOTE_DIR/config.dev.yaml"
 }
 
@@ -63,7 +66,7 @@ case "$CMD" in
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ecommerce-service-linux ./cmd/server
     docker buildx build --platform linux/amd64 $(image_labels) -f Dockerfile.dev -t "$IMG" .
     docker save "$IMG" | gzip > "$OUT"
-    send_files "$OUT"
+    send_files "$OUT" dev
     remote "docker load -i $REMOTE_OUT"
     remote "mkdir -p $REMOTE_BASE/backups/ecommerce-dev; mv -f $REMOTE_OUT $REMOTE_BASE/backups/ecommerce-dev/"
     remote "cd $REMOTE_DIR; DEV_TAG=$DEV_TAG docker compose up -d dev-backend"

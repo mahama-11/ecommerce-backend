@@ -63,7 +63,9 @@ func (h *Handler) GetSession(c *gin.Context) {
 		response.JSONError(c, response.CodeNotFound, err.Error())
 		return
 	}
-	response.JSONSuccess(c, sessionDTO(item))
+	dto := sessionDTO(item)
+	applySessionProjection(dto, c.Query("projection"))
+	response.JSONSuccess(c, dto)
 }
 
 func (h *Handler) UpdateSession(c *gin.Context) {
@@ -261,7 +263,125 @@ func (h *Handler) StageView(c *gin.Context) {
 		response.JSONError(c, response.CodeNotFound, err.Error())
 		return
 	}
+	applyStageViewProjection(view, c.Query("projection"))
 	response.JSONSuccess(c, view)
+}
+
+func applySessionProjection(session *SessionDTO, projection string) {
+	if session == nil || isFullProjection(projection) {
+		return
+	}
+	session.GenerationVersions = compactGenerationVersions(session.GenerationVersions)
+}
+
+func applyStageViewProjection(view *StageViewDTO, projection string) {
+	if view == nil {
+		return
+	}
+	switch strings.TrimSpace(projection) {
+	case "sandbox":
+		view.SourceReference = nil
+		view.SourceReferences = nil
+		view.DeconstructionJob = nil
+		view.DeconstructionElements = nil
+		view.GenerationVersions = nil
+		view.BusinessFlow = nil
+		view.IntegrationVerdict = nil
+		view.RollbackSnapshot = nil
+		view.ReleaseReadiness = nil
+	case "sources":
+		view.DeconstructionJob = nil
+		view.DeconstructionElements = nil
+		view.IntentSpec = IntentSpecDTO{}
+		view.PromptPlan = PromptPlanDTO{}
+		view.GenerationVersions = nil
+		view.BusinessFlow = nil
+		view.IntegrationVerdict = nil
+		view.RollbackSnapshot = nil
+		view.ReleaseReadiness = nil
+	case "workshop":
+		view.SourceReference = nil
+		view.SourceReferences = nil
+		view.DeconstructionJob = nil
+		view.DeconstructionElements = nil
+		view.IntentSpec = IntentSpecDTO{}
+		view.PromptPlan = PromptPlanDTO{}
+		view.GenerationVersions = compactGenerationVersions(view.GenerationVersions)
+		view.BusinessFlow = nil
+		view.IntegrationVerdict = nil
+		view.RollbackSnapshot = nil
+		view.ReleaseReadiness = nil
+	}
+}
+
+func isFullProjection(projection string) bool {
+	projection = strings.TrimSpace(projection)
+	return projection == "full" || projection == "debug"
+}
+
+func compactGenerationVersions(items []GenerationVersionDTO) []GenerationVersionDTO {
+	if items == nil {
+		return nil
+	}
+	out := make([]GenerationVersionDTO, 0, len(items))
+	for i := range items {
+		out = append(out, compactGenerationVersion(items[i]))
+	}
+	return out
+}
+
+func compactGenerationVersion(item GenerationVersionDTO) GenerationVersionDTO {
+	item.IntentSpecSnapshot = nil
+	item.Metadata = compactGenerationMetadata(item.Metadata)
+	item.ResultAssets = compactResultAssets(item.ResultAssets)
+	return item
+}
+
+func compactGenerationMetadata(metadata map[string]any) map[string]any {
+	if len(metadata) == 0 {
+		return nil
+	}
+	allowed := []string{"source", "fanout_batch_id", "fanout_run_id", "fanout_attempt", "fanout_wave", "template_id", "template_version_id", "slot_index", "scene_tag", "config", "ui_refinement_weights", "parent_version_id", "source_version_id", "prompt_id", "writeback", "idempotency_key"}
+	out := map[string]any{}
+	for _, key := range allowed {
+		if value, ok := metadata[key]; ok {
+			out[key] = value
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+func compactResultAssets(items []ResultAssetDTO) []ResultAssetDTO {
+	if items == nil {
+		return nil
+	}
+	out := make([]ResultAssetDTO, 0, len(items))
+	for i := range items {
+		asset := items[i]
+		asset.Metadata = compactResultAssetMetadata(asset.Metadata)
+		out = append(out, asset)
+	}
+	return out
+}
+
+func compactResultAssetMetadata(metadata map[string]any) map[string]any {
+	if len(metadata) == 0 {
+		return nil
+	}
+	allowed := []string{"width", "height", "mime_type", "file_name", "checksum", "duration_ms", "slot_index", "template_id", "template_version_id", "scene_tag"}
+	out := map[string]any{}
+	for _, key := range allowed {
+		if value, ok := metadata[key]; ok {
+			out[key] = value
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 func (h *Handler) CreateGenerationVersion(c *gin.Context) {
@@ -297,6 +417,9 @@ func (h *Handler) ListGenerationVersions(c *gin.Context) {
 	if err != nil {
 		response.JSONError(c, response.CodeNotFound, err.Error())
 		return
+	}
+	if !isFullProjection(c.Query("projection")) {
+		items = compactGenerationVersions(items)
 	}
 	response.JSONSuccess(c, gin.H{"items": items})
 }

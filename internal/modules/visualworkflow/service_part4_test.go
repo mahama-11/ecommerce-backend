@@ -121,6 +121,80 @@ func visualWorkflowTestRouter(service *Service) *gin.Engine {
 
 func ptrInt(v int) *int { return &v }
 
+func TestVisualWorkflowDefaultCompactReadProjectionsTrimHeavyGenerationPayloads(t *testing.T) {
+	service, _, db := setupVisualWorkflowTest(t)
+	product := seedProduct(t, db, "prod_compact", "org_1", "SKU-COMPACT")
+	session, err := service.CreateSession("user_1", "org_1", CreateSessionRequest{ProductID: product.ID, SKUCode: product.SKUCode})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	heavy := strings.Repeat("x", 80_000)
+	status := "completed"
+	stage := "result_available"
+	progress := 100
+	version, err := service.CreateGenerationVersion("org_1", session.ID, CreateGenerationVersionRequest{Status: "queued", Stage: "queued", Metadata: map[string]any{
+		"source": "sandbox_generation_fanout", "fanout_batch_id": "batch-1", "large_runtime_manifest": heavy,
+	}})
+	if err != nil {
+		t.Fatalf("create generation version: %v", err)
+	}
+	_, err = service.UpdateGenerationVersion("org_1", session.ID, version.VersionID, UpdateGenerationVersionRequest{
+		Status:   &status,
+		Stage:    &stage,
+		Progress: &progress,
+		ResultAssets: []ResultAssetDTO{{AssetID: "asset_compact", AssetContentURL: "/api/v1/ecommerce/assets/asset_compact/content", Selected: true, Metadata: map[string]any{
+			"width": 1024, "height": 768, "mime_type": "image/png", "description": heavy,
+		}}},
+		Metadata: map[string]any{"source": "sandbox_generation_fanout", "fanout_batch_id": "batch-1", "large_runtime_manifest": heavy},
+	})
+	if err != nil {
+		t.Fatalf("update generation version: %v", err)
+	}
+
+	router := visualWorkflowTestRouter(service)
+	full := performRawVisualWorkflowRequest(t, router, http.MethodGet, "/visual-sessions/"+session.ID+"/generation-versions?projection=full", "")
+	if full.Body.Len() < 120_000 {
+		t.Fatalf("expected full payload to include heavy fixture, got %d bytes", full.Body.Len())
+	}
+	compactVersions := performRawVisualWorkflowRequest(t, router, http.MethodGet, "/visual-sessions/"+session.ID+"/generation-versions", "")
+	if compactVersions.Body.Len() > 30_000 || strings.Contains(compactVersions.Body.String(), heavy[:128]) || strings.Contains(compactVersions.Body.String(), "large_runtime_manifest") || strings.Contains(compactVersions.Body.String(), "description") {
+		t.Fatalf("generation-versions default compact projection too large or leaked heavy fields: bytes=%d body=%s", compactVersions.Body.Len(), compactVersions.Body.String())
+	}
+	if !strings.Contains(compactVersions.Body.String(), "asset_compact") || !strings.Contains(compactVersions.Body.String(), "fanout_batch_id") || !strings.Contains(compactVersions.Body.String(), "width") {
+		t.Fatalf("compact generation versions dropped required workshop summary fields: %s", compactVersions.Body.String())
+	}
+
+	compactSession := performRawVisualWorkflowRequest(t, router, http.MethodGet, "/visual-sessions/"+session.ID, "")
+	if compactSession.Body.Len() > 35_000 || strings.Contains(compactSession.Body.String(), heavy[:128]) || strings.Contains(compactSession.Body.String(), "large_runtime_manifest") || strings.Contains(compactSession.Body.String(), "description") {
+		t.Fatalf("session detail default compact projection too large or leaked heavy fields: bytes=%d body=%s", compactSession.Body.Len(), compactSession.Body.String())
+	}
+
+	stageSandbox := performRawVisualWorkflowRequest(t, router, http.MethodGet, "/visual-sessions/"+session.ID+"/stage-view?projection=sandbox", "")
+	if strings.Contains(stageSandbox.Body.String(), "\"generation_versions\":[") || strings.Contains(stageSandbox.Body.String(), "\"deconstruction_elements\":[") || strings.Contains(stageSandbox.Body.String(), heavy[:128]) {
+		t.Fatalf("sandbox stage projection retained heavy collections: %s", stageSandbox.Body.String())
+	}
+}
+
+func performRawVisualWorkflowRequest(t *testing.T, router *gin.Engine, method, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	var requestBody *bytes.Reader
+	if body == "" {
+		requestBody = bytes.NewReader(nil)
+	} else {
+		requestBody = bytes.NewReader([]byte(body))
+	}
+	req := httptest.NewRequest(method, path, requestBody)
+	if body != "" {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code < http.StatusOK || w.Code >= http.StatusMultipleChoices {
+		t.Fatalf("%s %s returned %d: %s", method, path, w.Code, w.Body.String())
+	}
+	return w
+}
+
 func TestCreateGenerationVersionWithPromptIDBuildsPlatformRuntimeInputManifest(t *testing.T) {
 	service, _, db := setupVisualWorkflowTest(t)
 	if err := db.AutoMigrate(&models.EcommercePromptRun{}); err != nil {

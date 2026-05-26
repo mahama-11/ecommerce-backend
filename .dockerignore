@@ -1,0 +1,20 @@
+.git
+.gitignore
+Dockerfile*
+README.md
+artifacts/
+backups/
+dist/
+tmp/
+reports/
+coverage/
+node_modules/
+*.tar.gz
+*.log
+.DS_Store
+.vscode/
+.idea/
+
+# Local build outputs are copied explicitly by Dockerfile.dev when needed.
+# Keep these out of generic/prod build contexts unless the Dockerfile asks for them.
+# Dockerfile.dev still needs ecommerce-service-linux, so it is intentionally not ignored.

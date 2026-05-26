@@ -97,9 +97,13 @@ print('ECOM_CALLBACK_PLACEHOLDER=%s' % placeholder(ecom_sec))
 print('ECOM_CALLBACK_HASH=%s' % ph(ecom_sec))
 print('ECOM_PLATFORM_URL=%s' % shlex.quote(ecom_platform_url))
 ecom_platform_jwt=(ecfg.get('platform') or {}).get('jwt_secret') or ''
+platform_jwt=(pcfg.get('security') or {}).get('jwt_secret') or ''
 print('ECOM_PLATFORM_SECRET_HASH=%s' % ph(ecom_platform))
 print('PLATFORM_INTERNAL_HASH=%s' % ph(platform_sec))
+print('ECOM_PLATFORM_JWT_HASH=%s' % ph(ecom_platform_jwt))
+print('PLATFORM_JWT_HASH=%s' % ph(platform_jwt))
 print('ECOM_PLATFORM_JWT_EMPTY=%s' % (not bool(ecom_platform_jwt)))
+print('PLATFORM_JWT_EMPTY=%s' % (not bool(platform_jwt)))
 print('ECOM_PLATFORM_JWT_PLACEHOLDER=%s' % placeholder(ecom_platform_jwt))
 print('ECOM_DB_DRIVER=%s' % shlex.quote(str((ecfg.get('database') or {}).get('driver') or '')))
 print('ECOM_AUTO_MIGRATE=%s' % shlex.quote(str((ecfg.get('database') or {}).get('auto_migrate_enabled'))))
@@ -110,7 +114,9 @@ source /tmp/ecommerce_drift_env.sh
 [ "${ECOM_CALLBACK_PLACEHOLDER:-True}" = "False" ] && pass "ecommerce callback_secret_placeholder=false" || crit "ecommerce callback_secret_placeholder=true"
 [ "${ECOM_PLATFORM_SECRET_HASH:-}" = "${PLATFORM_INTERNAL_HASH:-}" ] && pass "ecommerce outbound_platform_secret_matches_platform=true hash_prefix=${ECOM_PLATFORM_SECRET_HASH:-}" || crit "ecommerce outbound_platform_secret_matches_platform=false ecommerce_hash=${ECOM_PLATFORM_SECRET_HASH:-} platform_hash=${PLATFORM_INTERNAL_HASH:-}"
 [ "${ECOM_PLATFORM_JWT_EMPTY:-True}" = "False" ] && pass "ecommerce platform_jwt_secret_configured=true" || crit "ecommerce platform_jwt_secret_missing=true follow_up=configure_and_rotate_platform_jwt_secret"
+[ "${PLATFORM_JWT_EMPTY:-True}" = "False" ] && pass "platform jwt_secret_configured=true" || crit "platform jwt_secret_missing=true"
 [ "${ECOM_PLATFORM_JWT_PLACEHOLDER:-False}" = "False" ] && pass "ecommerce platform_jwt_secret_placeholder=false" || crit "ecommerce platform_jwt_secret_placeholder=true"
+[ "${ECOM_PLATFORM_JWT_HASH:-}" = "${PLATFORM_JWT_HASH:-}" ] && pass "ecommerce platform_jwt_secret_matches_platform=true hash_prefix=${ECOM_PLATFORM_JWT_HASH:-}" || crit "ecommerce platform_jwt_secret_matches_platform=false ecommerce_hash=${ECOM_PLATFORM_JWT_HASH:-} platform_hash=${PLATFORM_JWT_HASH:-}"
 [ "${ECOM_AUTO_MIGRATE:-}" = "False" ] && pass "config auto_migrate_enabled=false" || warn "config auto_migrate_enabled=${ECOM_AUTO_MIGRATE:-unknown} expected=False"
 if [ "${ECOM_PLATFORM_URL:-}" = "${PLATFORM_INTERNAL_URL:-http://v-platform-backend:8095}" ]; then
   pass "ecommerce platform_base_url=${ECOM_PLATFORM_URL}"

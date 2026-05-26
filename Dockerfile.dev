@@ -11,4 +11,4 @@ ENV ECOMMERCE_PORT=8396
 ENV ECOMMERCE_CONFIG_FILE=config.dev
 EXPOSE 8296 8396
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD wget --no-verbose --tries=1 --spider http://localhost:${ECOMMERCE_PORT}/healthz || exit 1
-CMD ["./ecommerce-service", "-config", "config.dev"]
+CMD ["sh", "-c", "exec ./ecommerce-service -config ${ECOMMERCE_CONFIG_FILE:-config.dev}"]

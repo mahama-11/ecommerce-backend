@@ -54,7 +54,11 @@ func (h *Handler) ListSessions(c *gin.Context) {
 		response.JSONError(c, response.CodeDatabaseError, err.Error())
 		return
 	}
-	response.JSONSuccess(c, gin.H{"items": sessionDTOs(items)})
+	dtos := sessionDTOs(items)
+	for _, dto := range dtos {
+		applySessionProjection(dto, c.Query("projection"))
+	}
+	response.JSONSuccess(c, gin.H{"items": dtos})
 }
 
 func (h *Handler) GetSession(c *gin.Context) {
@@ -79,7 +83,9 @@ func (h *Handler) UpdateSession(c *gin.Context) {
 		response.JSONError(c, response.CodeInvalidParameter, err.Error())
 		return
 	}
-	response.JSONSuccess(c, sessionDTO(item))
+	dto := sessionDTO(item)
+	applySessionProjection(dto, c.Query("projection"))
+	response.JSONSuccess(c, dto)
 }
 
 func (h *Handler) CancelSession(c *gin.Context) {
@@ -88,7 +94,9 @@ func (h *Handler) CancelSession(c *gin.Context) {
 		response.JSONError(c, response.CodeNotFound, err.Error())
 		return
 	}
-	response.JSONSuccess(c, sessionDTO(item))
+	dto := sessionDTO(item)
+	applySessionProjection(dto, c.Query("projection"))
+	response.JSONSuccess(c, dto)
 }
 
 func (h *Handler) CreateSourceReference(c *gin.Context) {
@@ -429,6 +437,10 @@ func (h *Handler) GetGenerationVersion(c *gin.Context) {
 	if err != nil {
 		response.JSONError(c, response.CodeNotFound, err.Error())
 		return
+	}
+	if !isFullProjection(c.Query("projection")) {
+		compact := compactGenerationVersion(*item)
+		item = &compact
 	}
 	response.JSONSuccess(c, item)
 }

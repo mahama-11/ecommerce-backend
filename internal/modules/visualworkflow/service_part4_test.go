@@ -168,6 +168,14 @@ func TestVisualWorkflowDefaultCompactReadProjectionsTrimHeavyGenerationPayloads(
 	if compactSession.Body.Len() > 35_000 || strings.Contains(compactSession.Body.String(), heavy[:128]) || strings.Contains(compactSession.Body.String(), "large_runtime_manifest") || strings.Contains(compactSession.Body.String(), "description") {
 		t.Fatalf("session detail default compact projection too large or leaked heavy fields: bytes=%d body=%s", compactSession.Body.Len(), compactSession.Body.String())
 	}
+	compactSessionList := performRawVisualWorkflowRequest(t, router, http.MethodGet, "/visual-sessions?product_id="+product.ID, "")
+	if compactSessionList.Body.Len() > 35_000 || strings.Contains(compactSessionList.Body.String(), heavy[:128]) || strings.Contains(compactSessionList.Body.String(), "large_runtime_manifest") || strings.Contains(compactSessionList.Body.String(), "description") {
+		t.Fatalf("session list default compact projection too large or leaked heavy fields: bytes=%d body=%s", compactSessionList.Body.Len(), compactSessionList.Body.String())
+	}
+	compactVersion := performRawVisualWorkflowRequest(t, router, http.MethodGet, "/visual-sessions/"+session.ID+"/generation-versions/"+version.VersionID, "")
+	if compactVersion.Body.Len() > 30_000 || strings.Contains(compactVersion.Body.String(), heavy[:128]) || strings.Contains(compactVersion.Body.String(), "large_runtime_manifest") || strings.Contains(compactVersion.Body.String(), "description") {
+		t.Fatalf("generation-version detail default compact projection too large or leaked heavy fields: bytes=%d body=%s", compactVersion.Body.Len(), compactVersion.Body.String())
+	}
 
 	stageSandbox := performRawVisualWorkflowRequest(t, router, http.MethodGet, "/visual-sessions/"+session.ID+"/stage-view?projection=sandbox", "")
 	if strings.Contains(stageSandbox.Body.String(), "\"generation_versions\":[") || strings.Contains(stageSandbox.Body.String(), "\"deconstruction_elements\":[") || strings.Contains(stageSandbox.Body.String(), heavy[:128]) {

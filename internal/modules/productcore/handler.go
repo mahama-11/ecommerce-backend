@@ -4,12 +4,15 @@ import (
 	"ecommerce-service/internal/models"
 	"ecommerce-service/internal/modules/moduleutil"
 	"ecommerce-service/internal/telemetry"
+	"ecommerce-service/pkg/logger"
 	"ecommerce-service/pkg/response"
 	"io"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 type Handler struct {
@@ -79,11 +82,29 @@ func (h *Handler) ListProducts(c *gin.Context) {
 	defer span.End()
 
 	orgID, _ := scopeFromGin(c)
+	log := logger.With(
+		"request_id", c.GetString("requestID"),
+		"trace_id", c.GetString("traceID"),
+		"module", "productcore",
+		"operation", "list_products",
+		"org_id", orgID,
+	)
+	span.SetAttributes(
+		attribute.String("ecommerce.module", "productcore"),
+		attribute.String("ecommerce.operation", "list_products"),
+		attribute.String("ecommerce.org_id", orgID),
+	)
+	log.Info("productcore.list_products.started")
 	items, err := h.service.ListProducts(orgID)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "list products failed")
+		log.Error("productcore.list_products.failed", "error", err.Error())
 		moduleutil.WritePlatformError(c, err, "list products failed")
 		return
 	}
+	span.SetAttributes(attribute.Int("ecommerce.product_count", len(items)))
+	log.Info("productcore.list_products.finished", "product_count", len(items))
 	response.JSONSuccess(c, items)
 }
 

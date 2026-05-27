@@ -86,26 +86,26 @@ func (h *Handler) ListProducts(c *gin.Context) {
 	log := logger.With(
 		"request_id", c.GetString("requestID"),
 		"trace_id", c.GetString("traceID"),
-		"module", "productcore",
-		"operation", "list_products",
+		"module", "product_center",
+		"operation", "products.list",
 		"org_id", orgID,
 	)
 	span.SetAttributes(
-		attribute.String("ecommerce.module", "productcore"),
-		attribute.String("ecommerce.operation", "list_products"),
+		attribute.String("module", "product_center"),
+		attribute.String("operation", "products.list"),
 		attribute.String("ecommerce.org_id", orgID),
 	)
-	log.Info("productcore.list_products.started")
+	log.Info("ecommerce.product_center.products.list.started", "status", "started")
 	items, err := h.service.ListProducts(orgID)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "list products failed")
-		log.Error("productcore.list_products.failed", "error", err.Error())
+		log.Error("ecommerce.product_center.products.list.failed", "status", "failed", "error_code", "product_list_failed", "error", err.Error())
 		moduleutil.WritePlatformError(c, err, "list products failed")
 		return
 	}
 	span.SetAttributes(attribute.Int("ecommerce.product_count", len(items)))
-	log.Info("productcore.list_products.finished", "product_count", len(items))
+	log.Info("ecommerce.product_center.products.list.finished", "status", "finished", "product_count", len(items))
 	response.JSONSuccess(c, items)
 }
 

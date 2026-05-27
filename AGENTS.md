@@ -29,6 +29,7 @@ It should not host:
 - [Visual Workflow AI Requirement Contract](docs/architecture/VISUAL_WORKFLOW_AI_REQUIREMENT_CONTRACT.md)
 - [Visual Workflow Frontend Contract](docs/architecture/VISUAL_WORKFLOW_FRONTEND_CONTRACT.md)
 - [Image Generation Runtime Integration](docs/architecture/IMAGE_GENERATION_RUNTIME_INTEGRATION.md)
+- [Observability Event Specification](docs/architecture/OBSERVABILITY_EVENT_SPEC.md)
 - [Prod Deploy Runbook](docs/PROD_DEPLOY_RUNBOOK.md)
 - [Workspace Cloud Dev Deploy Runbook](../tools/dev/README.md) — Cloud dev 部署固定入口；不要用本 repo 旧 `build.sh dev` 或 prod deploy script 伪装 dev 部署。
 - [OpenAPI Guide](docs/openapi/README.md)

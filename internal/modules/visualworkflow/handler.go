@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"ecommerce-service/internal/observability"
 	"ecommerce-service/internal/repository"
 	"ecommerce-service/pkg/response"
 
@@ -40,11 +41,14 @@ func (h *Handler) CreateSession(c *gin.Context) {
 }
 
 func (h *Handler) createSession(c *gin.Context, req CreateSessionRequest) {
+	lc := observability.StartGin(c, "ecommerce-service/visual-workflow-handler", "ecommerce.visual_workflow.session.create", "ecommerce.visual_workflow.session.create", "visual_workflow", "session.create", observability.Fields{"product_id": req.ProductID, "sku_code": req.SKUCode})
 	item, err := h.service.CreateSession(c.GetString("userID"), c.GetString("orgID"), req)
 	if err != nil {
+		lc.Fail(err, "invalid_parameter", nil)
 		response.JSONError(c, response.CodeInvalidParameter, err.Error())
 		return
 	}
+	lc.Finish(observability.Fields{"session_id": item.ID, "product_id": item.ProductID, "sku_code": item.SKUCode})
 	response.JSONSuccessWithStatus(c, http.StatusCreated, sessionDTO(item))
 }
 
@@ -105,11 +109,14 @@ func (h *Handler) CreateSourceReference(c *gin.Context) {
 		response.JSONBindError(c, err, "invalid source reference request")
 		return
 	}
+	lc := observability.StartGin(c, "ecommerce-service/visual-workflow-handler", "ecommerce.visual_workflow.source_reference.create", "ecommerce.visual_workflow.source_reference.create", "visual_workflow", "source_reference.create", observability.Fields{"session_id": c.Param("session_id"), "source_kind": req.SourceKind})
 	item, err := h.service.CreateSourceReference(c.GetString("userID"), c.GetString("orgID"), c.Param("session_id"), req)
 	if err != nil {
+		lc.Fail(err, "invalid_parameter", nil)
 		response.JSONError(c, response.CodeInvalidParameter, err.Error())
 		return
 	}
+	lc.Finish(observability.Fields{"session_id": item.SessionID, "source_reference_id": item.ID, "status": item.Status})
 	response.JSONSuccessWithStatus(c, http.StatusCreated, sourceDTO(item))
 }
 
@@ -155,11 +162,14 @@ func (h *Handler) CreateDeconstructionJob(c *gin.Context) {
 		response.JSONBindError(c, err, "invalid deconstruction job request")
 		return
 	}
+	lc := observability.StartGin(c, "ecommerce-service/visual-workflow-handler", "ecommerce.visual_workflow.deconstruction_job.create", "ecommerce.visual_workflow.deconstruction_job.create", "visual_workflow", "deconstruction_job.create", observability.Fields{"session_id": c.Param("session_id"), "source_reference_id": req.SourceReferenceID})
 	item, err := h.service.CreateDeconstructionJob(c.GetString("userID"), c.GetString("orgID"), c.Param("session_id"), req)
 	if err != nil {
+		lc.Fail(err, "invalid_parameter", nil)
 		response.JSONError(c, response.CodeInvalidParameter, err.Error())
 		return
 	}
+	lc.Finish(observability.Fields{"session_id": item.SessionID, "job_id": item.ID, "status": item.Status})
 	response.JSONSuccessWithStatus(c, http.StatusCreated, jobDTO(item))
 }
 
@@ -201,11 +211,14 @@ func (h *Handler) ConfirmSelection(c *gin.Context) {
 		response.JSONBindError(c, err, "invalid deconstruction selection confirmation")
 		return
 	}
+	lc := observability.StartGin(c, "ecommerce-service/visual-workflow-handler", "ecommerce.visual_workflow.element.confirm", "ecommerce.visual_workflow.element.confirm", "visual_workflow", "element.confirm", observability.Fields{"session_id": c.Param("session_id"), "element_count": len(req.ElementIDs)})
 	items, err := h.service.ConfirmSelection(c.GetString("orgID"), c.Param("session_id"), req.ElementIDs)
 	if err != nil {
+		lc.Fail(err, "invalid_parameter", nil)
 		response.JSONError(c, response.CodeInvalidParameter, err.Error())
 		return
 	}
+	lc.Finish(observability.Fields{"session_id": c.Param("session_id"), "confirmed_count": len(items)})
 	response.JSONSuccess(c, gin.H{"items": items})
 }
 
@@ -398,11 +411,14 @@ func (h *Handler) CreateGenerationVersion(c *gin.Context) {
 		response.JSONBindError(c, err, "invalid generation version request")
 		return
 	}
+	lc := observability.StartGin(c, "ecommerce-service/visual-workflow-handler", "ecommerce.visual_workflow.generation_version.create", "ecommerce.visual_workflow.generation_version.create", "visual_workflow", "generation_version.create", observability.Fields{"session_id": c.Param("session_id"), "result_asset_count": len(req.ResultAssets)})
 	item, err := h.service.CreateGenerationVersion(c.GetString("orgID"), c.Param("session_id"), req)
 	if err != nil {
+		lc.Fail(err, "invalid_parameter", nil)
 		response.JSONError(c, response.CodeInvalidParameter, err.Error())
 		return
 	}
+	lc.Finish(observability.Fields{"session_id": c.Param("session_id"), "job_id": item.RuntimeJobID, "status": item.Status})
 	response.JSONSuccessWithStatus(c, http.StatusCreated, item)
 }
 
@@ -493,11 +509,14 @@ func (h *Handler) WritebackSelectedGenerationAsset(c *gin.Context) {
 		response.JSONBindError(c, err, "invalid selected generation asset writeback")
 		return
 	}
+	lc := observability.StartGin(c, "ecommerce-service/visual-workflow-handler", "ecommerce.visual_workflow.asset.writeback", "ecommerce.visual_workflow.asset.writeback", "visual_workflow", "asset.writeback", observability.Fields{"session_id": c.Param("session_id"), "version_id": c.Param("version_id"), "asset_id": req.AssetID})
 	item, err := h.service.WritebackSelectedGenerationAsset(c.GetString("userID"), c.GetString("orgID"), c.Param("session_id"), c.Param("version_id"), req)
 	if err != nil {
+		lc.Fail(err, "invalid_parameter", nil)
 		response.JSONError(c, response.CodeInvalidParameter, err.Error())
 		return
 	}
+	lc.Finish(observability.Fields{"session_id": c.Param("session_id"), "version_id": c.Param("version_id"), "asset_id": req.AssetID, "product_id": item.ProductID})
 	response.JSONSuccess(c, item)
 }
 

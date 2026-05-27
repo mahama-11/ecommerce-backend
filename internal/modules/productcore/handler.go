@@ -3,6 +3,7 @@ package productcore
 import (
 	"ecommerce-service/internal/models"
 	"ecommerce-service/internal/modules/moduleutil"
+	"ecommerce-service/internal/observability"
 	"ecommerce-service/internal/telemetry"
 	"ecommerce-service/pkg/logger"
 	"ecommerce-service/pkg/response"
@@ -78,7 +79,7 @@ func scopeFromGin(c *gin.Context) (orgID string, userID string) {
 // ==================== Product 基础操作 ====================
 
 func (h *Handler) ListProducts(c *gin.Context) {
-	span := telemetry.StartGinSpan(c, "ecommerce-service/productcore-handler", "ecommerce.productcore.list_products")
+	span := telemetry.StartGinSpan(c, "ecommerce-service/productcore-handler", "ecommerce.product_center.products.list")
 	defer span.End()
 
 	orgID, _ := scopeFromGin(c)
@@ -109,20 +110,24 @@ func (h *Handler) ListProducts(c *gin.Context) {
 }
 
 func (h *Handler) GetProduct(c *gin.Context) {
-	span := telemetry.StartGinSpan(c, "ecommerce-service/productcore-handler", "ecommerce.productcore.get_product")
+	span := telemetry.StartGinSpan(c, "ecommerce-service/productcore-handler", "ecommerce.product_center.product.detail")
 	defer span.End()
 
 	orgID, _ := scopeFromGin(c)
+	observability.Event("ecommerce.product_center.product.detail.started", "product_center", "product.detail", observability.Fields{"product_id": c.Param("product_id"), "org_id": orgID})
 	detail, err := h.service.GetProductDetail(orgID, c.Param("product_id"))
 	if err != nil {
+		observability.ErrorEvent("ecommerce.product_center.product.detail.failed", "product_center", "product.detail", err, "product_detail_failed", observability.Fields{"product_id": c.Param("product_id"), "org_id": orgID})
+		span.RecordError(err)
 		moduleutil.WritePlatformError(c, err, "get product failed")
 		return
 	}
+	observability.Event("ecommerce.product_center.product.detail.finished", "product_center", "product.detail", observability.Fields{"product_id": c.Param("product_id"), "org_id": orgID})
 	response.JSONSuccess(c, detail)
 }
 
 func (h *Handler) CreateProduct(c *gin.Context) {
-	span := telemetry.StartGinSpan(c, "ecommerce-service/productcore-handler", "ecommerce.productcore.create_product")
+	span := telemetry.StartGinSpan(c, "ecommerce-service/productcore-handler", "ecommerce.product_center.product.create")
 	defer span.End()
 
 	var input CreateProductInput
@@ -132,16 +137,20 @@ func (h *Handler) CreateProduct(c *gin.Context) {
 	}
 
 	orgID, userID := scopeFromGin(c)
+	observability.Event("ecommerce.product_center.product.create.started", "product_center", "product.create", observability.Fields{"sku_code": input.SKUCode, "org_id": orgID})
 	item, err := h.service.CreateProduct(orgID, userID, input)
 	if err != nil {
+		observability.ErrorEvent("ecommerce.product_center.product.create.failed", "product_center", "product.create", err, "product_create_failed", observability.Fields{"sku_code": input.SKUCode, "org_id": orgID})
+		span.RecordError(err)
 		moduleutil.WritePlatformError(c, err, "create product failed")
 		return
 	}
+	observability.Event("ecommerce.product_center.product.create.finished", "product_center", "product.create", observability.Fields{"product_id": item.ID, "sku_code": item.SKUCode, "org_id": orgID})
 	response.JSONSuccess(c, item)
 }
 
 func (h *Handler) UpdateProduct(c *gin.Context) {
-	span := telemetry.StartGinSpan(c, "ecommerce-service/productcore-handler", "ecommerce.productcore.update_product")
+	span := telemetry.StartGinSpan(c, "ecommerce-service/productcore-handler", "ecommerce.product_center.product.update")
 	defer span.End()
 
 	var input UpdateProductInput
@@ -151,11 +160,15 @@ func (h *Handler) UpdateProduct(c *gin.Context) {
 	}
 
 	orgID, userID := scopeFromGin(c)
+	observability.Event("ecommerce.product_center.product.update.started", "product_center", "product.update", observability.Fields{"product_id": c.Param("product_id"), "org_id": orgID})
 	item, err := h.service.UpdateProduct(orgID, userID, c.Param("product_id"), input)
 	if err != nil {
+		observability.ErrorEvent("ecommerce.product_center.product.update.failed", "product_center", "product.update", err, "product_update_failed", observability.Fields{"product_id": c.Param("product_id"), "org_id": orgID})
+		span.RecordError(err)
 		moduleutil.WritePlatformError(c, err, "update product failed")
 		return
 	}
+	observability.Event("ecommerce.product_center.product.update.finished", "product_center", "product.update", observability.Fields{"product_id": item.ID, "sku_code": item.SKUCode, "org_id": orgID})
 	response.JSONSuccess(c, item)
 }
 

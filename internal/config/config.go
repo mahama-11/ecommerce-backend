@@ -108,10 +108,13 @@ type MetricsConfig struct {
 
 type TracingConfig struct {
 	Enabled        bool    `mapstructure:"enabled"`
+	Backend        string  `mapstructure:"backend"`
 	ServiceName    string  `mapstructure:"service_name"`
 	ServiceVersion string  `mapstructure:"service_version"`
 	Environment    string  `mapstructure:"environment"`
 	JaegerEndpoint string  `mapstructure:"jaeger_endpoint"`
+	OTLPEndpoint   string  `mapstructure:"otlp_endpoint"`
+	OTLPInsecure   bool    `mapstructure:"otlp_insecure"`
 	SampleRate     float64 `mapstructure:"sample_rate"`
 	LogSpans       bool    `mapstructure:"log_spans"`
 }
@@ -199,10 +202,13 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("monitoring.metrics.push_interval", "30s")
 	v.SetDefault("monitoring.metrics.histogram_buckets", []float64{0.1, 0.5, 1, 2, 5, 10})
 	v.SetDefault("monitoring.tracing.enabled", false)
+	v.SetDefault("monitoring.tracing.backend", "jaeger")
 	v.SetDefault("monitoring.tracing.service_name", "ecommerce-service")
 	v.SetDefault("monitoring.tracing.service_version", "1.0.0")
 	v.SetDefault("monitoring.tracing.environment", "development")
 	v.SetDefault("monitoring.tracing.jaeger_endpoint", "http://localhost:14268/api/traces")
+	v.SetDefault("monitoring.tracing.otlp_endpoint", "localhost:4317")
+	v.SetDefault("monitoring.tracing.otlp_insecure", true)
 	v.SetDefault("monitoring.tracing.sample_rate", 1.0)
 	v.SetDefault("monitoring.tracing.log_spans", false)
 }

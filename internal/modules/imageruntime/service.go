@@ -388,6 +388,13 @@ func (s *Service) RecordJobResults(jobID string, input RecordJobResultsInput) (*
 		return nil, err
 	}
 	if err := s.finalizeChargeForJob(item, input.Status); err != nil {
+		item.Status = "failed"
+		item.Stage = "metering_failed"
+		item.StageMessage = "Image generation could not be completed because billing settlement failed"
+		item.Progress = clampProgress(item.Progress, item.Status)
+		item.CompletedAt = nil
+		item.LastErrorCode = "METERING_FINALIZATION_FAILED"
+		item.LastErrorMessage = err.Error()
 		item.Metadata = mergeJSON(item.Metadata, map[string]any{
 			"metering_status": "failed",
 			"metering_error":  err.Error(),

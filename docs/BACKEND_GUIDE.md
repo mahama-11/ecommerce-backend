@@ -190,7 +190,7 @@ For product image generation, use the platform runtime as the execution layer an
 - switch `database.driver=postgres` to use a shared or dedicated PostgreSQL instance
 - `redis.enabled=true` enables workspace cache acceleration
 - `monitoring.metrics.enabled=true` exposes Prometheus metrics
-- `monitoring.tracing.enabled=true` enables Jaeger exporter bootstrap
+- `monitoring.tracing.enabled=true` enables OTel tracing; set `monitoring.tracing.backend=tempo|otlp` with `monitoring.tracing.otlp_endpoint` for Tempo/OTel Collector, or `backend=jaeger` with `jaeger_endpoint` for legacy Jaeger collector
 - `platform.base_url`, `platform.internal_service_secret`, and `platform.jwt_secret` must align with platform backend runtime values
 - template example source-of-truth files are:
   - `internal/modules/templatecenter/generated_seed_definitions.json`

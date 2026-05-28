@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"ecommerce-service/internal/observability"
 )
 
 func (c *Client) PostWalletLedger(input PostWalletLedgerInput) (*WalletAccount, *WalletBucket, *WalletLedger, error) {
@@ -40,7 +42,21 @@ func (c *Client) GrantCycleAllowance(input GrantCycleAllowanceInput) (*WalletBuc
 	return resp.Bucket, resp.Account, nil
 }
 func (c *Client) CreateRuntimeJob(input CreateRuntimeJobInput) (*RuntimeJob, error) {
-	return doInternalPost[CreateRuntimeJobInput, RuntimeJob](c, "/runtime/jobs", input)
+	startedAt := time.Now()
+	observability.Event("ecommerce.runtime.job.create.started", "platform_client", "runtime_job.create", observability.Fields{"product_id": input.ProductCode, "job_id": input.SourceID, "provider": input.ProviderCode})
+	out, err := doInternalPost[CreateRuntimeJobInput, RuntimeJob](c, "/runtime/jobs", input)
+	if err != nil {
+		observability.ErrorEvent("ecommerce.runtime.job.create.failed", "platform_client", "runtime_job.create", err, "runtime_job_create_failed", observability.Fields{"product_id": input.ProductCode, "job_id": input.SourceID, "provider": input.ProviderCode, "latency_ms": time.Since(startedAt).Milliseconds()})
+		return nil, err
+	}
+	runtimeJobID := ""
+	status := ""
+	if out != nil {
+		runtimeJobID = out.ID
+		status = out.Status
+	}
+	observability.Event("ecommerce.runtime.job.create.finished", "platform_client", "runtime_job.create", observability.Fields{"product_id": input.ProductCode, "job_id": input.SourceID, "runtime_job_id": runtimeJobID, "provider": input.ProviderCode, "status": status, "latency_ms": time.Since(startedAt).Milliseconds()})
+	return out, nil
 }
 func (c *Client) ListRuntimeCapabilities(productCode, taskType string) (*RuntimeCapabilityMatrix, error) {
 	return doInternalGet[RuntimeCapabilityMatrix](c, withQuery("/runtime/capabilities", map[string]string{
@@ -66,13 +82,41 @@ func (c *Client) CancelRuntimeJob(runtimeJobID string) (*RuntimeJob, error) {
 	return doInternalPost[map[string]any, RuntimeJob](c, fmt.Sprintf("/runtime/jobs/%s/cancel", runtimeJobID), map[string]any{})
 }
 func (c *Client) CreateChargeSession(input CreateChargeSessionInput) (*ChargeSession, error) {
-	return doInternalPost[CreateChargeSessionInput, ChargeSession](c, "/runtime/charge-sessions", input)
+	startedAt := time.Now()
+	observability.Event("ecommerce.runtime.charge_session.create.started", "platform_client", "charge_session.create", observability.Fields{"product_id": input.ProductCode, "job_id": input.SourceID, "billable_item_code": input.BillableItemCode})
+	out, err := doInternalPost[CreateChargeSessionInput, ChargeSession](c, "/runtime/charge-sessions", input)
+	if err != nil {
+		observability.ErrorEvent("ecommerce.runtime.charge_session.create.failed", "platform_client", "charge_session.create", err, "charge_session_create_failed", observability.Fields{"product_id": input.ProductCode, "job_id": input.SourceID, "latency_ms": time.Since(startedAt).Milliseconds()})
+		return nil, err
+	}
+	status := ""
+	sessionID := ""
+	if out != nil {
+		status = out.Status
+		sessionID = out.ID
+	}
+	observability.Event("ecommerce.runtime.charge_session.create.finished", "platform_client", "charge_session.create", observability.Fields{"product_id": input.ProductCode, "job_id": input.SourceID, "session_id": sessionID, "status": status, "latency_ms": time.Since(startedAt).Milliseconds()})
+	return out, nil
 }
 func (c *Client) UpdateChargeSession(chargeSessionID string, input UpdateChargeSessionInput) (*ChargeSession, error) {
 	return doInternalPut[UpdateChargeSessionInput, ChargeSession](c, fmt.Sprintf("/runtime/charge-sessions/%s", chargeSessionID), input)
 }
 func (c *Client) ReserveResources(input ReserveInput) (*ResourceReservation, error) {
-	return doInternalPost[ReserveInput, ResourceReservation](c, "/controls/reservations", input)
+	startedAt := time.Now()
+	observability.Event("ecommerce.runtime.reserve_resources.started", "platform_client", "reserve_resources", observability.Fields{"session_id": input.ReferenceID, "billable_item_code": input.BillableItemCode})
+	out, err := doInternalPost[ReserveInput, ResourceReservation](c, "/controls/reservations", input)
+	if err != nil {
+		observability.ErrorEvent("ecommerce.runtime.reserve_resources.failed", "platform_client", "reserve_resources", err, "reserve_resources_failed", observability.Fields{"session_id": input.ReferenceID, "latency_ms": time.Since(startedAt).Milliseconds()})
+		return nil, err
+	}
+	reservationID := ""
+	status := ""
+	if out != nil {
+		reservationID = out.ID
+		status = out.Status
+	}
+	observability.Event("ecommerce.runtime.reserve_resources.finished", "platform_client", "reserve_resources", observability.Fields{"session_id": input.ReferenceID, "reservation_id": reservationID, "status": status, "latency_ms": time.Since(startedAt).Milliseconds()})
+	return out, nil
 }
 func (c *Client) CommitReservation(reservationID string) (*ResourceReservation, error) {
 	return doInternalPost[map[string]any, ResourceReservation](c, fmt.Sprintf("/controls/reservations/%s/commit", reservationID), map[string]any{})
@@ -85,7 +129,15 @@ func (c *Client) IngestMeteringEvent(input IngestEventInput) error {
 	return err
 }
 func (c *Client) FinalizeMetering(input FinalizeInput) (*FinalizeResult, error) {
-	return doInternalPost[FinalizeInput, FinalizeResult](c, "/metering/finalizations", input)
+	startedAt := time.Now()
+	observability.Event("ecommerce.runtime.settlement.finalize.started", "platform_client", "settlement.finalize", observability.Fields{"reservation_id": input.ReservationID, "event_id": input.IngestEventInput.EventID})
+	out, err := doInternalPost[FinalizeInput, FinalizeResult](c, "/metering/finalizations", input)
+	if err != nil {
+		observability.ErrorEvent("ecommerce.runtime.settlement.finalize.failed", "platform_client", "settlement.finalize", err, "finalize_metering_failed", observability.Fields{"reservation_id": input.ReservationID, "event_id": input.IngestEventInput.EventID, "latency_ms": time.Since(startedAt).Milliseconds()})
+		return nil, err
+	}
+	observability.Event("ecommerce.runtime.settlement.finalize.finished", "platform_client", "settlement.finalize", observability.Fields{"reservation_id": input.ReservationID, "event_id": input.IngestEventInput.EventID, "latency_ms": time.Since(startedAt).Milliseconds()})
+	return out, nil
 }
 func (c *Client) UploadAsset(input UploadAssetInput) (*StoredAsset, error) {
 	return doInternalPost[UploadAssetInput, StoredAsset](c, "/storage/assets", input)

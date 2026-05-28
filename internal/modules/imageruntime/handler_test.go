@@ -414,7 +414,7 @@ func TestCreateImageJobFailsWhenReservationFails(t *testing.T) {
 	}
 }
 
-func TestRecordJobResultsPersistsWhenMeteringFails(t *testing.T) {
+func TestRecordJobResultsFailsClosedWhenMeteringFinalizeFails(t *testing.T) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 
@@ -492,8 +492,17 @@ func TestRecordJobResultsPersistsWhenMeteringFails(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RecordJobResults: %v", err)
 	}
-	if item.Status != "completed" {
-		t.Fatalf("expected completed status, got %s", item.Status)
+	if item.Status != "failed" {
+		t.Fatalf("expected failed status when metering finalization fails, got %s", item.Status)
+	}
+	if item.Stage != "metering_failed" {
+		t.Fatalf("expected metering_failed stage, got %s", item.Stage)
+	}
+	if item.LastErrorCode != "METERING_FINALIZATION_FAILED" {
+		t.Fatalf("expected metering finalization error code, got %s", item.LastErrorCode)
+	}
+	if !strings.Contains(item.LastErrorMessage, "invalid finalize request") {
+		t.Fatalf("expected sanitized metering failure message, got %s", item.LastErrorMessage)
 	}
 	if !strings.Contains(item.Metadata, `"metering_status":"failed"`) {
 		t.Fatalf("expected metering failure metadata, got %s", item.Metadata)

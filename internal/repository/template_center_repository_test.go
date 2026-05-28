@@ -134,6 +134,18 @@ func TestSeedIfEmptyRepairsHistoricalManagedSourceDrift(t *testing.T) {
 	}
 }
 
+func TestCatalogContextFilterKeepsLegacyTemplatesWithoutInputModes(t *testing.T) {
+	legacy := CatalogListItem{ID: "tpl_legacy", ToolSlug: "changing-model"}
+	if !matchesCatalogContextFilter(legacy, TemplateCatalogFilter{ToolSlug: "changing-model", InputMode: "text_to_image"}) {
+		t.Fatalf("legacy catalog without declared input modes should remain visible")
+	}
+
+	declared := CatalogListItem{ID: "tpl_declared", ToolSlug: "changing-model", InputModes: []string{"multi_image"}}
+	if matchesCatalogContextFilter(declared, TemplateCatalogFilter{ToolSlug: "changing-model", InputMode: "text_to_image"}) {
+		t.Fatalf("catalog with declared input modes should reject absent requested mode")
+	}
+}
+
 func newTemplateCenterRepositoryTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 

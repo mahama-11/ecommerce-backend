@@ -137,6 +137,7 @@ Key points:
 - `idempotency_key` is mandatory to prevent duplicate runtime jobs
 - `source_type` and `source_id` should point back to ecommerce product records
 - `metadata` should describe product semantics, not provider implementation details
+- Image-job creation enforces mode/cardinality and product ownership for supplied source assets. Per-slot constraints from template/prompt `required_assets` contracts (for example slot-specific mime/role rules beyond the selected prompt bindings) remain owned by template-center/prompt validation, frontend form validation, and runtime adapters until those contracts are carried into the job request explicitly.
 
 ## 6. Route Preferences and Fallback
 

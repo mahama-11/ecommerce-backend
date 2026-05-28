@@ -529,6 +529,49 @@ func TestPlatformProjectionUnavailableFallsBackToLocalDetail(t *testing.T) {
 	}
 }
 
+func TestTemplateCatalogContextFilterUsesInputModeAndToolApplicability(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := newTemplateCenterTestDB(t)
+	repo := repository.NewTemplateCenterRepository(db)
+	now := time.Now()
+	catalogs := []models.TemplateCatalog{
+		{ID: "tpl_ctx_multi", Slug: "ctx-multi", Scope: "official", ManagedSource: "ops_manual", Modality: "image", ExecutorType: "image_tool", Series: "ctx", CapabilityType: "generation", InteractionMode: "form_based", Status: "published", CurrentVersionID: "ver_ctx_multi", DefaultLocale: "zh", PlatformTagsJSON: `["amazon"]`, IndustryTagsJSON: `["fashion"]`, ScenarioTagsJSON: `["hero"]`, ComplianceTagsJSON: `[]`, RecommendScore: 20, CreatedAt: now, UpdatedAt: now},
+		{ID: "tpl_ctx_text", Slug: "ctx-text", Scope: "official", ManagedSource: "ops_manual", Modality: "image", ExecutorType: "image_tool", Series: "ctx", CapabilityType: "generation", InteractionMode: "form_based", Status: "published", CurrentVersionID: "ver_ctx_text", DefaultLocale: "zh", PlatformTagsJSON: `["amazon"]`, IndustryTagsJSON: `["fashion"]`, ScenarioTagsJSON: `["hero"]`, ComplianceTagsJSON: `[]`, RecommendScore: 10, CreatedAt: now, UpdatedAt: now},
+	}
+	for _, catalog := range catalogs {
+		if err := db.Create(&catalog).Error; err != nil {
+			t.Fatalf("create catalog %s: %v", catalog.ID, err)
+		}
+		if err := db.Create(&models.TemplateCatalogLocale{ID: "loc_" + catalog.ID, TemplateCatalogID: catalog.ID, Locale: "zh", Name: catalog.ID, Summary: catalog.ID, Description: catalog.ID}).Error; err != nil {
+			t.Fatalf("create locale: %v", err)
+		}
+		if err := db.Create(&models.TemplateCatalogVersion{ID: catalog.CurrentVersionID, TemplateCatalogID: catalog.ID, VersionNo: 1, VersionLabel: "v1", Status: "published", IsPublishable: true, IsDefault: true}).Error; err != nil {
+			t.Fatalf("create version: %v", err)
+		}
+	}
+	if err := db.Create(&models.TemplateCatalogSchema{ID: "schema_multi", TemplateVersionID: "ver_ctx_multi", InputSchemaJSON: `{"required_assets":[{"slot":"front","role":"reference","label":"Front","required":true,"constraints":{"mime_type":"image/png"}}]}`, OutputSchemaJSON: `{}`, ExecutionSchemaJSON: `{"route":"/api/v1/ecommerce/image-jobs"}`, PromptLayersJSON: `{}`, PolicySchemaJSON: `{"applicability":{"input_modes":["multi_image"],"product_categories":["apparel"],"provider_capabilities":["multi_image"]}}`, DefaultVariablesJSON: `{}`, ToolBindingJSON: `{"toolSlug":"changing-model"}`}).Error; err != nil {
+		t.Fatalf("create multi schema: %v", err)
+	}
+	if err := db.Create(&models.TemplateCatalogSchema{ID: "schema_text", TemplateVersionID: "ver_ctx_text", InputSchemaJSON: `{}`, OutputSchemaJSON: `{}`, ExecutionSchemaJSON: `{"route":"/api/v1/ecommerce/image-jobs"}`, PromptLayersJSON: `{}`, PolicySchemaJSON: `{"applicability":{"input_modes":["text_to_image"],"product_categories":["apparel"],"provider_capabilities":["text_to_image"]}}`, DefaultVariablesJSON: `{}`, ToolBindingJSON: `{"toolSlug":"text-image"}`}).Error; err != nil {
+		t.Fatalf("create text schema: %v", err)
+	}
+
+	items, err := repo.ListCatalog(repository.Scope{}, repository.TemplateCatalogFilter{Locale: "zh", ToolSlug: "changing-model", InputMode: "multi_image", ProductCategory: "apparel", ProviderCapability: "multi_image"})
+	if err != nil {
+		t.Fatalf("ListCatalog context filter: %v", err)
+	}
+	if len(items) != 1 || items[0].ID != "tpl_ctx_multi" || len(items[0].InputModes) != 1 {
+		t.Fatalf("context filter returned unexpected items: %+v", items)
+	}
+	detail, err := repo.GetCatalogDetail(repository.Scope{}, "tpl_ctx_multi", "zh")
+	if err != nil {
+		t.Fatalf("detail: %v", err)
+	}
+	if len(detail.Schema.RequiredAssets) != 1 || detail.Schema.RequiredAssets[0].Slot != "front" {
+		t.Fatalf("required assets not projected: %+v", detail.Schema.RequiredAssets)
+	}
+}
+
 func newTemplateCenterTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
@@ -584,5 +627,38 @@ func decodeResponse[T any](t *testing.T, resp *httptest.ResponseRecorder, target
 	t.Helper()
 	if err := json.Unmarshal(resp.Body.Bytes(), target); err != nil {
 		t.Fatalf("decode response: %v; body=%s", err, resp.Body.String())
+	}
+}
+
+func TestPlatformProjectionDerivesApplicabilityAndKeepsLegacyInputMode(t *testing.T) {
+	items := mapPlatformCatalogListItems([]platform.PlatformTemplateCatalogItem{
+		{TemplateID: "tpl_policy", Slug: "policy-template", Name: "Policy", Platforms: []string{"amazon"}, Raw: map[string]any{
+			"executionSchema": map[string]any{"route": "/api/v1/ecommerce/image-jobs"},
+			"policySchema": map[string]any{"applicability": map[string]any{
+				"input_modes":              []any{"multi_image"},
+				"product_categories":       []any{"apparel"},
+				"provider_capabilities":    []any{"multi_image"},
+				"product_category_exclude": []any{"jewelry"},
+			}},
+		}},
+		{TemplateID: "tpl_legacy", Slug: "legacy-template", Name: "Legacy", Platforms: []string{"amazon"}, Raw: map[string]any{
+			"executionSchema": map[string]any{"route": "/api/v1/ecommerce/image-jobs"},
+		}},
+		{TemplateID: "tpl_tool", Slug: "tool-template", Name: "Tool", Platforms: []string{"amazon"}, Raw: map[string]any{
+			"toolBinding": map[string]any{"applicability": map[string]any{"inputModes": []any{"text_to_image"}, "providerCapabilities": []any{"text_to_image"}}},
+		}},
+	})
+	if len(items[0].InputModes) != 1 || items[0].InputModes[0] != "multi_image" || len(items[0].ProviderCapabilities) != 1 || items[0].ProviderCapabilities[0] != "multi_image" {
+		t.Fatalf("policy applicability was not projected: %+v", items[0])
+	}
+	if !matchesPlatformCatalogFilter(items[1], repository.TemplateCatalogFilter{InputMode: "text_to_image"}) {
+		t.Fatalf("platform legacy catalog without declared input modes should remain visible")
+	}
+	if matchesPlatformCatalogFilter(items[0], repository.TemplateCatalogFilter{InputMode: "text_to_image"}) {
+		t.Fatalf("platform catalog with declared modes should reject absent requested mode")
+	}
+	detail := mapPlatformCatalogDetail(&platform.PlatformTemplateCatalogDetail{Item: platform.PlatformTemplateCatalogItem{TemplateID: "tpl_detail", Slug: "detail-template", Name: "Detail", Raw: map[string]any{"toolBinding": map[string]any{"applicability": map[string]any{"inputModes": []any{"text_to_image"}, "providerCapabilities": []any{"text_to_image"}}}}}})
+	if len(detail.Catalog.InputModes) != 1 || detail.Catalog.InputModes[0] != "text_to_image" || detail.Schema.Applicability["inputModes"] == nil {
+		t.Fatalf("detail applicability was not projected from tool binding: %+v", detail)
 	}
 }

@@ -646,4 +646,94 @@ func TestCreateImageJobWithPromptIDPersistsContractMetadata(t *testing.T) {
 	if params["prompt"] != "compiled final prompt" || params["negative_prompt"] != "compiled negative" {
 		t.Fatalf("runtime did not use compiled prompt snapshot: %+v", params)
 	}
+
+	if err := promptRepo.CreatePromptRun(&models.EcommercePromptRun{ID: "prompt-text", OrganizationID: "org-1", UserID: "user-1", ProductID: "product-1", SKUCode: "SKU-001", TemplateID: "tpl-text", TemplateVersionID: "tplv-text", TemplateVersionNo: 1, TemplateCode: "tpl-text-code", ToolSlug: "text-image", SceneType: "ai_posture", Status: "validated", SchemaVersion: "prompt.schema.v1", ContentHash: "sha256:text", SourceMapHash: "sha256:none", SourceAssetBindingsJSON: `[]`, VariablesJSON: `{}`, InputPayloadJSON: `{}`, CompiledPromptJSON: `{"strategy":"business_layered_prompt_v1","final_prompt":"text only compiled prompt","final_negative_prompt":"text only negative","sections":[]}`, SourceMapJSON: `{}`, ValidationResultJSON: `{"valid":true,"errors":[],"warnings":[]}`}); err != nil {
+		t.Fatalf("create text prompt run: %v", err)
+	}
+	textSummary, err := service.CreateImageJob("user-1", "org-1", CreateImageJobInput{ProductID: "product-1", SKUCode: "SKU-001", SceneType: "ai_posture", InputMode: "text_to_image", PromptID: "prompt-text", RequestedVariants: 1})
+	if err != nil {
+		t.Fatalf("CreateImageJob(text prompt without source bindings) error = %v", err)
+	}
+	if textSummary.SourceAssetID != "" {
+		t.Fatalf("text_to_image prompt without bindings should not synthesize source asset, got %q", textSummary.SourceAssetID)
+	}
+	var textManifest map[string]any
+	if err := json.Unmarshal([]byte(runtimeCreate.InputManifest), &textManifest); err != nil {
+		t.Fatalf("unmarshal text manifest: %v", err)
+	}
+	textParams := textManifest["params_snapshot"].(map[string]any)
+	if textParams["prompt"] != "text only compiled prompt" {
+		t.Fatalf("text prompt did not use compiled prompt: %+v", textParams)
+	}
+}
+
+func TestCreateImageJobSupportsTextAndMultiImageSourceAssetsContract(t *testing.T) {
+	t.Helper()
+
+	var runtimeCreates []platform.CreateRuntimeJobInput
+	platformServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/internal/v1/runtime/charge-sessions":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"code":0,"message":"success","data":{"id":"charge-contract","product_code":"ecommerce","status":"created","metadata":"{}"}}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/internal/v1/controls/reservations":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"code":0,"message":"success","data":{"id":"reservation-contract","resource_type":"quota","billing_subject_type":"organization","billing_subject_id":"org-1","billable_item_code":"ecommerce.image.generate","reservation_key":"reserve:contract","units":1,"status":"reserved","reference_id":"charge-contract","metadata":"{}"}}`))
+		case r.Method == http.MethodPut && r.URL.Path == "/internal/v1/runtime/charge-sessions/charge-contract":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"code":0,"message":"success","data":{"id":"charge-contract","product_code":"ecommerce","status":"reserved","metadata":"{}"}}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/internal/v1/runtime/jobs":
+			var input platform.CreateRuntimeJobInput
+			body, _ := io.ReadAll(r.Body)
+			_ = json.Unmarshal(body, &input)
+			runtimeCreates = append(runtimeCreates, input)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"code":0,"message":"success","data":{"id":"runtime-contract","product_code":"ecommerce","task_type":"image_generation","provider_mode":"async","organization_id":"org-1","user_id":"user-1","source_type":"ecommerce_image_job","source_id":"job-contract","status":"queued","stage":"queued","metadata":"{}"}}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer platformServer.Close()
+
+	db := newImageRuntimeTestDB(t)
+	repo := repository.NewImageRuntimeRepository(db)
+	productRepo := repository.NewProductCenterRepository(db)
+	if err := db.Create(&models.EcomProductSKU{ID: "product-1", OrganizationID: "org-1", SKUCode: "SKU-001", Title: "Test Product", Status: models.ProductStatusDraft, AssetStatus: models.AssetStatusReady, ListingStatus: models.ListingStatusMissing, ExportStatus: models.ExportStatusPending}).Error; err != nil {
+		t.Fatalf("create product: %v", err)
+	}
+	for _, asset := range []models.EcommerceAsset{
+		{ID: "asset-front", OrganizationID: "org-1", UserID: "user-1", AssetType: "source", SourceType: "upload", StorageKey: "front.png", MimeType: "image/png", Metadata: `{"product_id":"product-1","sku_code":"SKU-001"}`},
+		{ID: "asset-side", OrganizationID: "org-1", UserID: "user-1", AssetType: "source", SourceType: "upload", StorageKey: "side.png", MimeType: "image/png", Metadata: `{"product_id":"product-1","sku_code":"SKU-001"}`},
+	} {
+		if err := repo.CreateAsset(&asset); err != nil {
+			t.Fatalf("create asset %s: %v", asset.ID, err)
+		}
+	}
+	service := NewService(repo, repository.NewCommercialRepository(db), nil, productRepo, nil, platform.New(config.PlatformConfig{BaseURL: platformServer.URL, Timeout: 5 * time.Second, ServiceName: "v-ecommerce-backend", InternalServiceSecret: "platform-internal-secret"}), testImageRuntimeAppConfig())
+
+	textJob, err := service.CreateImageJob("user-1", "org-1", CreateImageJobInput{ProductID: "product-1", SKUCode: "SKU-001", SceneType: "ai_posture", InputMode: "text_to_image", Prompt: "new product hero"})
+	if err != nil {
+		t.Fatalf("text_to_image CreateImageJob() error = %v", err)
+	}
+	if textJob.SourceAssetID != "" {
+		t.Fatalf("text_to_image should not require source asset, got %s", textJob.SourceAssetID)
+	}
+
+	_, err = service.CreateImageJob("user-1", "org-1", CreateImageJobInput{ProductID: "product-1", SKUCode: "SKU-001", SceneType: "ai_posture", InputMode: "multi_image", Prompt: "combine references", SourceAssets: []ImageJobSourceAssetInput{{Slot: "front", Role: "reference", AssetID: "asset-front", Required: true, Label: "Front"}, {Slot: "side", Role: "reference", AssetID: "asset-side", Required: true, Label: "Side"}}})
+	if err != nil {
+		t.Fatalf("multi_image CreateImageJob() error = %v", err)
+	}
+	if len(runtimeCreates) != 2 {
+		t.Fatalf("runtime create count = %d, want 2", len(runtimeCreates))
+	}
+	var multiManifest map[string]any
+	if err := json.Unmarshal([]byte(runtimeCreates[1].InputManifest), &multiManifest); err != nil {
+		t.Fatalf("unmarshal multi manifest: %v", err)
+	}
+	ids, _ := multiManifest["source_asset_ids"].([]any)
+	slotMap, _ := multiManifest["source_asset_map"].(map[string]any)
+	routeHint, _ := multiManifest["route_hint"].(map[string]any)
+	if multiManifest["input_mode"] != "multi_image" || len(ids) != 2 || slotMap["front"] == nil || slotMap["side"] == nil || routeHint["runtime_route_family"] != "generate/multi-image" {
+		t.Fatalf("multi manifest missing source slot map or route hint: %+v", multiManifest)
+	}
 }

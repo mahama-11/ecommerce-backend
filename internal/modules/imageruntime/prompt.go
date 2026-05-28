@@ -185,6 +185,10 @@ func defaultInputMode(inputMode string) string {
 	switch strings.TrimSpace(inputMode) {
 	case "text_to_image":
 		return "text_to_image"
+	case "image_edit":
+		return "image_edit"
+	case "multi_image":
+		return "multi_image"
 	default:
 		return "image_to_image"
 	}

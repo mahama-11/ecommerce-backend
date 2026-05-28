@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"sort"
 	"strings"
 	"time"
 
@@ -113,26 +112,31 @@ func mapPlatformCatalogListItems(items []platform.PlatformTemplateCatalogItem) [
 		execution := firstMapAnyValue(raw, "executionSchema", "execution_schema")
 		targetRoute := stringMapValue(execution, "route")
 		toolBinding := firstMapAnyValue(raw, "toolBinding", "tool_binding")
+		applicability := platformApplicabilityFromRaw(raw)
 		result = append(result, repository.CatalogListItem{
-			ID:              item.TemplateID,
-			Slug:            item.Slug,
-			ToolSlug:        templateutil.DeriveToolSlug(targetRoute, stringMapValue(toolBinding, "toolSlug"), stringMapValue(toolBinding, "tool_slug"), templateutil.ToolSlugFromCatalog(item.Slug, stringMapValue(raw, "external_code"))),
-			TargetRoute:     targetRoute,
-			ExternalCode:    stringMapValue(raw, "external_code"),
-			Name:            item.Name,
-			Summary:         item.Summary,
-			Modality:        item.Modality,
-			ExecutorType:    stringMapValue(raw, "executor_type"),
-			Series:          item.Series,
-			CapabilityType:  item.CapabilityType,
-			InteractionMode: stringMapValue(raw, "interaction_mode"),
-			CoverAssetURL:   item.CoverAssetURL,
-			PlatformTags:    item.Platforms,
-			IndustryTags:    stringSliceMapValue(raw, "industry_tags"),
-			ScenarioTags:    stringSliceMapValue(raw, "scenario_tags"),
-			IsFeatured:      boolMapValue(raw, "featured"),
-			RecommendScore:  item.RecommendScore,
-			SuccessRateHint: float64MapValue(raw, "success_rate_hint"),
+			ID:                   item.TemplateID,
+			Slug:                 item.Slug,
+			ToolSlug:             templateutil.DeriveToolSlug(targetRoute, stringMapValue(toolBinding, "toolSlug"), stringMapValue(toolBinding, "tool_slug"), templateutil.ToolSlugFromCatalog(item.Slug, stringMapValue(raw, "external_code"))),
+			TargetRoute:          targetRoute,
+			ExternalCode:         stringMapValue(raw, "external_code"),
+			Name:                 item.Name,
+			Summary:              item.Summary,
+			Modality:             item.Modality,
+			ExecutorType:         stringMapValue(raw, "executor_type"),
+			Series:               item.Series,
+			CapabilityType:       item.CapabilityType,
+			InteractionMode:      stringMapValue(raw, "interaction_mode"),
+			CoverAssetURL:        item.CoverAssetURL,
+			PlatformTags:         item.Platforms,
+			IndustryTags:         stringSliceMapValue(raw, "industry_tags"),
+			ScenarioTags:         stringSliceMapValue(raw, "scenario_tags"),
+			InputModes:           platformStringSlice(raw, applicability, toolBinding, "input_modes", "inputModes", "input_mode", "inputMode"),
+			ProductCategories:    firstStringSliceMapValue(applicability, nil, "product_categories", "productCategories"),
+			ProviderCapabilities: platformStringSlice(raw, applicability, toolBinding, "provider_capabilities", "providerCapabilities", "provider_capability", "providerCapability"),
+			Applicability:        applicability,
+			IsFeatured:           boolMapValue(raw, "featured"),
+			RecommendScore:       item.RecommendScore,
+			SuccessRateHint:      float64MapValue(raw, "success_rate_hint"),
 		})
 	}
 	return result
@@ -140,17 +144,35 @@ func mapPlatformCatalogListItems(items []platform.PlatformTemplateCatalogItem) [
 
 func mapPlatformCatalogDetail(detail *platform.PlatformTemplateCatalogDetail) *repository.CatalogDetail {
 	raw := detail.DetailRaw
+	if len(raw) == 0 {
+		raw = detail.Item.Raw
+	}
+	execution := firstMapAnyValue(raw, "executionSchema", "execution_schema")
+	targetRoute := stringMapValue(execution, "route")
+	toolBinding := firstMapAnyValue(raw, "toolBinding", "tool_binding")
+	applicability := platformApplicabilityFromRaw(raw)
 	catalog := repository.CatalogListItem{
-		ID:             detail.Item.TemplateID,
-		Slug:           detail.Item.Slug,
-		Name:           detail.Item.Name,
-		Summary:        detail.Item.Summary,
-		Modality:       detail.Item.Modality,
-		Series:         detail.Item.Series,
-		CapabilityType: detail.Item.CapabilityType,
-		CoverAssetURL:  detail.Item.CoverAssetURL,
-		PlatformTags:   detail.Item.Platforms,
-		RecommendScore: detail.Item.RecommendScore,
+		ID:                   detail.Item.TemplateID,
+		Slug:                 detail.Item.Slug,
+		ToolSlug:             templateutil.DeriveToolSlug(targetRoute, stringMapValue(toolBinding, "toolSlug"), stringMapValue(toolBinding, "tool_slug"), detail.Item.Slug, stringMapValue(raw, "external_code")),
+		TargetRoute:          targetRoute,
+		ExternalCode:         stringMapValue(raw, "external_code"),
+		Name:                 detail.Item.Name,
+		Summary:              detail.Item.Summary,
+		Modality:             detail.Item.Modality,
+		ExecutorType:         stringMapValue(raw, "executor_type"),
+		Series:               detail.Item.Series,
+		CapabilityType:       detail.Item.CapabilityType,
+		InteractionMode:      stringMapValue(raw, "interaction_mode"),
+		CoverAssetURL:        detail.Item.CoverAssetURL,
+		PlatformTags:         detail.Item.Platforms,
+		IndustryTags:         stringSliceMapValue(raw, "industry_tags"),
+		ScenarioTags:         stringSliceMapValue(raw, "scenario_tags"),
+		InputModes:           platformStringSlice(raw, applicability, toolBinding, "input_modes", "inputModes", "input_mode", "inputMode"),
+		ProductCategories:    firstStringSliceMapValue(applicability, nil, "product_categories", "productCategories"),
+		ProviderCapabilities: platformStringSlice(raw, applicability, toolBinding, "provider_capabilities", "providerCapabilities", "provider_capability", "providerCapability"),
+		Applicability:        applicability,
+		RecommendScore:       detail.Item.RecommendScore,
 	}
 	return &repository.CatalogDetail{
 		Catalog: catalog,
@@ -171,10 +193,48 @@ func mapPlatformCatalogDetail(detail *platform.PlatformTemplateCatalogDetail) *r
 			PromptLayers:     firstMapAnyValue(raw, "promptLayers", "prompt_layers"),
 			PolicySchema:     firstMapAnyValue(raw, "policySchema", "policy_schema"),
 			DefaultVariables: firstMapAnyValue(raw, "defaultVariables", "default_variables"),
-			ToolBinding:      firstMapAnyValue(raw, "toolBinding", "tool_binding"),
+			ToolBinding:      toolBinding,
+			RequiredAssets:   mapPlatformRequiredAssets(firstAnyValue(firstMapAnyValue(raw, "inputSchema", "input_schema"), "required_assets", "requiredAssets")),
+			Applicability:    applicability,
 		},
 		Examples: mapPlatformExamples(raw["examples"]),
 	}
+}
+
+func platformApplicabilityFromRaw(raw map[string]any) map[string]any {
+	out := map[string]any{}
+	merge := func(src map[string]any) {
+		for key, value := range src {
+			if _, exists := out[key]; !exists {
+				out[key] = value
+			}
+		}
+	}
+	merge(firstMapAnyValue(raw, "applicability"))
+	merge(firstMapAnyValue(firstMapAnyValue(raw, "policySchema", "policy_schema"), "applicability"))
+	merge(firstMapAnyValue(firstMapAnyValue(raw, "toolBinding", "tool_binding"), "applicability"))
+	for _, key := range []string{"input_modes", "inputModes", "product_categories", "productCategories", "provider_capabilities", "providerCapabilities", "product_category_exclude", "productCategoryExclude", "product_categories_exclude", "productCategoriesExclude"} {
+		if value, ok := raw[key]; ok {
+			if _, exists := out[key]; !exists {
+				out[key] = value
+			}
+		}
+	}
+	return out
+}
+
+func platformStringSlice(raw, applicability, toolBinding map[string]any, keys ...string) []string {
+	for _, source := range []map[string]any{applicability, raw, toolBinding} {
+		for _, key := range keys {
+			if values := stringSliceMapValue(source, key); len(values) > 0 {
+				return values
+			}
+			if value := stringMapValue(source, key); value != "" {
+				return []string{value}
+			}
+		}
+	}
+	return nil
 }
 
 func stringMapValue(input map[string]any, key string) string {
@@ -211,6 +271,66 @@ func firstMapAnyValue(input map[string]any, keys ...string) map[string]any {
 		}
 	}
 	return map[string]any{}
+}
+
+func firstAnyValue(input map[string]any, keys ...string) any {
+	for _, key := range keys {
+		if value, ok := input[key]; ok {
+			return value
+		}
+	}
+	return nil
+}
+
+func firstStringSliceMapValue(primary map[string]any, secondary map[string]any, keys ...string) []string {
+	for _, source := range []map[string]any{primary, secondary} {
+		if source == nil {
+			continue
+		}
+		for _, key := range keys {
+			if values := stringSliceMapValue(source, key); len(values) > 0 {
+				return values
+			}
+		}
+	}
+	return nil
+}
+
+func stringSliceFromAny(value any) []string {
+	switch typed := value.(type) {
+	case []string:
+		return typed
+	case []any:
+		out := make([]string, 0, len(typed))
+		for _, item := range typed {
+			if value, ok := item.(string); ok && value != "" {
+				out = append(out, value)
+			}
+		}
+		return out
+	default:
+		return nil
+	}
+}
+
+func mapPlatformRequiredAssets(value any) []repository.TemplateRequiredAssetDTO {
+	raw, ok := value.([]any)
+	if !ok {
+		return nil
+	}
+	out := make([]repository.TemplateRequiredAssetDTO, 0, len(raw))
+	for _, item := range raw {
+		m, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		slot := stringMapValue(m, "slot")
+		if slot == "" {
+			continue
+		}
+		out = append(out, repository.TemplateRequiredAssetDTO{Slot: slot, Role: stringMapValue(m, "role"), Label: stringMapValue(m, "label"), Required: boolMapValue(m, "required"), Constraints: mapAnyValue(m, "constraints")})
+	}
+	return out
 }
 
 func boolMapValue(input map[string]any, key string) bool {
@@ -651,60 +771,6 @@ func buildPlatformUseResponse(detail *repository.CatalogDetail) *repository.UseT
 		SupportsAsyncJob: boolMapValue(execution, "supportsAsyncJob"),
 		SupportsBatch:    boolMapValue(execution, "supportsBatch"),
 	}
-}
-
-func matchesPlatformCatalogFilter(item repository.CatalogListItem, filter repository.TemplateCatalogFilter) bool {
-	if filter.ToolSlug != "" && !strings.EqualFold(item.ToolSlug, filter.ToolSlug) {
-		return false
-	}
-	if filter.Modality != "" && !strings.EqualFold(item.Modality, filter.Modality) {
-		return false
-	}
-	if filter.Series != "" && !strings.EqualFold(item.Series, filter.Series) {
-		return false
-	}
-	if filter.Capability != "" && !strings.EqualFold(item.CapabilityType, filter.Capability) {
-		return false
-	}
-	if filter.Platform != "" && !containsFold(item.PlatformTags, filter.Platform) {
-		return false
-	}
-	if filter.FeaturedOnly && !item.IsFeatured {
-		return false
-	}
-	keyword := strings.TrimSpace(strings.ToLower(filter.Keyword))
-	if keyword == "" {
-		return true
-	}
-	return strings.Contains(strings.ToLower(item.Name), keyword) ||
-		strings.Contains(strings.ToLower(item.Summary), keyword) ||
-		strings.Contains(strings.ToLower(item.ExternalCode), keyword) ||
-		strings.Contains(strings.ToLower(item.ID), keyword)
-}
-
-func sortPlatformCatalogItems(items []repository.CatalogListItem, sortBy string) {
-	switch strings.ToLower(strings.TrimSpace(sortBy)) {
-	case "latest":
-		sort.SliceStable(items, func(i, j int) bool { return items[i].ID > items[j].ID })
-	case "name":
-		sort.SliceStable(items, func(i, j int) bool { return items[i].Name < items[j].Name })
-	default:
-		sort.SliceStable(items, func(i, j int) bool {
-			if items[i].RecommendScore == items[j].RecommendScore {
-				return items[i].Name < items[j].Name
-			}
-			return items[i].RecommendScore > items[j].RecommendScore
-		})
-	}
-}
-
-func containsFold(items []string, target string) bool {
-	for _, item := range items {
-		if strings.EqualFold(item, target) {
-			return true
-		}
-	}
-	return false
 }
 
 func (s *Service) DownloadExampleAsset(storageKey string) (io.ReadCloser, map[string]string, error) {

@@ -3,6 +3,8 @@ package templatecenter
 import (
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"ecommerce-service/internal/repository"
 	"ecommerce-service/internal/telemetry"
@@ -15,6 +17,20 @@ type Handler struct{ service *Service }
 
 func NewHandler(service *Service) *Handler { return &Handler{service: service} }
 
+func clampTemplateCatalogInt(raw string, minValue, maxValue int) int {
+	if strings.TrimSpace(raw) == "" {
+		return 0
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil || value < minValue {
+		return minValue
+	}
+	if maxValue > 0 && value > maxValue {
+		return maxValue
+	}
+	return value
+}
+
 func scopeFromContext(c *gin.Context) repository.Scope {
 	return repository.Scope{UserID: c.GetString("userID"), OrgID: c.GetString("orgID")}
 }
@@ -22,7 +38,8 @@ func scopeFromContext(c *gin.Context) repository.Scope {
 func (h *Handler) ListCatalog(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/template-center-handler", "ecommerce.template_center.catalog.list")
 	defer span.End()
-	items, err := h.service.ListCatalog(scopeFromContext(c), repository.TemplateCatalogFilter{Locale: c.DefaultQuery("locale", "zh"), Keyword: c.Query("keyword"), Modality: c.Query("modality"), Series: c.Query("series"), Capability: c.Query("capability"), Platform: c.Query("platform"), ToolSlug: c.Query("tool_slug"), SortBy: c.DefaultQuery("sortBy", "recommended")})
+	filter := repository.TemplateCatalogFilter{Locale: c.DefaultQuery("locale", "zh"), Keyword: c.Query("keyword"), Modality: c.Query("modality"), Series: c.Query("series"), Capability: c.Query("capability"), Platform: c.Query("platform"), ToolSlug: c.Query("tool_slug"), SortBy: c.DefaultQuery("sortBy", "recommended"), Limit: clampTemplateCatalogInt(c.Query("limit"), 0, 100), Offset: clampTemplateCatalogInt(c.Query("offset"), 0, 10000)}
+	items, err := h.service.ListCatalog(scopeFromContext(c), filter)
 	if err != nil {
 		response.JSONErrorSemantic(c, response.CodeInternalError, "failed to load template catalog", "TEMPLATE_CATALOG_LOAD_FAILED", "Please try again later.")
 		return

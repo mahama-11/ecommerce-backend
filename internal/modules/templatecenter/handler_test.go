@@ -80,6 +80,19 @@ func TestTemplateCenterHandlerFlow(t *testing.T) {
 		t.Fatalf("catalog payload invalid: code=%d len=%d", listPayload.Code, len(listPayload.Data))
 	}
 
+	pagedResp := performRequest(t, router, http.MethodGet, "/api/v1/ecommerce/template-center/catalog?locale=zh&limit=3&offset=2", "")
+	if pagedResp.Code != http.StatusOK {
+		t.Fatalf("paged catalog status = %d", pagedResp.Code)
+	}
+	var pagedPayload envelope[[]repository.CatalogListItem]
+	decodeResponse(t, pagedResp, &pagedPayload)
+	if len(pagedPayload.Data) != 3 {
+		t.Fatalf("paged catalog len = %d, want 3", len(pagedPayload.Data))
+	}
+	if pagedPayload.Data[0].ID != listPayload.Data[2].ID {
+		t.Fatalf("paged catalog offset mismatch: got %s want %s", pagedPayload.Data[0].ID, listPayload.Data[2].ID)
+	}
+
 	templateID := listPayload.Data[0].ID
 
 	detailResp := performRequest(t, router, http.MethodGet, "/api/v1/ecommerce/template-center/catalog/"+templateID+"?locale=zh", "")

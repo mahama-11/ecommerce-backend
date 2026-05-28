@@ -365,12 +365,6 @@ func (r *TemplateCenterRepository) ListCatalog(scope Scope, filter TemplateCatal
 	locale := normalizedLocale(filter.Locale)
 	var catalogs []models.TemplateCatalog
 	q := r.applyCatalogFilter(r.db.Model(&models.TemplateCatalog{}), filter)
-	if filter.Limit > 0 {
-		q = q.Limit(filter.Limit)
-	}
-	if filter.Offset > 0 {
-		q = q.Offset(filter.Offset)
-	}
 	q = applyCatalogSort(q, filter.SortBy)
 	if err := q.Find(&catalogs).Error; err != nil {
 		return nil, err
@@ -398,6 +392,15 @@ func (r *TemplateCenterRepository) ListCatalog(scope Scope, filter TemplateCatal
 		items = append(items, candidate)
 	}
 	sortCatalogItems(items, filter.SortBy)
+	if filter.Offset > 0 {
+		if filter.Offset >= len(items) {
+			return []CatalogListItem{}, nil
+		}
+		items = items[filter.Offset:]
+	}
+	if filter.Limit > 0 && filter.Limit < len(items) {
+		items = items[:filter.Limit]
+	}
 	return items, nil
 }
 

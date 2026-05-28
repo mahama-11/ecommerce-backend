@@ -22,7 +22,7 @@ func scopeFromContext(c *gin.Context) repository.Scope {
 func (h *Handler) ListCatalog(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/template-center-handler", "ecommerce.template_center.catalog.list")
 	defer span.End()
-	items, err := h.service.ListCatalog(scopeFromContext(c), repository.TemplateCatalogFilter{Locale: c.DefaultQuery("locale", "zh"), Keyword: c.Query("keyword"), Modality: c.Query("modality"), Series: c.Query("series"), Capability: c.Query("capability"), Platform: c.Query("platform"), ToolSlug: c.Query("tool_slug"), SortBy: c.DefaultQuery("sortBy", "recommended")})
+	items, err := h.service.ListCatalog(scopeFromContext(c), repository.TemplateCatalogFilter{Locale: c.DefaultQuery("locale", "zh"), Keyword: c.Query("keyword"), Modality: c.Query("modality"), Series: c.Query("series"), Capability: c.Query("capability"), Platform: c.Query("platform"), ToolSlug: c.Query("tool_slug"), InputMode: c.Query("input_mode"), ProductCategory: c.Query("product_category"), Industry: c.Query("industry"), Scenario: c.Query("scenario"), ProviderCapability: c.Query("provider_capability"), SortBy: c.DefaultQuery("sortBy", "recommended")})
 	if err != nil {
 		response.JSONErrorSemantic(c, response.CodeInternalError, "failed to load template catalog", "TEMPLATE_CATALOG_LOAD_FAILED", "Please try again later.")
 		return
@@ -33,7 +33,7 @@ func (h *Handler) ListCatalog(c *gin.Context) {
 func (h *Handler) Facets(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/template-center-handler", "ecommerce.template_center.catalog.facets")
 	defer span.End()
-	items, err := h.service.Facets(repository.TemplateCatalogFilter{Locale: c.DefaultQuery("locale", "zh"), Keyword: c.Query("keyword"), Modality: c.Query("modality"), Series: c.Query("series"), Capability: c.Query("capability"), Platform: c.Query("platform"), ToolSlug: c.Query("tool_slug")})
+	items, err := h.service.Facets(repository.TemplateCatalogFilter{Locale: c.DefaultQuery("locale", "zh"), Keyword: c.Query("keyword"), Modality: c.Query("modality"), Series: c.Query("series"), Capability: c.Query("capability"), Platform: c.Query("platform"), ToolSlug: c.Query("tool_slug"), InputMode: c.Query("input_mode"), ProductCategory: c.Query("product_category"), Industry: c.Query("industry"), Scenario: c.Query("scenario"), ProviderCapability: c.Query("provider_capability")})
 	if err != nil {
 		response.JSONErrorSemantic(c, response.CodeInternalError, "failed to load template facets", "TEMPLATE_FACETS_LOAD_FAILED", "Please try again later.")
 		return

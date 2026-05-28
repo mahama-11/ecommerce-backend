@@ -19,17 +19,22 @@ func NewTemplateCenterRepository(db *gorm.DB) *TemplateCenterRepository {
 }
 
 type TemplateCatalogFilter struct {
-	Locale       string
-	Keyword      string
-	Modality     string
-	Series       string
-	Capability   string
-	Platform     string
-	ToolSlug     string
-	SortBy       string
-	FeaturedOnly bool
-	Limit        int
-	Offset       int
+	Locale             string
+	Keyword            string
+	Modality           string
+	Series             string
+	Capability         string
+	Platform           string
+	ToolSlug           string
+	InputMode          string
+	ProductCategory    string
+	Industry           string
+	Scenario           string
+	ProviderCapability string
+	SortBy             string
+	FeaturedOnly       bool
+	Limit              int
+	Offset             int
 }
 
 type CatalogFacetBucket struct {
@@ -46,28 +51,32 @@ type CatalogFacets struct {
 }
 
 type CatalogListItem struct {
-	ID              string   `json:"id"`
-	Slug            string   `json:"slug"`
-	ToolSlug        string   `json:"toolSlug,omitempty"`
-	TargetRoute     string   `json:"targetRoute,omitempty"`
-	ExternalCode    string   `json:"externalCode,omitempty"`
-	Name            string   `json:"name"`
-	Summary         string   `json:"summary"`
-	Modality        string   `json:"modality"`
-	ExecutorType    string   `json:"executorType"`
-	Series          string   `json:"series"`
-	CapabilityType  string   `json:"capabilityType"`
-	InteractionMode string   `json:"interactionMode"`
-	CoverAssetURL   string   `json:"coverAssetUrl,omitempty"`
-	PlatformTags    []string `json:"platformTags"`
-	IndustryTags    []string `json:"industryTags"`
-	ScenarioTags    []string `json:"scenarioTags"`
-	IsFeatured      bool     `json:"isFeatured"`
-	RecommendScore  int      `json:"recommendScore"`
-	IsFavorited     bool     `json:"isFavorited"`
-	FavoriteCount   int64    `json:"favoriteCount"`
-	UseCount        int64    `json:"useCount"`
-	SuccessRateHint float64  `json:"successRateHint"`
+	ID                   string         `json:"id"`
+	Slug                 string         `json:"slug"`
+	ToolSlug             string         `json:"toolSlug,omitempty"`
+	TargetRoute          string         `json:"targetRoute,omitempty"`
+	ExternalCode         string         `json:"externalCode,omitempty"`
+	Name                 string         `json:"name"`
+	Summary              string         `json:"summary"`
+	Modality             string         `json:"modality"`
+	ExecutorType         string         `json:"executorType"`
+	Series               string         `json:"series"`
+	CapabilityType       string         `json:"capabilityType"`
+	InteractionMode      string         `json:"interactionMode"`
+	CoverAssetURL        string         `json:"coverAssetUrl,omitempty"`
+	PlatformTags         []string       `json:"platformTags"`
+	IndustryTags         []string       `json:"industryTags"`
+	ScenarioTags         []string       `json:"scenarioTags"`
+	InputModes           []string       `json:"inputModes,omitempty"`
+	ProductCategories    []string       `json:"productCategories,omitempty"`
+	ProviderCapabilities []string       `json:"providerCapabilities,omitempty"`
+	Applicability        map[string]any `json:"applicability,omitempty"`
+	IsFeatured           bool           `json:"isFeatured"`
+	RecommendScore       int            `json:"recommendScore"`
+	IsFavorited          bool           `json:"isFavorited"`
+	FavoriteCount        int64          `json:"favoriteCount"`
+	UseCount             int64          `json:"useCount"`
+	SuccessRateHint      float64        `json:"successRateHint"`
 }
 
 type CatalogDetail struct {
@@ -105,13 +114,23 @@ type CatalogVersionDTO struct {
 }
 
 type CatalogSchemaDTO struct {
-	InputSchema      map[string]any `json:"inputSchema"`
-	OutputSchema     map[string]any `json:"outputSchema"`
-	ExecutionSchema  map[string]any `json:"executionSchema"`
-	PromptLayers     map[string]any `json:"promptLayers"`
-	PolicySchema     map[string]any `json:"policySchema,omitempty"`
-	DefaultVariables map[string]any `json:"defaultVariables"`
-	ToolBinding      map[string]any `json:"toolBinding"`
+	InputSchema      map[string]any             `json:"inputSchema"`
+	OutputSchema     map[string]any             `json:"outputSchema"`
+	ExecutionSchema  map[string]any             `json:"executionSchema"`
+	PromptLayers     map[string]any             `json:"promptLayers"`
+	PolicySchema     map[string]any             `json:"policySchema,omitempty"`
+	DefaultVariables map[string]any             `json:"defaultVariables"`
+	ToolBinding      map[string]any             `json:"toolBinding"`
+	RequiredAssets   []TemplateRequiredAssetDTO `json:"requiredAssets,omitempty"`
+	Applicability    map[string]any             `json:"applicability,omitempty"`
+}
+
+type TemplateRequiredAssetDTO struct {
+	Slot        string         `json:"slot"`
+	Role        string         `json:"role,omitempty"`
+	Label       string         `json:"label,omitempty"`
+	Required    bool           `json:"required"`
+	Constraints map[string]any `json:"constraints,omitempty"`
 }
 
 type CatalogExampleDTO struct {
@@ -389,7 +408,7 @@ func (r *TemplateCenterRepository) ListCatalog(scope Scope, filter TemplateCatal
 	for _, item := range catalogs {
 		loc := localeMap[item.ID]
 		candidate := toCatalogListItem(item, loc, favoriteSet[item.ID], favoriteCounts[item.ID], useCounts[item.ID], schemaBindings[item.ID])
-		if filter.ToolSlug != "" && !strings.EqualFold(candidate.ToolSlug, filter.ToolSlug) {
+		if !matchesCatalogContextFilter(candidate, filter) {
 			continue
 		}
 		if keyword != "" && !matchesKeyword(candidate, keyword) {
@@ -428,7 +447,7 @@ func (r *TemplateCenterRepository) ListFacets(filter TemplateCatalogFilter) (*Ca
 	keyword := strings.ToLower(strings.TrimSpace(filter.Keyword))
 	for _, item := range catalogs {
 		candidate := toCatalogListItem(item, localeMap[item.ID], false, 0, 0, schemaBindings[item.ID])
-		if filter.ToolSlug != "" && !strings.EqualFold(candidate.ToolSlug, filter.ToolSlug) {
+		if !matchesCatalogContextFilter(candidate, filter) {
 			continue
 		}
 		if keyword != "" && !matchesKeyword(candidate, keyword) {
@@ -491,6 +510,8 @@ func (r *TemplateCenterRepository) GetCatalogDetail(scope Scope, templateID, loc
 			PolicySchema:     decodeJSONMap(schema.PolicySchemaJSON),
 			DefaultVariables: decodeJSONMap(schema.DefaultVariablesJSON),
 			ToolBinding:      decodeJSONMap(schema.ToolBindingJSON),
+			RequiredAssets:   requiredAssetsFromSchema(schema),
+			Applicability:    applicabilityFromSchema(schema, catalog),
 		},
 		Examples: toExamples(examples),
 	}

@@ -88,16 +88,21 @@ func (s *Service) CreateImageJob(userID, orgID string, input CreateImageJobInput
 	if err != nil {
 		return nil, err
 	}
+	if strings.TrimSpace(input.SourceAssetID) == "" && len(input.SourceAssets) > 0 {
+		input.SourceAssetID = strings.TrimSpace(input.SourceAssets[0].AssetID)
+	}
 	promptContract, err := s.resolvePromptContract(orgID, product, &input)
 	if err != nil {
 		return nil, err
 	}
-	sourceAsset, err := s.repo.FindAssetByID(orgID, input.SourceAssetID)
+	inputMode := defaultInputMode(input.InputMode)
+	sourceAssets, err := s.resolveImageJobSourceAssets(orgID, product.ID, inputMode, input)
 	if err != nil {
 		return nil, err
 	}
-	if err := validateSourceAssetBinding(sourceAsset, product.ID); err != nil {
-		return nil, err
+	legacySourceAssetID := strings.TrimSpace(input.SourceAssetID)
+	if legacySourceAssetID == "" && len(sourceAssets) > 0 {
+		legacySourceAssetID = sourceAssets[0].Asset.ID
 	}
 	promptPlan, err := s.buildCompiledPromptPlan(input)
 	if err != nil {
@@ -113,8 +118,8 @@ func (s *Service) CreateImageJob(userID, orgID string, input CreateImageJobInput
 		OrganizationID: orgID,
 		UserID:         userID,
 		SceneType:      strings.TrimSpace(input.SceneType),
-		InputMode:      defaultInputMode(input.InputMode),
-		SourceAssetID:  sourceAsset.ID,
+		InputMode:      inputMode,
+		SourceAssetID:  legacySourceAssetID,
 		PromptID:       strings.TrimSpace(input.PromptID),
 		Status:         "queued",
 		Stage:          "queued",
@@ -150,6 +155,7 @@ func (s *Service) CreateImageJob(userID, orgID string, input CreateImageJobInput
 		return nil, err
 	}
 
+	sourceAssetIDs, sourceAssetList, sourceAssetSlotMap := buildSourceAssetManifest(sourceAssets, product)
 	inputManifest := mustMarshal(map[string]any{
 		"input_mode": item.InputMode,
 		"params_snapshot": map[string]any{
@@ -161,22 +167,23 @@ func (s *Service) CreateImageJob(userID, orgID string, input CreateImageJobInput
 			"width":           defaultDimension(input.Width),
 			"height":          defaultDimension(input.Height),
 		},
-		"source_asset_ids": []string{sourceAsset.ID},
-		"source_assets": []map[string]any{{
-			"id":          sourceAsset.ID,
-			"storage_key": sourceAsset.StorageKey,
-			"mime_type":   sourceAsset.MimeType,
-			"width":       sourceAsset.Width,
-			"height":      sourceAsset.Height,
-			"product_id":  product.ID,
-			"sku_code":    product.SKUCode,
-		}},
+		"source_asset_ids":   sourceAssetIDs,
+		"source_assets":      sourceAssetList,
+		"source_asset_map":   sourceAssetSlotMap,
 		"requested_variants": defaultRequestedVariants(input.RequestedVariants),
 		"prompt_contract":    promptContract,
+		"route_hint": map[string]any{
+			"input_mode":           item.InputMode,
+			"runtime_route_family": runtimeRouteFamily(item.InputMode),
+		},
+		"provider_capability": providerCapabilityHint(item.InputMode),
 	})
 	routeSnapshot := mustMarshal(map[string]any{
 		"objective":           normalizeObjective(input.Objective),
 		"preferred_providers": input.PreferredProviders,
+		"input_mode":          item.InputMode,
+		"route_family":        runtimeRouteFamily(item.InputMode),
+		"provider_capability": providerCapabilityHint(item.InputMode),
 	})
 	metadata := mustMarshal(map[string]any{
 		"scene_type":             item.SceneType,
@@ -463,6 +470,21 @@ func (s *Service) resolvePromptContract(orgID string, product *models.EcomProduc
 	_ = json.Unmarshal([]byte(promptRun.SourceAssetBindingsJSON), &bindings)
 	if strings.TrimSpace(input.SourceAssetID) == "" && len(bindings) > 0 {
 		input.SourceAssetID = bindings[0].AssetID
+	}
+	if strings.TrimSpace(input.SourceAssetID) == "" && len(bindings) == 0 && defaultInputMode(input.InputMode) == "text_to_image" {
+		input.Prompt = compiled.FinalPrompt
+		input.NegativePrompt = compiled.FinalNegativePrompt
+		input.TemplateCode = firstNonEmpty(input.TemplateCode, promptRun.TemplateCode)
+		return map[string]any{
+			"mode":                "prompt_id",
+			"prompt_id":           promptRun.ID,
+			"template_id":         promptRun.TemplateID,
+			"template_version_id": promptRun.TemplateVersionID,
+			"template_code":       promptRun.TemplateCode,
+			"schema_version":      promptRun.SchemaVersion,
+			"content_hash":        promptRun.ContentHash,
+			"source_map_hash":     promptRun.SourceMapHash,
+		}, nil
 	}
 	if strings.TrimSpace(input.SourceAssetID) == "" {
 		return nil, fmt.Errorf("source_asset_id is required")

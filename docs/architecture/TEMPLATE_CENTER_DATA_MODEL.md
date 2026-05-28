@@ -397,12 +397,46 @@ updated_at              timestamp not null
 
 其中：
 
-- `input_schema_json`：前端表单字段、文件槽位、校验规则
+- `input_schema_json`：前端表单字段、文件槽位、校验规则；图片工具应显式声明 `input_mode`（`text_to_image` / `image_to_image` / `image_edit` / `multi_image`）和 `required_assets` 槽位合同
 - `output_schema_json`：输出张数、比例、分辨率、格式等
 - `execution_schema_json`：执行目标路由、预填参数、步骤、异步模式
 - `prompt_layers_json`：L1/L2/L3 分层 Prompt
-- `policy_schema_json`：合规或安全规则
-- `tool_binding_json`：工具 slug、工作流节点、默认执行器绑定
+- `policy_schema_json`：合规、安全规则，以及目录上下文过滤用 `applicability`
+- `tool_binding_json`：工具 slug、工作流节点、默认执行器绑定，可补充 provider capability 需求
+
+`required_assets` 规范：
+
+```json
+{
+  "input_mode": "multi_image",
+  "required_assets": [
+    {
+      "slot": "front",
+      "role": "reference",
+      "label": "Front view",
+      "required": true,
+      "constraints": { "mime_types": ["image/png", "image/jpeg"], "min_width": 512 }
+    }
+  ]
+}
+```
+
+`applicability` 规范（可放在 `policy_schema_json.applicability`、`tool_binding_json.applicability` 或平台 projection raw）：
+
+```json
+{
+  "tool_slugs": ["changing-model"],
+  "input_modes": ["image_to_image", "multi_image"],
+  "product_categories": ["apparel", "beauty"],
+  "product_category_exclude": ["food"],
+  "industries": ["fashion"],
+  "scenarios": ["hero", "detail"],
+  "platforms": ["amazon", "tiktok_shop"],
+  "provider_capabilities": ["multi_image", "image_edit"]
+}
+```
+
+列表接口按工具入口、商品类目、`input_mode`、平台、行业/场景和当前流程 provider capability 做硬过滤；未声明某个维度的模板视为该维度通用，以兼容旧 seed。
 
 ### 6.4.1 `input_schema_json` 示例
 

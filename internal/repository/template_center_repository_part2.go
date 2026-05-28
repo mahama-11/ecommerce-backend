@@ -240,34 +240,42 @@ func (r *TemplateCenterRepository) useCounts(catalogs []models.TemplateCatalog) 
 
 func toCatalogListItem(item models.TemplateCatalog, locale models.TemplateCatalogLocale, isFavorited bool, favoriteCount, useCount int64, binding schemaBinding) CatalogListItem {
 	return CatalogListItem{
-		ID:              item.ID,
-		Slug:            item.Slug,
-		ToolSlug:        binding.ToolSlug,
-		TargetRoute:     binding.TargetRoute,
-		ExternalCode:    item.ExternalCode,
-		Name:            locale.Name,
-		Summary:         locale.Summary,
-		Modality:        item.Modality,
-		ExecutorType:    item.ExecutorType,
-		Series:          item.Series,
-		CapabilityType:  item.CapabilityType,
-		InteractionMode: item.InteractionMode,
-		CoverAssetURL:   item.CoverAssetURL,
-		PlatformTags:    decodeStringArray(item.PlatformTagsJSON),
-		IndustryTags:    decodeStringArray(item.IndustryTagsJSON),
-		ScenarioTags:    decodeStringArray(item.ScenarioTagsJSON),
-		IsFeatured:      item.IsFeatured,
-		RecommendScore:  item.RecommendScore,
-		IsFavorited:     isFavorited,
-		FavoriteCount:   favoriteCount,
-		UseCount:        useCount,
-		SuccessRateHint: item.SuccessRateHint,
+		ID:                   item.ID,
+		Slug:                 item.Slug,
+		ToolSlug:             binding.ToolSlug,
+		TargetRoute:          binding.TargetRoute,
+		ExternalCode:         item.ExternalCode,
+		Name:                 locale.Name,
+		Summary:              locale.Summary,
+		Modality:             item.Modality,
+		ExecutorType:         item.ExecutorType,
+		Series:               item.Series,
+		CapabilityType:       item.CapabilityType,
+		InteractionMode:      item.InteractionMode,
+		CoverAssetURL:        item.CoverAssetURL,
+		PlatformTags:         decodeStringArray(item.PlatformTagsJSON),
+		IndustryTags:         decodeStringArray(item.IndustryTagsJSON),
+		ScenarioTags:         decodeStringArray(item.ScenarioTagsJSON),
+		InputModes:           binding.InputModes,
+		ProductCategories:    binding.ProductCategories,
+		ProviderCapabilities: binding.ProviderCapabilities,
+		Applicability:        binding.Applicability,
+		IsFeatured:           item.IsFeatured,
+		RecommendScore:       item.RecommendScore,
+		IsFavorited:          isFavorited,
+		FavoriteCount:        favoriteCount,
+		UseCount:             useCount,
+		SuccessRateHint:      item.SuccessRateHint,
 	}
 }
 
 type schemaBinding struct {
-	ToolSlug    string
-	TargetRoute string
+	ToolSlug             string
+	TargetRoute          string
+	InputModes           []string
+	ProductCategories    []string
+	ProviderCapabilities []string
+	Applicability        map[string]any
 }
 
 func (r *TemplateCenterRepository) loadSchemaBindings(catalogs []models.TemplateCatalog) (map[string]schemaBinding, error) {
@@ -301,10 +309,16 @@ func (r *TemplateCenterRepository) loadSchemaBindings(catalogs []models.Template
 func schemaBindingFromSchema(schema models.TemplateCatalogSchema, catalog models.TemplateCatalog) schemaBinding {
 	execution := decodeJSONMap(schema.ExecutionSchemaJSON)
 	toolBinding := decodeJSONMap(schema.ToolBindingJSON)
+	inputSchema := decodeJSONMap(schema.InputSchemaJSON)
 	targetRoute := stringValue(execution["route"])
+	applicability := applicabilityFromSchema(schema, catalog)
 	return schemaBinding{
-		ToolSlug:    templateutil.DeriveToolSlug(targetRoute, stringValue(toolBinding["toolSlug"]), stringValue(toolBinding["tool_slug"]), catalog.Slug, catalog.ExternalCode),
-		TargetRoute: targetRoute,
+		ToolSlug:             templateutil.DeriveToolSlug(targetRoute, stringValue(toolBinding["toolSlug"]), stringValue(toolBinding["tool_slug"]), catalog.Slug, catalog.ExternalCode),
+		TargetRoute:          targetRoute,
+		InputModes:           firstNonEmptyStringSlice(stringSliceFromAny(firstNonNil(applicability["input_modes"], applicability["inputModes"], toolBinding["inputModes"], toolBinding["input_modes"])), stringSliceFromAny(inputSchema["input_modes"]), stringSliceFromAny(inputSchema["inputModes"]), singleStringSlice(inputSchema["input_mode"]), singleStringSlice(inputSchema["inputMode"])),
+		ProductCategories:    stringSliceFromAny(firstNonNil(applicability["product_categories"], applicability["productCategories"])),
+		ProviderCapabilities: stringSliceFromAny(firstNonNil(applicability["provider_capabilities"], applicability["providerCapabilities"], toolBinding["providerCapabilities"], toolBinding["provider_capabilities"])),
+		Applicability:        applicability,
 	}
 }
 
@@ -355,6 +369,133 @@ func decodeJSONMap(raw string) map[string]any {
 		return map[string]any{}
 	}
 	return out
+}
+
+func matchesCatalogContextFilter(item CatalogListItem, filter TemplateCatalogFilter) bool {
+	if filter.ToolSlug != "" && !strings.EqualFold(item.ToolSlug, filter.ToolSlug) {
+		return false
+	}
+	if filter.InputMode != "" && len(item.InputModes) > 0 && !containsStringFold(item.InputModes, filter.InputMode) {
+		return false
+	}
+	if filter.ProductCategory != "" {
+		if containsStringFold(stringSliceFromAny(firstNonNil(item.Applicability["product_category_exclude"], item.Applicability["productCategoryExclude"], item.Applicability["product_categories_exclude"], item.Applicability["productCategoriesExclude"])), filter.ProductCategory) {
+			return false
+		}
+		if len(item.ProductCategories) > 0 && !containsStringFold(item.ProductCategories, filter.ProductCategory) {
+			return false
+		}
+	}
+	if filter.ProviderCapability != "" && len(item.ProviderCapabilities) > 0 && !containsStringFold(item.ProviderCapabilities, filter.ProviderCapability) {
+		return false
+	}
+	if filter.Industry != "" && !containsStringFold(item.IndustryTags, filter.Industry) {
+		return false
+	}
+	if filter.Scenario != "" && !containsStringFold(item.ScenarioTags, filter.Scenario) {
+		return false
+	}
+	return true
+}
+
+func applicabilityFromSchema(schema models.TemplateCatalogSchema, catalog models.TemplateCatalog) map[string]any {
+	policy := decodeJSONMap(schema.PolicySchemaJSON)
+	toolBinding := decodeJSONMap(schema.ToolBindingJSON)
+	inputSchema := decodeJSONMap(schema.InputSchemaJSON)
+	app := mapValueFromAny(firstNonNil(policy["applicability"], toolBinding["applicability"], inputSchema["applicability"]))
+	if app == nil {
+		app = map[string]any{}
+	}
+	if _, ok := app["platforms"]; !ok {
+		app["platforms"] = decodeStringArray(catalog.PlatformTagsJSON)
+	}
+	if _, ok := app["industries"]; !ok {
+		app["industries"] = decodeStringArray(catalog.IndustryTagsJSON)
+	}
+	if _, ok := app["scenarios"]; !ok {
+		app["scenarios"] = decodeStringArray(catalog.ScenarioTagsJSON)
+	}
+	return app
+}
+
+func requiredAssetsFromSchema(schema models.TemplateCatalogSchema) []TemplateRequiredAssetDTO {
+	inputSchema := decodeJSONMap(schema.InputSchemaJSON)
+	raw := firstNonNil(inputSchema["required_assets"], inputSchema["requiredAssets"])
+	items, ok := raw.([]any)
+	if !ok {
+		return nil
+	}
+	out := make([]TemplateRequiredAssetDTO, 0, len(items))
+	for _, item := range items {
+		m := mapValueFromAny(item)
+		if m == nil {
+			continue
+		}
+		slot := stringValue(m["slot"])
+		if slot == "" {
+			continue
+		}
+		out = append(out, TemplateRequiredAssetDTO{Slot: slot, Role: stringValue(m["role"]), Label: stringValue(m["label"]), Required: boolValue(m["required"]), Constraints: mapValueFromAny(m["constraints"])})
+	}
+	return out
+}
+
+func firstNonNil(values ...any) any {
+	for _, value := range values {
+		if value != nil {
+			return value
+		}
+	}
+	return nil
+}
+
+func mapValueFromAny(value any) map[string]any {
+	if typed, ok := value.(map[string]any); ok {
+		return typed
+	}
+	return nil
+}
+
+func stringSliceFromAny(value any) []string {
+	switch typed := value.(type) {
+	case []string:
+		return typed
+	case []any:
+		out := make([]string, 0, len(typed))
+		for _, item := range typed {
+			if s := stringValue(item); s != "" {
+				out = append(out, s)
+			}
+		}
+		return out
+	default:
+		return nil
+	}
+}
+
+func singleStringSlice(value any) []string {
+	if s := stringValue(value); s != "" {
+		return []string{s}
+	}
+	return nil
+}
+
+func firstNonEmptyStringSlice(values ...[]string) []string {
+	for _, value := range values {
+		if len(value) > 0 {
+			return value
+		}
+	}
+	return nil
+}
+
+func containsStringFold(items []string, target string) bool {
+	for _, item := range items {
+		if strings.EqualFold(item, target) {
+			return true
+		}
+	}
+	return false
 }
 
 func applyCatalogSort(q *gorm.DB, sortBy string) *gorm.DB {

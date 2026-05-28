@@ -55,24 +55,34 @@ type RegisterSourceAssetInput struct {
 }
 
 type CreateImageJobInput struct {
-	ProductID          string   `json:"product_id" binding:"required"`
-	SKUCode            string   `json:"sku_code" binding:"required"`
-	SceneType          string   `json:"scene_type" binding:"required"`
-	InputMode          string   `json:"input_mode,omitempty"`
-	SourceAssetID      string   `json:"source_asset_id,omitempty"`
-	PromptID           string   `json:"prompt_id,omitempty"`
-	Prompt             string   `json:"prompt,omitempty"`
-	NegativePrompt     string   `json:"negative_prompt,omitempty"`
-	Objective          string   `json:"objective,omitempty"`
-	PreferredProviders []string `json:"preferred_providers,omitempty"`
-	RequestedVariants  int      `json:"requested_variants,omitempty"`
-	Width              int      `json:"width,omitempty"`
-	Height             int      `json:"height,omitempty"`
-	Steps              int      `json:"steps,omitempty"`
-	CFG                float64  `json:"cfg,omitempty"`
-	Denoise            float64  `json:"denoise,omitempty"`
-	TemplateCode       string   `json:"template_code,omitempty"`
-	IdempotencyKey     string   `json:"idempotency_key,omitempty"`
+	ProductID          string                     `json:"product_id" binding:"required"`
+	SKUCode            string                     `json:"sku_code" binding:"required"`
+	SceneType          string                     `json:"scene_type" binding:"required"`
+	InputMode          string                     `json:"input_mode,omitempty"`
+	SourceAssetID      string                     `json:"source_asset_id,omitempty"`
+	SourceAssets       []ImageJobSourceAssetInput `json:"source_assets,omitempty"`
+	PromptID           string                     `json:"prompt_id,omitempty"`
+	Prompt             string                     `json:"prompt,omitempty"`
+	NegativePrompt     string                     `json:"negative_prompt,omitempty"`
+	Objective          string                     `json:"objective,omitempty"`
+	PreferredProviders []string                   `json:"preferred_providers,omitempty"`
+	RequestedVariants  int                        `json:"requested_variants,omitempty"`
+	Width              int                        `json:"width,omitempty"`
+	Height             int                        `json:"height,omitempty"`
+	Steps              int                        `json:"steps,omitempty"`
+	CFG                float64                    `json:"cfg,omitempty"`
+	Denoise            float64                    `json:"denoise,omitempty"`
+	TemplateCode       string                     `json:"template_code,omitempty"`
+	IdempotencyKey     string                     `json:"idempotency_key,omitempty"`
+}
+
+type ImageJobSourceAssetInput struct {
+	Slot        string         `json:"slot,omitempty"`
+	Role        string         `json:"role,omitempty"`
+	AssetID     string         `json:"asset_id"`
+	Required    bool           `json:"required,omitempty"`
+	Label       string         `json:"label,omitempty"`
+	Constraints map[string]any `json:"constraints,omitempty"`
 }
 
 type AssetSummary struct {

@@ -202,3 +202,113 @@ func cloneMap(input map[string]any) map[string]any {
 func copyMap(dst, src map[string]any) {
 	maps.Copy(dst, src)
 }
+
+type resolvedImageJobSourceAsset struct {
+	Spec  ImageJobSourceAssetInput
+	Asset *models.EcommerceAsset
+}
+
+func (s *Service) resolveImageJobSourceAssets(orgID, productID, inputMode string, input CreateImageJobInput) ([]resolvedImageJobSourceAsset, error) {
+	specs := normalizeImageJobSourceAssetSpecs(input)
+	if inputMode != "text_to_image" && len(specs) == 0 {
+		return nil, fmt.Errorf("source_assets or source_asset_id is required for %s", inputMode)
+	}
+	if inputMode == "multi_image" && len(specs) < 2 {
+		return nil, fmt.Errorf("multi_image requires at least two source_assets")
+	}
+	out := make([]resolvedImageJobSourceAsset, 0, len(specs))
+	seen := map[string]struct{}{}
+	for _, spec := range specs {
+		assetID := strings.TrimSpace(spec.AssetID)
+		if assetID == "" {
+			if spec.Required || inputMode != "text_to_image" {
+				return nil, fmt.Errorf("source asset asset_id is required")
+			}
+			continue
+		}
+		key := strings.TrimSpace(spec.Slot) + "\x00" + assetID
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		asset, err := s.repo.FindAssetByID(orgID, assetID)
+		if err != nil {
+			return nil, err
+		}
+		if err := validateSourceAssetBinding(asset, productID); err != nil {
+			return nil, err
+		}
+		out = append(out, resolvedImageJobSourceAsset{Spec: spec, Asset: asset})
+	}
+	return out, nil
+}
+
+func normalizeImageJobSourceAssetSpecs(input CreateImageJobInput) []ImageJobSourceAssetInput {
+	out := make([]ImageJobSourceAssetInput, 0, len(input.SourceAssets)+1)
+	for i, spec := range input.SourceAssets {
+		spec.AssetID = strings.TrimSpace(spec.AssetID)
+		spec.Slot = firstNonEmpty(strings.TrimSpace(spec.Slot), fmt.Sprintf("source_%d", i+1))
+		spec.Role = strings.TrimSpace(spec.Role)
+		spec.Label = strings.TrimSpace(spec.Label)
+		out = append(out, spec)
+	}
+	legacyID := strings.TrimSpace(input.SourceAssetID)
+	if legacyID != "" {
+		found := false
+		for _, spec := range out {
+			if spec.AssetID == legacyID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			out = append([]ImageJobSourceAssetInput{{Slot: "primary", Role: "source", AssetID: legacyID, Required: true, Label: "Source asset"}}, out...)
+		}
+	}
+	return out
+}
+
+func buildSourceAssetManifest(items []resolvedImageJobSourceAsset, product *models.EcomProductSKU) ([]string, []map[string]any, map[string]any) {
+	ids := make([]string, 0, len(items))
+	list := make([]map[string]any, 0, len(items))
+	slotMap := map[string]any{}
+	for i, item := range items {
+		if item.Asset == nil {
+			continue
+		}
+		slot := firstNonEmpty(item.Spec.Slot, fmt.Sprintf("source_%d", i+1))
+		entry := map[string]any{
+			"slot":        slot,
+			"role":        item.Spec.Role,
+			"label":       item.Spec.Label,
+			"required":    item.Spec.Required,
+			"constraints": item.Spec.Constraints,
+			"id":          item.Asset.ID,
+			"asset_id":    item.Asset.ID,
+			"storage_key": item.Asset.StorageKey,
+			"mime_type":   item.Asset.MimeType,
+			"width":       item.Asset.Width,
+			"height":      item.Asset.Height,
+			"product_id":  product.ID,
+			"sku_code":    product.SKUCode,
+		}
+		ids = append(ids, item.Asset.ID)
+		list = append(list, entry)
+		slotMap[slot] = entry
+	}
+	return ids, list, slotMap
+}
+
+func runtimeRouteFamily(inputMode string) string {
+	if inputMode == "multi_image" {
+		return "generate/multi-image"
+	}
+	return "generate/image"
+}
+
+func providerCapabilityHint(inputMode string) map[string]any {
+	return map[string]any{
+		"input_mode": inputMode,
+		"requires":   []string{inputMode},
+	}
+}

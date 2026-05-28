@@ -151,13 +151,16 @@ type CatalogExampleDTO struct {
 }
 
 type UseTemplateResponse struct {
-	TargetRoute              string         `json:"targetRoute"`
-	ExecutorType             string         `json:"executorType"`
-	ToolSlug                 string         `json:"toolSlug,omitempty"`
-	PrefilledInputSchema     map[string]any `json:"prefilledInputSchema"`
-	PreloadedTemplatePayload map[string]any `json:"preloadedTemplatePayload"`
-	SupportsAsyncJob         bool           `json:"supportsAsyncJob"`
-	SupportsBatch            bool           `json:"supportsBatch"`
+	TargetRoute              string                     `json:"targetRoute"`
+	ExecutorType             string                     `json:"executorType"`
+	ToolSlug                 string                     `json:"toolSlug,omitempty"`
+	InputMode                string                     `json:"inputMode,omitempty"`
+	RequiredAssets           []TemplateRequiredAssetDTO `json:"requiredAssets,omitempty"`
+	Applicability            map[string]any             `json:"applicability,omitempty"`
+	PrefilledInputSchema     map[string]any             `json:"prefilledInputSchema"`
+	PreloadedTemplatePayload map[string]any             `json:"preloadedTemplatePayload"`
+	SupportsAsyncJob         bool                       `json:"supportsAsyncJob"`
+	SupportsBatch            bool                       `json:"supportsBatch"`
 }
 
 type TemplateInstanceListItem struct {

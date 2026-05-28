@@ -25,6 +25,9 @@ func (r *TemplateCenterRepository) BuildUseResponse(scope Scope, templateID stri
 		TargetRoute:          targetRoute,
 		ExecutorType:         detail.Catalog.ExecutorType,
 		ToolSlug:             templateutil.DeriveToolSlug(targetRoute, stringValue(toolBinding["toolSlug"]), stringValue(toolBinding["tool_slug"]), detail.Catalog.Slug, detail.Catalog.ExternalCode),
+		InputMode:            firstStringValue(detail.Catalog.InputModes),
+		RequiredAssets:       detail.Schema.RequiredAssets,
+		Applicability:        detail.Schema.Applicability,
 		PrefilledInputSchema: detail.Schema.InputSchema,
 		PreloadedTemplatePayload: map[string]any{
 			"templateId":       detail.Catalog.ID,
@@ -33,6 +36,9 @@ func (r *TemplateCenterRepository) BuildUseResponse(scope Scope, templateID stri
 			"templateName":     detail.Catalog.Name,
 			"modality":         detail.Catalog.Modality,
 			"executorType":     detail.Catalog.ExecutorType,
+			"inputMode":        firstStringValue(detail.Catalog.InputModes),
+			"requiredAssets":   detail.Schema.RequiredAssets,
+			"applicability":    detail.Schema.Applicability,
 			"promptLayers":     detail.Schema.PromptLayers,
 			"defaultVariables": detail.Schema.DefaultVariables,
 		},
@@ -447,6 +453,15 @@ func firstNonNil(values ...any) any {
 		}
 	}
 	return nil
+}
+
+func firstStringValue(values []string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
 }
 
 func mapValueFromAny(value any) map[string]any {

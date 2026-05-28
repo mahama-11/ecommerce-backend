@@ -146,6 +146,32 @@ func TestCatalogContextFilterKeepsLegacyTemplatesWithoutInputModes(t *testing.T)
 	}
 }
 
+func TestBuildUseResponseIncludesTemplateInputContract(t *testing.T) {
+	db := newTemplateCenterRepositoryTestDB(t)
+	repo := NewTemplateCenterRepository(db)
+	now := time.Now()
+	item := SeedCatalog{
+		Catalog: models.TemplateCatalog{ID: "tpl_use_multi", Slug: "multi-template", ExternalCode: "MUL-01", Scope: "official", ManagedSource: "seed_builtin", Modality: "image", ExecutorType: "image_tool", Series: "product_scene", CapabilityType: "scene_composition", InteractionMode: "upload_form", Status: "published", DefaultLocale: "zh", IsFeatured: true, RecommendScore: 100, OwnerTeam: "agent-ecommerce", CreatedBy: "system", UpdatedBy: "system", CreatedAt: now, UpdatedAt: now, PublishedAt: &now},
+		Locales: []models.TemplateCatalogLocale{{ID: "tpl_use_multi_zh", Locale: "zh", Name: "multi", Summary: "multi", Description: "multi", CreatedAt: now, UpdatedAt: now}},
+		Version: models.TemplateCatalogVersion{ID: "tpl_use_multi_v1", VersionNo: 1, VersionLabel: "v1", Status: "published", IsPublishable: true, IsDefault: true, CreatedBy: "system", PublishedBy: "system", CreatedAt: now, PublishedAt: &now},
+		Schema:  models.TemplateCatalogSchema{ID: "tpl_use_multi_schema", InputSchemaJSON: `{"input_mode":"multi_image","required_assets":[{"slot":"product","role":"product","label":"Product","required":true},{"slot":"scene_reference","role":"reference","label":"Scene","required":true}]}`, OutputSchemaJSON: `{}`, ExecutionSchemaJSON: `{"route":"/api/v1/ecommerce/image-jobs","supportsAsyncJob":true}`, PromptLayersJSON: `{}`, PolicySchemaJSON: `{"applicability":{"input_modes":["multi_image"],"product_categories":["home_goods"],"provider_capabilities":["multi_image"]}}`, DefaultVariablesJSON: `{}`, ToolBindingJSON: `{"toolSlug":"ai-product"}`, CreatedAt: now, UpdatedAt: now},
+	}
+	if err := repo.SeedIfEmpty([]SeedCatalog{item}); err != nil {
+		t.Fatalf("seed template: %v", err)
+	}
+
+	resp, err := repo.BuildUseResponse(Scope{}, "tpl_use_multi")
+	if err != nil {
+		t.Fatalf("BuildUseResponse() error = %v", err)
+	}
+	if resp.ToolSlug != "ai-product" || resp.InputMode != "multi_image" || len(resp.RequiredAssets) != 2 {
+		t.Fatalf("use response missing template input contract: %+v", resp)
+	}
+	if len(resp.Applicability) == 0 || resp.Applicability["product_categories"] == nil {
+		t.Fatalf("use response missing applicability contract: %+v", resp.Applicability)
+	}
+}
+
 func newTemplateCenterRepositoryTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 

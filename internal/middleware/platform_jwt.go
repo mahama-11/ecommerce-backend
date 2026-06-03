@@ -1,9 +1,11 @@
 package middleware
 
 import (
+	"errors"
 	"strings"
 	"time"
 
+	"ecommerce-service/internal/observability"
 	"ecommerce-service/pkg/response"
 
 	"github.com/gin-gonic/gin"
@@ -14,6 +16,10 @@ func PlatformJWTAuth(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		claims, ok := parseClaims(c.GetHeader("Authorization"), jwtSecret)
 		if !ok {
+			if isAuthSessionPath(c) {
+				lc := observability.StartGin(c, "ecommerce-service/auth-middleware", "ecommerce.auth.session.verify", "ecommerce.auth.session.verify", "auth", "session.verify", observability.Fields{})
+				lc.Fail(errors.New("invalid or missing session token"), "session_invalid", observability.Fields{"failure_category": "session_invalid"})
+			}
 			response.JSONErrorSemantic(c, 401, "Invalid or missing token", "TOKEN_INVALID", "Sign in again to continue.")
 			c.Abort()
 			return
@@ -31,6 +37,10 @@ func OptionalPlatformJWTAuth(jwtSecret string) gin.HandlerFunc {
 		}
 		c.Next()
 	}
+}
+
+func isAuthSessionPath(c *gin.Context) bool {
+	return c != nil && strings.Contains(c.FullPath(), "/auth/session")
 }
 
 func parseClaims(authHeader, jwtSecret string) (jwt.MapClaims, bool) {

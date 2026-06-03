@@ -9,6 +9,7 @@ import (
 	"ecommerce-service/internal/billinggate"
 	"ecommerce-service/internal/models"
 	"ecommerce-service/internal/modules/promptcenter"
+	"ecommerce-service/internal/observability"
 	"ecommerce-service/internal/platform"
 	"ecommerce-service/internal/repository"
 
@@ -584,6 +585,8 @@ func (s *Service) createPlatformGenerationRuntimeJob(session *models.EcommerceVi
 		return nil
 	}
 	providerCode := generationProviderCode(version.Metadata)
+	runtimeFields := generationRuntimeJobObservabilityFields(session, version, providerCode, chargeContextID(chargeCtx))
+	observability.Event("ecommerce.visual_workflow.generation.runtime_job.create.started", "visual_workflow", "generation.runtime_job.create", runtimeFields)
 	runtimeJob, err := s.runtimeCreator.CreateRuntimeJob(platform.CreateRuntimeJobInput{
 		ProductCode:     "ecommerce",
 		TaskType:        "image_generation",
@@ -609,6 +612,7 @@ func (s *Service) createPlatformGenerationRuntimeJob(session *models.EcommerceVi
 		TimeoutSeconds: 900,
 	})
 	if err != nil {
+		observability.ErrorEvent("ecommerce.visual_workflow.generation.runtime_job.create.failed", "visual_workflow", "generation.runtime_job.create", err, "platform_runtime_job_create_failed", mergeObservabilityFields(runtimeFields, observability.Fields{"failure_category": "platform_runtime_job_create_failed"}))
 		if chargeCtx != nil {
 			_ = billinggate.New(s.runtimeBillingGateway()).Release(billinggate.ReleaseInput{Context: chargeCtx, Reason: "visual_runtime_create_failed"})
 		}
@@ -628,6 +632,10 @@ func (s *Service) createPlatformGenerationRuntimeJob(session *models.EcommerceVi
 		return nil
 	}
 	version.RuntimeJobID = runtimeJob.ID
+	runtimeFields["runtime_job_id"] = runtimeJob.ID
+	runtimeFields["status"] = runtimeJob.Status
+	runtimeFields["stage"] = runtimeJob.Stage
+	observability.Event("ecommerce.visual_workflow.generation.runtime_job.create.finished", "visual_workflow", "generation.runtime_job.create", runtimeFields)
 	version.ImageJobID = ""
 	version.Status = mapGenerationRuntimeStatus(runtimeJob.Status)
 	version.Stage = mapGenerationRuntimeStage(runtimeJob.Stage, version.Status)
@@ -642,6 +650,41 @@ func (s *Service) createPlatformGenerationRuntimeJob(session *models.EcommerceVi
 		"runtime_provider_code": runtimeJob.ProviderCode,
 	})
 	return nil
+}
+
+func generationRuntimeJobObservabilityFields(session *models.EcommerceVisualWorkflowSession, version *GenerationVersionDTO, providerCode, chargeSessionID string) observability.Fields {
+	fields := observability.Fields{
+		"product_code":      "ecommerce",
+		"task_type":         "image_generation",
+		"source_type":       "visual_generation",
+		"provider":          providerCode,
+		"charge_session_id": chargeSessionID,
+	}
+	if session != nil {
+		fields["org_id"] = session.OrganizationID
+		fields["user_id"] = session.UserID
+		fields["session_id"] = session.ID
+		fields["product_id"] = session.ProductID
+		fields["sku_code"] = session.SKUCode
+	}
+	if version != nil {
+		fields["generation_version_id"] = version.VersionID
+		fields["runtime_job_id"] = version.RuntimeJobID
+		fields["status"] = version.Status
+		fields["stage"] = version.Stage
+	}
+	return fields
+}
+
+func mergeObservabilityFields(base observability.Fields, extra observability.Fields) observability.Fields {
+	out := observability.Fields{}
+	for k, v := range base {
+		out[k] = v
+	}
+	for k, v := range extra {
+		out[k] = v
+	}
+	return out
 }
 
 func (s *Service) runtimeBillingGateway() RuntimeBillingGateway {

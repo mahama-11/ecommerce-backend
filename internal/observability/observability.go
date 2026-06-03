@@ -1,7 +1,9 @@
 package observability
 
 import (
+	"errors"
 	"log/slog"
+	"regexp"
 	"strings"
 	"time"
 
@@ -75,9 +77,10 @@ func (l *Lifecycle) Fail(err error, errorCode string, fields Fields) {
 	latency := time.Since(l.startedAt).Milliseconds()
 	attrs := []attribute.KeyValue{attribute.String("status", "failed"), attribute.String("error_code", errorCode), attribute.Int64("latency_ms", latency)}
 	if err != nil {
-		l.span.RecordError(err)
-		l.span.SetStatus(codes.Error, err.Error())
-		attrs = append(attrs, attribute.String("error_message", safeError(err)))
+		safe := safeError(err)
+		l.span.RecordError(errors.New(safe))
+		l.span.SetStatus(codes.Error, safe)
+		attrs = append(attrs, attribute.String("error_message", safe))
 	}
 	for key, value := range fields {
 		attrs = append(attrs, attr(key, value))
@@ -141,7 +144,7 @@ func attr(key string, value any) attribute.KeyValue {
 
 func forbiddenField(key string) bool {
 	k := strings.ToLower(key)
-	for _, part := range []string{"token", "secret", "raw_prompt", "prompt_text", "provider_key", "storage_key", "image_url", "url", "privacy"} {
+	for _, part := range []string{"token", "secret", "password", "authorization", "api_key", "apikey", "auth_header", "cookie", "session_cookie", "prompt", "provider_key", "provider_payload", "storage_key", "image_url", "url", "privacy", "payload", "card", "payment_secret", "ledger_id", "wallet_ledger_id", "reference_id", "source_id", "source_ref", "source_path"} {
 		if strings.Contains(k, part) {
 			return true
 		}
@@ -149,11 +152,24 @@ func forbiddenField(key string) bool {
 	return false
 }
 
+var (
+	bearerPattern   = regexp.MustCompile(`(?i)bearer\s+[A-Za-z0-9._\-]+`)
+	urlPattern      = regexp.MustCompile(`(?i)https?://[^\s,]+`)
+	secretKVPattern = regexp.MustCompile(`(?i)(token|secret|password|authorization|api[_-]?key)[:=]([^\s,]+)`)
+	promptKVPattern = regexp.MustCompile(`(?i)(raw_prompt|prompt_text|prompt_plan|prompt|provider_payload)[:=]([^\s,]+)`)
+	emailPattern    = regexp.MustCompile(`[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}`)
+)
+
 func safeError(err error) string {
 	if err == nil {
 		return ""
 	}
 	msg := err.Error()
+	msg = bearerPattern.ReplaceAllString(msg, "Bearer [redacted]")
+	msg = urlPattern.ReplaceAllString(msg, "[redacted_url]")
+	msg = secretKVPattern.ReplaceAllString(msg, "$1=[redacted]")
+	msg = promptKVPattern.ReplaceAllString(msg, "$1=[redacted]")
+	msg = emailPattern.ReplaceAllString(msg, "[redacted_email]")
 	if len(msg) > 300 {
 		return msg[:300]
 	}

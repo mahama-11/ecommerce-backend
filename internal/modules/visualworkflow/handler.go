@@ -411,14 +411,14 @@ func (h *Handler) CreateGenerationVersion(c *gin.Context) {
 		response.JSONBindError(c, err, "invalid generation version request")
 		return
 	}
-	lc := observability.StartGin(c, "ecommerce-service/visual-workflow-handler", "ecommerce.visual_workflow.generation_version.create", "ecommerce.visual_workflow.generation_version.create", "visual_workflow", "generation_version.create", observability.Fields{"session_id": c.Param("session_id"), "result_asset_count": len(req.ResultAssets)})
+	lc := observability.StartGin(c, "ecommerce-service/visual-workflow-handler", "ecommerce.visual_workflow.generation.version.create", "ecommerce.visual_workflow.generation.version.create", "visual_workflow", "generation.version.create", observability.Fields{"session_id": c.Param("session_id"), "result_asset_count": len(req.ResultAssets)})
 	item, err := h.service.CreateGenerationVersion(c.GetString("orgID"), c.Param("session_id"), req)
 	if err != nil {
-		lc.Fail(err, "invalid_parameter", nil)
+		lc.Fail(err, "invalid_parameter", observability.Fields{"failure_category": "generation_version_invalid"})
 		response.JSONError(c, response.CodeInvalidParameter, err.Error())
 		return
 	}
-	lc.Finish(observability.Fields{"session_id": c.Param("session_id"), "job_id": item.RuntimeJobID, "status": item.Status})
+	lc.Finish(observability.Fields{"session_id": c.Param("session_id"), "generation_version_id": item.VersionID, "runtime_job_id": item.RuntimeJobID, "status": item.Status, "stage": item.Stage})
 	response.JSONSuccessWithStatus(c, http.StatusCreated, item)
 }
 
@@ -509,15 +509,40 @@ func (h *Handler) WritebackSelectedGenerationAsset(c *gin.Context) {
 		response.JSONBindError(c, err, "invalid selected generation asset writeback")
 		return
 	}
-	lc := observability.StartGin(c, "ecommerce-service/visual-workflow-handler", "ecommerce.visual_workflow.asset.writeback", "ecommerce.visual_workflow.asset.writeback", "visual_workflow", "asset.writeback", observability.Fields{"session_id": c.Param("session_id"), "version_id": c.Param("version_id"), "asset_id": req.AssetID})
+	lc := observability.StartGin(c, "ecommerce-service/visual-workflow-handler", "ecommerce.visual_workflow.writeback.selected_asset", "ecommerce.visual_workflow.writeback.selected_asset", "visual_workflow", "writeback.selected_asset", observability.Fields{"session_id": c.Param("session_id"), "generation_version_id": c.Param("version_id"), "asset_id": req.AssetID})
 	item, err := h.service.WritebackSelectedGenerationAsset(c.GetString("userID"), c.GetString("orgID"), c.Param("session_id"), c.Param("version_id"), req)
 	if err != nil {
-		lc.Fail(err, "invalid_parameter", nil)
+		lc.Fail(err, "invalid_parameter", observability.Fields{"failure_category": writebackSelectedAssetFailureCategory(err)})
 		response.JSONError(c, response.CodeInvalidParameter, err.Error())
 		return
 	}
-	lc.Finish(observability.Fields{"session_id": c.Param("session_id"), "version_id": c.Param("version_id"), "asset_id": req.AssetID, "product_id": item.ProductID})
+	lc.Finish(observability.Fields{"session_id": c.Param("session_id"), "generation_version_id": c.Param("version_id"), "asset_id": item.SelectedResultAssetID, "product_id": item.ProductID, "asset_relation_id": item.AssetRelation.ID, "idempotent": item.Idempotent})
 	response.JSONSuccess(c, item)
+}
+
+func writebackSelectedAssetFailureCategory(err error) string {
+	if err == nil {
+		return "unknown"
+	}
+	message := strings.ToLower(err.Error())
+	switch {
+	case strings.Contains(message, "generation version not found"):
+		return "generation_version_missing"
+	case strings.Contains(message, "session not found"):
+		return "session_missing"
+	case strings.Contains(message, "product not found") || strings.Contains(message, "sku_code"):
+		return "product_relation_missing"
+	case strings.Contains(message, "selected result asset is required"):
+		return "selected_asset_missing"
+	case strings.Contains(message, "not in this generation version"):
+		return "selected_asset_not_in_version"
+	case strings.Contains(message, "not an ecommerce asset"):
+		return "selected_asset_missing"
+	case strings.Contains(message, "execution-owned field") || strings.Contains(message, "provider artifact"):
+		return "unsafe_writeback_metadata"
+	default:
+		return "writeback_failed"
+	}
 }
 
 func queryInt(c *gin.Context, key string, fallback int) int {

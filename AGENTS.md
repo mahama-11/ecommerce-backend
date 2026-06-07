@@ -38,7 +38,7 @@ It should not host:
 ## 3. Commands
 
 ```bash
-cd v-ecommerce-backend
+cd /root/work/v/ecommerce-backend
 go mod tidy
 go test ./...
 go run ./cmd/server -config config.local

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
 
@@ -47,7 +48,21 @@ func (r *ProductCenterRepository) GetProductBySKUCode(scope Scope, skuCode strin
 func (r *ProductCenterRepository) CreateProduct(scope Scope, item models.EcomProductSKU) (*models.EcomProductSKU, error) {
 	item.OrganizationID = scope.OrgID
 	item.CreatedBy = scope.UserID
-	if err := r.db.Create(&item).Error; err != nil {
+	tags := []string(item.Tags)
+	if err := r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Omit("Tags").Create(&item).Error; err != nil {
+			return err
+		}
+		if len(tags) > 0 {
+			if err := tx.Model(&models.EcomProductSKU{}).
+				Where("id = ? AND organization_id = ?", item.ID, item.OrganizationID).
+				Update("tags", pq.Array(tags)).Error; err != nil {
+				return err
+			}
+			item.Tags = pq.StringArray(tags)
+		}
+		return nil
+	}); err != nil {
 		return nil, err
 	}
 	return &item, nil
@@ -57,7 +72,19 @@ func (r *ProductCenterRepository) CreateProduct(scope Scope, item models.EcomPro
 func (r *ProductCenterRepository) UpdateProduct(scope Scope, item models.EcomProductSKU) (*models.EcomProductSKU, error) {
 	item.OrganizationID = scope.OrgID
 	item.UpdatedBy = scope.UserID
-	if err := r.db.Save(&item).Error; err != nil {
+	tags := []string(item.Tags)
+	if err := r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Omit("Tags").Save(&item).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(&models.EcomProductSKU{}).
+			Where("id = ? AND organization_id = ?", item.ID, item.OrganizationID).
+			Update("tags", pq.Array(tags)).Error; err != nil {
+			return err
+		}
+		item.Tags = pq.StringArray(tags)
+		return nil
+	}); err != nil {
 		return nil, err
 	}
 	return &item, nil

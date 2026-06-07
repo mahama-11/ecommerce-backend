@@ -9,6 +9,7 @@ import (
 	"ecommerce-service/pkg/response"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -232,11 +233,15 @@ func (h *Handler) AddProductAsset(c *gin.Context) {
 	}
 
 	orgID, userID := scopeFromGin(c)
+	fields := productDeliveryFields(c, orgID, observability.Fields{"asset_id": input.AssetID, "asset_role": input.AssetRole, "relation_type": input.RelationType, "is_primary": input.IsPrimary})
+	observability.Event("ecommerce.product_center.asset.add.started", "product_center", "asset.add", fields)
 	item, err := h.service.AddProductAsset(orgID, userID, c.Param("product_id"), input)
 	if err != nil {
+		observability.ErrorEvent("ecommerce.product_center.asset.add.failed", "product_center", "asset.add", err, "product_asset_add_failed", withFailureCategory(fields, classifyProductDeliveryFailure(err)))
 		moduleutil.WritePlatformError(c, err, "add product asset failed")
 		return
 	}
+	observability.Event("ecommerce.product_center.asset.add.finished", "product_center", "asset.add", mergeFields(fields, observability.Fields{"asset_relation_id": item.ID, "status": "linked"}))
 	response.JSONSuccess(c, item)
 }
 
@@ -245,11 +250,15 @@ func (h *Handler) DeleteProductAsset(c *gin.Context) {
 	defer span.End()
 
 	orgID, userID := scopeFromGin(c)
+	fields := productDeliveryFields(c, orgID, observability.Fields{"asset_relation_id": c.Param("asset_relation_id")})
+	observability.Event("ecommerce.product_center.asset.delete.started", "product_center", "asset.delete", fields)
 	err := h.service.DeleteProductAsset(orgID, userID, c.Param("product_id"), c.Param("asset_relation_id"))
 	if err != nil {
+		observability.ErrorEvent("ecommerce.product_center.asset.delete.failed", "product_center", "asset.delete", err, "product_asset_delete_failed", withFailureCategory(fields, classifyProductDeliveryFailure(err)))
 		moduleutil.WritePlatformError(c, err, "delete product asset failed")
 		return
 	}
+	observability.Event("ecommerce.product_center.asset.delete.finished", "product_center", "asset.delete", mergeFields(fields, observability.Fields{"status": "deleted"}))
 	response.JSONSuccess(c, gin.H{"success": true})
 }
 
@@ -264,11 +273,15 @@ func (h *Handler) UpdateProductAsset(c *gin.Context) {
 	}
 
 	orgID, userID := scopeFromGin(c)
+	fields := productDeliveryFields(c, orgID, observability.Fields{"asset_relation_id": c.Param("asset_relation_id")})
+	observability.Event("ecommerce.product_center.asset.update.started", "product_center", "asset.update", fields)
 	item, err := h.service.UpdateProductAsset(orgID, userID, c.Param("product_id"), c.Param("asset_relation_id"), input)
 	if err != nil {
+		observability.ErrorEvent("ecommerce.product_center.asset.update.failed", "product_center", "asset.update", err, "product_asset_update_failed", withFailureCategory(fields, classifyProductDeliveryFailure(err)))
 		moduleutil.WritePlatformError(c, err, "update product asset failed")
 		return
 	}
+	observability.Event("ecommerce.product_center.asset.update.finished", "product_center", "asset.update", mergeFields(fields, observability.Fields{"asset_id": item.AssetID, "asset_role": item.AssetRole, "relation_type": item.RelationType, "is_primary": item.IsPrimary, "status": "updated"}))
 	response.JSONSuccess(c, item)
 }
 
@@ -298,11 +311,15 @@ func (h *Handler) CreateListingVersion(c *gin.Context) {
 	}
 
 	orgID, userID := scopeFromGin(c)
+	fields := productDeliveryFields(c, orgID, observability.Fields{"platform": input.Platform, "site": input.Site, "locale": input.Locale})
+	observability.Event("ecommerce.product_center.listing.version.create.started", "product_center", "listing.version.create", fields)
 	item, err := h.service.CreateListingVersion(orgID, userID, c.Param("product_id"), input)
 	if err != nil {
+		observability.ErrorEvent("ecommerce.product_center.listing.version.create.failed", "product_center", "listing.version.create", err, "listing_version_create_failed", withFailureCategory(fields, classifyProductDeliveryFailure(err)))
 		moduleutil.WritePlatformError(c, err, "create listing version failed")
 		return
 	}
+	observability.Event("ecommerce.product_center.listing.version.create.finished", "product_center", "listing.version.create", mergeFields(fields, observability.Fields{"listing_version_id": item.ID, "listing_version_status": item.Status}))
 	response.JSONSuccess(c, item)
 }
 
@@ -338,11 +355,20 @@ func (h *Handler) AdoptListingVersion(c *gin.Context) {
 	}
 
 	orgID, userID := scopeFromGin(c)
+	fields := productDeliveryFields(c, orgID, observability.Fields{"listing_version_id": input.VersionID})
+	observability.Event("ecommerce.product_center.listing.version.adopt.started", "product_center", "listing.version.adopt", fields)
 	item, err := h.service.AdoptListingVersion(orgID, userID, c.Param("product_id"), input.VersionID)
 	if err != nil {
+		observability.ErrorEvent("ecommerce.product_center.listing.version.adopt.failed", "product_center", "listing.version.adopt", err, "listing_version_adopt_failed", withFailureCategory(fields, classifyProductDeliveryFailure(err)))
 		moduleutil.WritePlatformError(c, err, "adopt listing version failed")
 		return
 	}
+	if item == nil {
+		observability.Event("ecommerce.product_center.listing.version.adopt.finished", "product_center", "listing.version.adopt", mergeFields(fields, observability.Fields{"listing_version_status": "not_found"}))
+		response.JSONSuccess(c, item)
+		return
+	}
+	observability.Event("ecommerce.product_center.listing.version.adopt.finished", "product_center", "listing.version.adopt", mergeFields(fields, observability.Fields{"listing_version_status": item.Status}))
 	response.JSONSuccess(c, item)
 }
 
@@ -376,11 +402,15 @@ func (h *Handler) UpdateListingVersion(c *gin.Context) {
 	}
 
 	orgID, userID := scopeFromGin(c)
+	fields := productDeliveryFields(c, orgID, observability.Fields{"listing_version_id": c.Param("version_id")})
+	observability.Event("ecommerce.product_center.listing.version.update.started", "product_center", "listing.version.update", fields)
 	item, err := h.service.UpdateListingVersion(orgID, userID, c.Param("product_id"), c.Param("version_id"), input)
 	if err != nil {
+		observability.ErrorEvent("ecommerce.product_center.listing.version.update.failed", "product_center", "listing.version.update", err, "listing_version_update_failed", withFailureCategory(fields, classifyProductDeliveryFailure(err)))
 		moduleutil.WritePlatformError(c, err, "update listing version failed")
 		return
 	}
+	observability.Event("ecommerce.product_center.listing.version.update.finished", "product_center", "listing.version.update", mergeFields(fields, observability.Fields{"new_listing_version_id": item.ID, "listing_version_status": item.Status}))
 	response.JSONSuccess(c, item)
 }
 
@@ -389,11 +419,15 @@ func (h *Handler) DeleteListingVersion(c *gin.Context) {
 	defer span.End()
 
 	orgID, userID := scopeFromGin(c)
+	fields := productDeliveryFields(c, orgID, observability.Fields{"listing_version_id": c.Param("version_id")})
+	observability.Event("ecommerce.product_center.listing.version.delete.started", "product_center", "listing.version.delete", fields)
 	err := h.service.DeleteListingVersion(orgID, userID, c.Param("product_id"), c.Param("version_id"))
 	if err != nil {
+		observability.ErrorEvent("ecommerce.product_center.listing.version.delete.failed", "product_center", "listing.version.delete", err, "listing_version_delete_failed", withFailureCategory(fields, classifyProductDeliveryFailure(err)))
 		moduleutil.WritePlatformError(c, err, "delete listing version failed")
 		return
 	}
+	observability.Event("ecommerce.product_center.listing.version.delete.finished", "product_center", "listing.version.delete", mergeFields(fields, observability.Fields{"status": "deleted"}))
 	response.JSONSuccess(c, gin.H{"success": true})
 }
 
@@ -457,11 +491,15 @@ func (h *Handler) CreateExportTask(c *gin.Context) {
 	}
 
 	orgID, userID := scopeFromGin(c)
+	fields := productDeliveryFields(c, orgID, observability.Fields{"platform": input.Platform, "site": input.Site, "locale": input.Locale, "format": input.Format, "requested_asset_count": len(input.AssetRelationIDs)})
+	observability.Event("ecommerce.product_center.export.task.create.started", "product_center", "export.task.create", fields)
 	item, err := h.service.CreateExportTask(orgID, userID, c.Param("product_id"), input)
 	if err != nil {
+		observability.ErrorEvent("ecommerce.product_center.export.task.create.failed", "product_center", "export.task.create", err, "export_task_create_failed", withFailureCategory(fields, classifyProductDeliveryFailure(err)))
 		moduleutil.WritePlatformError(c, err, "create export task failed")
 		return
 	}
+	observability.Event("ecommerce.product_center.export.task.create.finished", "product_center", "export.task.create", mergeFields(fields, observability.Fields{"export_task_id": item.ID, "status": item.Status, "asset_count": item.AssetCount, "listing_version_id": item.ListingVersionID}))
 	response.JSONSuccess(c, exportTaskPublic(*item))
 }
 
@@ -476,11 +514,15 @@ func (h *Handler) CreateExportPackage(c *gin.Context) {
 	}
 
 	orgID, userID := scopeFromGin(c)
+	fields := productDeliveryFields(c, orgID, observability.Fields{"platform": input.Platform, "site": input.Site, "locale": input.Locale, "format": input.Format, "item_count": len(input.Items)})
+	observability.Event("ecommerce.product_center.export.package.create.started", "product_center", "export.package.create", fields)
 	item, err := h.service.CreateExportPackage(orgID, userID, input)
 	if err != nil {
+		observability.ErrorEvent("ecommerce.product_center.export.package.create.failed", "product_center", "export.package.create", err, "export_package_create_failed", withFailureCategory(fields, classifyProductDeliveryFailure(err)))
 		moduleutil.WritePlatformError(c, err, "create export package failed")
 		return
 	}
+	observability.Event("ecommerce.product_center.export.package.create.finished", "product_center", "export.package.create", mergeFields(fields, observability.Fields{"export_package_id": item.PackageID, "status": item.Status, "succeeded_count": item.Succeeded, "failed_count": item.Failed}))
 	response.JSONSuccess(c, item)
 }
 
@@ -563,12 +605,18 @@ func (h *Handler) DownloadContent(c *gin.Context) {
 	defer span.End()
 
 	orgID, _ := scopeFromGin(c)
-	_, body, headers, err := h.service.GetDownloadContent(orgID, c.Param("download_id"), c.Query("file"))
+	fields := productDeliveryFields(c, orgID, observability.Fields{"download_id": c.Param("download_id"), "file_role": c.Query("file")})
+	observability.Event("ecommerce.product_center.download.content.started", "product_center", "download.content", fields)
+	item, body, headers, err := h.service.GetDownloadContent(orgID, c.Param("download_id"), c.Query("file"))
 	if err != nil {
+		observability.ErrorEvent("ecommerce.product_center.download.content.failed", "product_center", "download.content", err, "download_content_failed", withFailureCategory(fields, classifyProductDeliveryFailure(err)))
 		moduleutil.WritePlatformError(c, err, "download content failed")
 		return
 	}
 	defer body.Close()
+	if item != nil {
+		observability.Event("ecommerce.product_center.download.content.finished", "product_center", "download.content", mergeFields(fields, observability.Fields{"source_type": item.SourceType, "status": item.Status, "downloadable": item.Downloadable}))
+	}
 	for key, values := range headers {
 		for _, value := range values {
 			c.Writer.Header().Add(key, value)
@@ -577,5 +625,46 @@ func (h *Handler) DownloadContent(c *gin.Context) {
 	c.Status(http.StatusOK)
 	if _, copyErr := io.Copy(c.Writer, body); copyErr != nil {
 		span.RecordError(copyErr)
+	}
+}
+
+func productDeliveryFields(c *gin.Context, orgID string, extra observability.Fields) observability.Fields {
+	fields := observability.Fields{"request_id": c.GetString("requestID"), "trace_id": c.GetString("traceID"), "org_id": orgID, "product_id": c.Param("product_id")}
+	return mergeFields(fields, extra)
+}
+
+func mergeFields(base observability.Fields, extra observability.Fields) observability.Fields {
+	out := observability.Fields{}
+	for key, value := range base {
+		out[key] = value
+	}
+	for key, value := range extra {
+		out[key] = value
+	}
+	return out
+}
+
+func withFailureCategory(fields observability.Fields, category string) observability.Fields {
+	return mergeFields(fields, observability.Fields{"failure_category": category})
+}
+
+func classifyProductDeliveryFailure(err error) string {
+	if err == nil {
+		return "unknown"
+	}
+	msg := strings.ToLower(err.Error())
+	switch {
+	case strings.Contains(msg, "asset"):
+		return "asset_precondition"
+	case strings.Contains(msg, "listing") || strings.Contains(msg, "version"):
+		return "listing_precondition"
+	case strings.Contains(msg, "product") || strings.Contains(msg, "sku"):
+		return "product_precondition"
+	case strings.Contains(msg, "billing") || strings.Contains(msg, "charge") || strings.Contains(msg, "reservation"):
+		return "billing_precondition"
+	case strings.Contains(msg, "download") || strings.Contains(msg, "content"):
+		return "download_not_ready"
+	default:
+		return "delivery_operation"
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"ecommerce-service/internal/observability"
 	"ecommerce-service/internal/repository"
 	"ecommerce-service/internal/telemetry"
 	"ecommerce-service/pkg/response"
@@ -131,41 +132,86 @@ func (h *Handler) Instances(c *gin.Context) {
 func (h *Handler) AddFavorite(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/template-center-handler", "ecommerce.template_center.favorite.add")
 	defer span.End()
+	fields := templateEventFields(c, "favorite")
+	observability.Event("ecommerce.template_center.template.favorite.started", "template_center", "template.favorite", fields)
 	if err := h.service.AddFavorite(c, scopeFromContext(c), c.Param("templateId")); err != nil {
+		observability.ErrorEvent("ecommerce.template_center.template.favorite.failed", "template_center", "template.favorite", err, "template_favorite_failed", templateFailureFields(fields, err))
 		response.JSONErrorSemantic(c, response.CodeInternalError, "failed to favorite template", "TEMPLATE_FAVORITE_FAILED", "Please try again later.")
 		return
 	}
+	observability.Event("ecommerce.template_center.template.favorite.finished", "template_center", "template.favorite", mergeTemplateFields(fields, observability.Fields{"favorited": true}))
 	response.JSONSuccessWithStatus(c, http.StatusCreated, gin.H{"templateId": c.Param("templateId"), "favorited": true})
 }
 
 func (h *Handler) RemoveFavorite(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/template-center-handler", "ecommerce.template_center.favorite.remove")
 	defer span.End()
+	fields := templateEventFields(c, "favorite")
+	observability.Event("ecommerce.template_center.template.favorite.started", "template_center", "template.favorite", mergeTemplateFields(fields, observability.Fields{"action": "remove"}))
 	if err := h.service.RemoveFavorite(c, scopeFromContext(c), c.Param("templateId")); err != nil {
+		observability.ErrorEvent("ecommerce.template_center.template.favorite.failed", "template_center", "template.favorite", err, "template_unfavorite_failed", templateFailureFields(fields, err))
 		response.JSONErrorSemantic(c, response.CodeInternalError, "failed to unfavorite template", "TEMPLATE_UNFAVORITE_FAILED", "Please try again later.")
 		return
 	}
+	observability.Event("ecommerce.template_center.template.favorite.finished", "template_center", "template.favorite", mergeTemplateFields(fields, observability.Fields{"favorited": false, "action": "remove"}))
 	response.JSONSuccess(c, gin.H{"templateId": c.Param("templateId"), "favorited": false})
 }
 
 func (h *Handler) CopyToMyTemplates(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/template-center-handler", "ecommerce.template_center.copy_to_my_templates")
 	defer span.End()
+	fields := templateEventFields(c, "copy")
+	observability.Event("ecommerce.template_center.template.copy.started", "template_center", "template.copy", fields)
 	instance, err := h.service.CopyToMyTemplates(c, scopeFromContext(c), c.Param("templateId"))
 	if err != nil {
+		observability.ErrorEvent("ecommerce.template_center.template.copy.failed", "template_center", "template.copy", err, "template_copy_failed", templateFailureFields(fields, err))
 		response.JSONErrorSemantic(c, response.CodeInternalError, "failed to copy template", "TEMPLATE_COPY_FAILED", "Please try again later.")
 		return
 	}
+	observability.Event("ecommerce.template_center.template.copy.finished", "template_center", "template.copy", mergeTemplateFields(fields, observability.Fields{"template_instance_id": instance.ID}))
 	response.JSONSuccessWithStatus(c, http.StatusCreated, gin.H{"templateInstanceId": instance.ID, "templateId": c.Param("templateId")})
 }
 
 func (h *Handler) Use(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/template-center-handler", "ecommerce.template_center.use")
 	defer span.End()
+	fields := templateEventFields(c, "use")
+	observability.Event("ecommerce.template_center.template.use.started", "template_center", "template.use", fields)
 	result, err := h.service.Use(c, scopeFromContext(c), c.Param("templateId"))
 	if err != nil {
+		observability.ErrorEvent("ecommerce.template_center.template.use.failed", "template_center", "template.use", err, "template_use_failed", templateFailureFields(fields, err))
 		response.JSONErrorSemantic(c, response.CodeInternalError, "failed to resolve template use route", "TEMPLATE_USE_FAILED", "Please try again later.")
 		return
 	}
+	observability.Event("ecommerce.template_center.template.use.finished", "template_center", "template.use", mergeTemplateFields(fields, observability.Fields{"target_route": result.TargetRoute, "tool_slug": result.ToolSlug}))
 	response.JSONSuccess(c, result)
+}
+
+func templateEventFields(c *gin.Context, action string) observability.Fields {
+	return observability.Fields{"request_id": c.GetString("requestID"), "trace_id": c.GetString("traceID"), "org_id": c.GetString("orgID"), "user_id": c.GetString("userID"), "template_id": c.Param("templateId"), "action": action}
+}
+
+func mergeTemplateFields(base observability.Fields, extra observability.Fields) observability.Fields {
+	out := observability.Fields{}
+	for key, value := range base {
+		out[key] = value
+	}
+	for key, value := range extra {
+		out[key] = value
+	}
+	return out
+}
+
+func templateFailureFields(fields observability.Fields, err error) observability.Fields {
+	category := "template_operation"
+	if err != nil {
+		msg := strings.ToLower(err.Error())
+		switch {
+		case strings.Contains(msg, "not found") || strings.Contains(msg, "published"):
+			category = "template_precondition"
+		case strings.Contains(msg, "route") || strings.Contains(msg, "tool"):
+			category = "template_route_precondition"
+		}
+	}
+	return mergeTemplateFields(fields, observability.Fields{"failure_category": category})
 }

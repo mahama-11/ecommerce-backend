@@ -2,6 +2,7 @@ package billinggate
 
 import (
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"ecommerce-service/internal/platform"
@@ -45,6 +46,20 @@ func TestIdempotencyAndReservationRules(t *testing.T) {
 	}
 	if got := ReservationKeyForAction(ActionGeneration, "job-1"); got != "reserve:job-1" {
 		t.Fatalf("reservation key = %s", got)
+	}
+}
+
+func TestBillingGateObservabilityHelpers(t *testing.T) {
+	ctx := &Context{Action: ActionGeneration, SourceID: "job-obs", ProductCode: DefaultProductCode, OrganizationID: "org-obs", ChargeSessionID: "charge-obs", ReservationID: "res-obs", BillableItemCode: BillableItemImageGenerate, UsageUnits: 2}
+	fields := billingGateFields(ctx, BeginInput{})
+	if fields["source_id"] != "job-obs" || fields["charge_session_id"] != "charge-obs" || fields["reservation_id"] != "res-obs" {
+		t.Fatalf("unexpected billing gate observability fields: %+v", fields)
+	}
+	if got := billingGateFailureCategory(errors.New("missing rate_card for billable item")); got != "rate_card" {
+		t.Fatalf("rate card category = %s", got)
+	}
+	if got := billingGateFailureCategory(errors.New("wallet post failed: insufficient balance")); got != "wallet_post" {
+		t.Fatalf("wallet category = %s", got)
 	}
 }
 

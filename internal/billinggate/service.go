@@ -137,9 +137,14 @@ func NormalizeAction(action string) string {
 
 func (s *Service) Begin(input BeginInput) (*Context, error) {
 	startedAt := time.Now()
+	observability.Event("ecommerce.billing_gate.reservation.create.started", "billing_gate", "reservation.create", billingGateFields(nil, input))
 	observability.Event("ecommerce.runtime.charge.reserve.started", "runtime_billing", "charge.reserve", observability.Fields{"product_id": input.ProductCode, "job_id": input.SourceID, "operation": input.Action, "billable_item_code": input.BillableItemCode})
 	if s == nil || s.platform == nil {
-		return nil, fmt.Errorf("billing gate platform client is required")
+		err := fmt.Errorf("billing gate platform client is required")
+		fields := billingGateFields(nil, input)
+		fields["failure_category"] = "quota_or_billing"
+		observability.ErrorEvent("ecommerce.billing_gate.reservation.create.failed", "billing_gate", "reservation.create", err, "platform_client_required", fields)
+		return nil, err
 	}
 	input.Action = NormalizeAction(input.Action)
 	input.ProductCode = firstNonEmpty(input.ProductCode, DefaultProductCode)
@@ -164,8 +169,11 @@ func (s *Service) Begin(input BeginInput) (*Context, error) {
 		Metadata:           mustMarshal(input.Metadata),
 	})
 	if err != nil {
+		fields := billingGateFields(nil, input)
+		fields["failure_category"] = billingGateFailureCategory(err)
 		observability.ErrorEvent("ecommerce.runtime.charge_session.create.failed", "runtime_billing", "charge_session.create", err, "charge_session_create_failed", observability.Fields{"product_id": input.ProductCode, "job_id": input.SourceID})
 		observability.ErrorEvent("ecommerce.runtime.charge.reserve.failed", "runtime_billing", "charge.reserve", err, "charge_session_create_failed", observability.Fields{"product_id": input.ProductCode, "job_id": input.SourceID, "latency_ms": time.Since(startedAt).Milliseconds()})
+		observability.ErrorEvent("ecommerce.billing_gate.reservation.create.failed", "billing_gate", "reservation.create", err, "charge_session_create_failed", fields)
 		return nil, err
 	}
 	observability.Event("ecommerce.runtime.charge_session.create.finished", "runtime_billing", "charge_session.create", observability.Fields{"product_id": input.ProductCode, "job_id": input.SourceID, "session_id": session.ID})
@@ -181,17 +189,24 @@ func (s *Service) Begin(input BeginInput) (*Context, error) {
 		Metadata:           mustMarshal(map[string]any{"source_id": input.SourceID, "charge_session_id": session.ID, "action": input.Action}),
 	})
 	if err != nil {
+		fields := billingGateFields(&Context{ChargeSessionID: session.ID}, input)
+		fields["failure_category"] = billingGateFailureCategory(err)
 		observability.ErrorEvent("ecommerce.runtime.reservation.create.failed", "runtime_billing", "reservation.create", err, "reservation_create_failed", observability.Fields{"product_id": input.ProductCode, "job_id": input.SourceID, "session_id": session.ID})
 		observability.ErrorEvent("ecommerce.runtime.charge.reserve.failed", "runtime_billing", "charge.reserve", err, "reservation_create_failed", observability.Fields{"product_id": input.ProductCode, "job_id": input.SourceID, "session_id": session.ID, "latency_ms": time.Since(startedAt).Milliseconds()})
+		observability.ErrorEvent("ecommerce.billing_gate.reservation.create.failed", "billing_gate", "reservation.create", err, "reservation_create_failed", fields)
 		return nil, err
 	}
 	if reservation == nil || strings.TrimSpace(reservation.ID) == "" {
 		err := fmt.Errorf("resource reservation missing for %s %s", input.Action, input.SourceID)
+		fields := billingGateFields(&Context{ChargeSessionID: session.ID}, input)
+		fields["failure_category"] = "quota_or_billing"
 		observability.ErrorEvent("ecommerce.runtime.charge.reserve.failed", "runtime_billing", "charge.reserve", err, "reservation_missing", observability.Fields{"product_id": input.ProductCode, "job_id": input.SourceID, "session_id": session.ID, "latency_ms": time.Since(startedAt).Milliseconds()})
+		observability.ErrorEvent("ecommerce.billing_gate.reservation.create.failed", "billing_gate", "reservation.create", err, "reservation_missing", fields)
 		return nil, err
 	}
 	observability.Event("ecommerce.runtime.reservation.create.finished", "runtime_billing", "reservation.create", observability.Fields{"product_id": input.ProductCode, "job_id": input.SourceID, "session_id": session.ID, "reservation_id": reservation.ID})
 	observability.Event("ecommerce.runtime.charge.reserve.finished", "runtime_billing", "charge.reserve", observability.Fields{"product_id": input.ProductCode, "job_id": input.SourceID, "session_id": session.ID, "reservation_id": reservation.ID, "latency_ms": time.Since(startedAt).Milliseconds()})
+	observability.Event("ecommerce.billing_gate.reservation.create.finished", "billing_gate", "reservation.create", billingGateFields(&Context{ChargeSessionID: session.ID, ReservationID: reservation.ID, ReservationKey: reservationKey}, input))
 	return &Context{
 		Action:           input.Action,
 		SourceType:       input.SourceType,
@@ -232,11 +247,20 @@ func (s *Service) MarkReserved(ctx *Context, metadata map[string]any) error {
 func (s *Service) Commit(input CommitInput) (*CommitResult, error) {
 	startedAt := time.Now()
 	ctx := input.Context
+	observability.Event("ecommerce.billing_gate.metering.finalize.started", "billing_gate", "metering.finalize", billingGateFields(ctx, BeginInput{}))
 	if s == nil || s.platform == nil {
-		return nil, fmt.Errorf("billing gate platform client is required")
+		err := fmt.Errorf("billing gate platform client is required")
+		fields := billingGateFields(ctx, BeginInput{})
+		fields["failure_category"] = "quota_or_billing"
+		observability.ErrorEvent("ecommerce.billing_gate.metering.finalize.failed", "billing_gate", "metering.finalize", err, "platform_client_required", fields)
+		return nil, err
 	}
 	if ctx == nil || strings.TrimSpace(ctx.ChargeSessionID) == "" {
-		return nil, fmt.Errorf("billing gate charge session is required")
+		err := fmt.Errorf("billing gate charge session is required")
+		fields := billingGateFields(ctx, BeginInput{})
+		fields["failure_category"] = "quota_or_billing"
+		observability.ErrorEvent("ecommerce.billing_gate.metering.finalize.failed", "billing_gate", "metering.finalize", err, "charge_session_required", fields)
+		return nil, err
 	}
 	eventID := firstNonEmpty(input.EventID, fmt.Sprintf("evt_%s", ctx.SourceID))
 	occurredAt := input.OccurredAt
@@ -267,7 +291,11 @@ func (s *Service) Commit(input CommitInput) (*CommitResult, error) {
 		},
 	})
 	if err != nil {
+		fields := billingGateFields(ctx, BeginInput{})
+		fields["failure_category"] = billingGateFailureCategory(err)
+		fields["event_id"] = eventID
 		observability.ErrorEvent("ecommerce.runtime.settlement.finalize.failed", "runtime_billing", "settlement.finalize", err, "finalize_metering_failed", observability.Fields{"job_id": ctx.SourceID, "session_id": ctx.ChargeSessionID, "latency_ms": time.Since(startedAt).Milliseconds()})
+		observability.ErrorEvent("ecommerce.billing_gate.metering.finalize.failed", "billing_gate", "metering.finalize", err, "finalize_metering_failed", fields)
 		return nil, err
 	}
 	finalUnits := positiveOrDefault(ctx.UsageUnits, 1)
@@ -283,20 +311,38 @@ func (s *Service) Commit(input CommitInput) (*CommitResult, error) {
 		FinalUnits:    &finalUnits,
 		Metadata:      mustMarshal(map[string]any{"event_id": eventID}),
 	}); err != nil {
+		fields := billingGateFields(ctx, BeginInput{})
+		fields["failure_category"] = "settlement"
+		fields["event_id"] = eventID
+		fields["settlement_id"] = settlementID
 		observability.ErrorEvent("ecommerce.runtime.settlement.finalize.failed", "runtime_billing", "settlement.finalize", err, "charge_session_settle_failed", observability.Fields{"job_id": ctx.SourceID, "session_id": ctx.ChargeSessionID, "event_id": eventID, "latency_ms": time.Since(startedAt).Milliseconds()})
+		observability.ErrorEvent("ecommerce.billing_gate.metering.finalize.failed", "billing_gate", "metering.finalize", err, "charge_session_settle_failed", fields)
 		return nil, err
 	}
 	observability.Event("ecommerce.runtime.settlement.finalize.finished", "runtime_billing", "settlement.finalize", observability.Fields{"job_id": ctx.SourceID, "session_id": ctx.ChargeSessionID, "event_id": eventID, "settlement_id": settlementID, "latency_ms": time.Since(startedAt).Milliseconds()})
+	fields := billingGateFields(ctx, BeginInput{})
+	fields["event_id"] = eventID
+	fields["settlement_id"] = settlementID
+	observability.Event("ecommerce.billing_gate.metering.finalize.finished", "billing_gate", "metering.finalize", fields)
 	return &CommitResult{EventID: eventID, Result: result}, nil
 }
 
 func (s *Service) Release(input ReleaseInput) error {
+	startedAt := time.Now()
 	ctx := input.Context
 	if s == nil || s.platform == nil || ctx == nil {
 		return nil
 	}
+	observability.Event("ecommerce.billing_gate.reservation.release.started", "billing_gate", "reservation.release", billingGateFields(ctx, BeginInput{}))
+	observability.Event("ecommerce.runtime.charge.release.started", "runtime_billing", "charge.release", observability.Fields{"product_id": ctx.ProductCode, "job_id": ctx.SourceID, "session_id": ctx.ChargeSessionID, "reservation_id": ctx.ReservationID, "reason": input.Reason})
 	if strings.TrimSpace(ctx.ReservationID) != "" {
-		_, _ = s.platform.ReleaseReservation(ctx.ReservationID)
+		if _, err := s.platform.ReleaseReservation(ctx.ReservationID); err != nil {
+			fields := billingGateFields(ctx, BeginInput{})
+			fields["failure_category"] = billingGateFailureCategory(err)
+			observability.ErrorEvent("ecommerce.runtime.charge.release.failed", "runtime_billing", "charge.release", err, "reservation_release_failed", observability.Fields{"product_id": ctx.ProductCode, "job_id": ctx.SourceID, "session_id": ctx.ChargeSessionID, "reservation_id": ctx.ReservationID, "latency_ms": time.Since(startedAt).Milliseconds()})
+			observability.ErrorEvent("ecommerce.billing_gate.reservation.release.failed", "billing_gate", "reservation.release", err, "reservation_release_failed", fields)
+			return err
+		}
 	}
 	if strings.TrimSpace(ctx.ChargeSessionID) != "" {
 		metadata := input.Metadata
@@ -306,12 +352,20 @@ func (s *Service) Release(input ReleaseInput) error {
 		if strings.TrimSpace(input.Reason) != "" {
 			metadata["release_reason"] = input.Reason
 		}
-		_, _ = s.platform.UpdateChargeSession(ctx.ChargeSessionID, platform.UpdateChargeSessionInput{
+		if _, err := s.platform.UpdateChargeSession(ctx.ChargeSessionID, platform.UpdateChargeSessionInput{
 			Status:        ChargeSessionStatusReleased,
 			ReservationID: ctx.ReservationID,
 			Metadata:      mustMarshal(metadata),
-		})
+		}); err != nil {
+			fields := billingGateFields(ctx, BeginInput{})
+			fields["failure_category"] = billingGateFailureCategory(err)
+			observability.ErrorEvent("ecommerce.runtime.charge.release.failed", "runtime_billing", "charge.release", err, "charge_session_release_failed", observability.Fields{"product_id": ctx.ProductCode, "job_id": ctx.SourceID, "session_id": ctx.ChargeSessionID, "reservation_id": ctx.ReservationID, "latency_ms": time.Since(startedAt).Milliseconds()})
+			observability.ErrorEvent("ecommerce.billing_gate.reservation.release.failed", "billing_gate", "reservation.release", err, "charge_session_release_failed", fields)
+			return err
+		}
 	}
+	observability.Event("ecommerce.runtime.charge.release.finished", "runtime_billing", "charge.release", observability.Fields{"product_id": ctx.ProductCode, "job_id": ctx.SourceID, "session_id": ctx.ChargeSessionID, "reservation_id": ctx.ReservationID, "reason": input.Reason, "latency_ms": time.Since(startedAt).Milliseconds()})
+	observability.Event("ecommerce.billing_gate.reservation.release.finished", "billing_gate", "reservation.release", billingGateFields(ctx, BeginInput{}))
 	return nil
 }
 

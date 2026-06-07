@@ -9,6 +9,7 @@ import (
 
 	"ecommerce-service/internal/config"
 	"ecommerce-service/internal/models"
+	"ecommerce-service/internal/observability"
 	"ecommerce-service/internal/platform"
 	"ecommerce-service/internal/repository"
 
@@ -174,7 +175,7 @@ func (s *Service) GetOrder(orgID, orderID string) (*OrderView, error) {
 	return s.buildOrderView(order)
 }
 
-func (s *Service) ConfirmOrderPayment(userID, orgID, orderID string, input ConfirmOrderPaymentInput) (*OrderView, error) {
+func (s *Service) ConfirmOrderPayment(userID, orgID, orderID string, input ConfirmOrderPaymentInput, correlation observability.Fields) (*OrderView, error) {
 	if s.repo == nil || s.platform == nil {
 		return nil, errors.New("commercial dependencies unavailable")
 	}
@@ -183,6 +184,11 @@ func (s *Service) ConfirmOrderPayment(userID, orgID, orderID string, input Confi
 		return nil, err
 	}
 	if order.Status == "fulfilled" || (order.PaymentStatus == "succeeded" && order.FulfillmentStatus == "succeeded") {
+		fields := observability.Fields{"org_id": orgID, "user_id": userID, "order_id": order.ID, "product_code": order.ProductCode, "sku_code": order.SKUCode, "package_code": order.PackageCode, "payment_status": order.PaymentStatus, "fulfillment_status": order.FulfillmentStatus}
+		for k, v := range correlation {
+			fields[k] = v
+		}
+		observability.Event("ecommerce.commercial.payment.idempotency.hit", "commercial", "payment.confirm", fields)
 		return s.buildOrderView(order)
 	}
 	now := time.Now().UTC()

@@ -17,7 +17,7 @@ Current backend surfaces include:
 ## Quick Start
 
 ```bash
-cd v-ecommerce-backend
+cd /root/work/v/ecommerce-backend
 go mod tidy
 go run ./cmd/server -config config.local
 ```

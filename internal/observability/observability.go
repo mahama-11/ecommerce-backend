@@ -1,7 +1,9 @@
 package observability
 
 import (
+	"errors"
 	"log/slog"
+	"regexp"
 	"strings"
 	"time"
 
@@ -75,9 +77,10 @@ func (l *Lifecycle) Fail(err error, errorCode string, fields Fields) {
 	latency := time.Since(l.startedAt).Milliseconds()
 	attrs := []attribute.KeyValue{attribute.String("status", "failed"), attribute.String("error_code", errorCode), attribute.Int64("latency_ms", latency)}
 	if err != nil {
-		l.span.RecordError(err)
-		l.span.SetStatus(codes.Error, err.Error())
-		attrs = append(attrs, attribute.String("error_message", safeError(err)))
+		sanitizedErr := errors.New(safeError(err))
+		l.span.RecordError(sanitizedErr)
+		l.span.SetStatus(codes.Error, sanitizedErr.Error())
+		attrs = append(attrs, attribute.String("error_message", sanitizedErr.Error()))
 	}
 	for key, value := range fields {
 		attrs = append(attrs, attr(key, value))
@@ -127,7 +130,7 @@ func attr(key string, value any) attribute.KeyValue {
 	}
 	switch v := value.(type) {
 	case string:
-		return attribute.String(key, v)
+		return attribute.String(key, redactSensitive(v))
 	case int:
 		return attribute.Int(key, v)
 	case int64:
@@ -153,9 +156,23 @@ func safeError(err error) string {
 	if err == nil {
 		return ""
 	}
-	msg := err.Error()
+	msg := redactSensitive(err.Error())
 	if len(msg) > 300 {
 		return msg[:300]
+	}
+	return msg
+}
+
+var sensitiveValuePatterns = []*regexp.Regexp{
+	regexp.MustCompile(`(?i)(bearer\s+)[A-Za-z0-9._~+/-]+=*`),
+	regexp.MustCompile(`(?i)((?:token|secret|password|provider_key|storage_key)=)[^\s,;]+`),
+	regexp.MustCompile(`(?i)((?:token|secret|password|provider_key|storage_key)":")[^"]+`),
+	regexp.MustCompile(`(?i)((?:postgres|postgresql|mysql)://[^:]+:)[^@\s]+(@)`),
+}
+
+func redactSensitive(msg string) string {
+	for _, pattern := range sensitiveValuePatterns {
+		msg = pattern.ReplaceAllString(msg, `${1}[redacted]${2}`)
 	}
 	return msg
 }

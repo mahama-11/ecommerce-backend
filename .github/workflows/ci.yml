@@ -56,3 +56,14 @@ jobs:
 
       - name: Run tests
         run: go test ./... -count=1
+
+      - name: Run quality gate
+        run: make quality-gate
+
+      - name: Upload quality reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ecommerce-backend-quality-reports
+          path: reports/quality/**
+          if-no-files-found: ignore

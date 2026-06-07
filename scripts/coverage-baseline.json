@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "description": "Agent Ecommerce backend quality coverage baseline. Floors are intentionally conservative at the 2026-06-07 measured baseline; raise them as phases B-G land.",
+  "total_min_percent": 55.0,
+  "coverpkg_total_min_percent": 53.0,
+  "packages": {
+    "ecommerce-service/internal/billinggate": 67.0,
+    "ecommerce-service/internal/modules/visualworkflow": 71.0,
+    "ecommerce-service/internal/modules/templatecenter": 71.0,
+    "ecommerce-service/internal/modules/promptcenter": 68.0,
+    "ecommerce-service/internal/modules/imageruntime": 59.0,
+    "ecommerce-service/internal/modules/productcore": 51.0
+  },
+  "required_test_packages": [
+    "ecommerce-service/internal/modules/auth",
+    "ecommerce-service/internal/modules/access",
+    "ecommerce-service/internal/modules/authz",
+    "ecommerce-service/internal/platform",
+    "ecommerce-service/internal/router",
+    "ecommerce-service/internal/middleware",
+    "ecommerce-service/internal/storage",
+    "ecommerce-service/internal/config"
+  ]
+}

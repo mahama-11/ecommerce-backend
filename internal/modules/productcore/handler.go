@@ -98,9 +98,9 @@ func (h *Handler) ListProducts(c *gin.Context) {
 	log.Info("ecommerce.product_center.products.list.started", "status", "started")
 	items, err := h.service.ListProducts(orgID)
 	if err != nil {
-		span.RecordError(err)
+		telemetry.RecordSpanError(span, err)
 		span.SetStatus(codes.Error, "list products failed")
-		log.Error("ecommerce.product_center.products.list.failed", "status", "failed", "error_code", "product_list_failed", "error", err.Error())
+		log.Error("ecommerce.product_center.products.list.failed", "status", "failed", "error_code", "product_list_failed", "error", telemetry.SafeError(err))
 		moduleutil.WritePlatformError(c, err, "list products failed")
 		return
 	}
@@ -118,7 +118,7 @@ func (h *Handler) GetProduct(c *gin.Context) {
 	detail, err := h.service.GetProductDetail(orgID, c.Param("product_id"))
 	if err != nil {
 		observability.ErrorEvent("ecommerce.product_center.product.detail.failed", "product_center", "product.detail", err, "product_detail_failed", observability.Fields{"product_id": c.Param("product_id"), "org_id": orgID})
-		span.RecordError(err)
+		telemetry.RecordSpanError(span, err)
 		moduleutil.WritePlatformError(c, err, "get product failed")
 		return
 	}
@@ -141,7 +141,7 @@ func (h *Handler) CreateProduct(c *gin.Context) {
 	item, err := h.service.CreateProduct(orgID, userID, input)
 	if err != nil {
 		observability.ErrorEvent("ecommerce.product_center.product.create.failed", "product_center", "product.create", err, "product_create_failed", observability.Fields{"sku_code": input.SKUCode, "org_id": orgID})
-		span.RecordError(err)
+		telemetry.RecordSpanError(span, err)
 		moduleutil.WritePlatformError(c, err, "create product failed")
 		return
 	}
@@ -164,7 +164,7 @@ func (h *Handler) UpdateProduct(c *gin.Context) {
 	item, err := h.service.UpdateProduct(orgID, userID, c.Param("product_id"), input)
 	if err != nil {
 		observability.ErrorEvent("ecommerce.product_center.product.update.failed", "product_center", "product.update", err, "product_update_failed", observability.Fields{"product_id": c.Param("product_id"), "org_id": orgID})
-		span.RecordError(err)
+		telemetry.RecordSpanError(span, err)
 		moduleutil.WritePlatformError(c, err, "update product failed")
 		return
 	}
@@ -576,6 +576,6 @@ func (h *Handler) DownloadContent(c *gin.Context) {
 	}
 	c.Status(http.StatusOK)
 	if _, copyErr := io.Copy(c.Writer, body); copyErr != nil {
-		span.RecordError(copyErr)
+		telemetry.RecordSpanError(span, copyErr)
 	}
 }

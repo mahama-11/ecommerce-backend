@@ -175,6 +175,7 @@ For product image generation, use the platform runtime as the execution layer an
 - template center detail responses can surface `storageKey`, `assetId`, `mimeType`, `checksum`, and `previewAssetUrl`
 - startup now logs a template center seed summary and warns when built-in example assets are missing
 - automated validation currently covers package compilation, workspace module tests, and template center API success paths
+- repository-native quality gates now include `make quality-gate`, which runs guardrails, quick backend tests, coverage no-regression, and route inventory protection. Coverage evidence is written under `reports/quality/coverage/latest.json`; route evidence is written under `reports/quality/routes/latest.json`.
 - billing, template center, and image runtime paths now have targeted handler/service validation in the backend test suite
 - download center currently aggregates product export tasks and multi-SKU export package rows at organization scope and exposes authenticated download streaming when `storage_key` is available, with `package_url` kept as a direct-download fallback
 - download-center payloads now include linked asset manifest snippets and package metadata/content URLs so frontend pages can trace package records back to product assets

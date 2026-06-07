@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"regexp"
 	"time"
 
 	"ecommerce-service/pkg/logger"
@@ -29,9 +30,23 @@ func AccessLog() gin.HandlerFunc {
 			"org_id", c.GetString("orgID"),
 		)
 		if len(c.Errors) > 0 {
-			log.Error("request.finished", "errors", c.Errors.String())
+			log.Error("request.finished", "errors", redactLogError(c.Errors.String()))
 			return
 		}
 		log.Info("request.finished")
 	}
+}
+
+var accessLogSensitivePatterns = []*regexp.Regexp{
+	regexp.MustCompile(`(?i)(bearer\s+)[A-Za-z0-9._~+/-]+=*`),
+	regexp.MustCompile(`(?i)((?:token|secret|password|provider_key|storage_key)=)[^\s,;]+`),
+	regexp.MustCompile(`(?i)((?:token|secret|password|provider_key|storage_key)":")[^"]+`),
+	regexp.MustCompile(`(?i)((?:postgres|postgresql|mysql)://[^:]+:)[^@\s]+(@)`),
+}
+
+func redactLogError(message string) string {
+	for _, pattern := range accessLogSensitivePatterns {
+		message = pattern.ReplaceAllString(message, `${1}[redacted]${2}`)
+	}
+	return message
 }

@@ -19,13 +19,13 @@ func (h *Handler) Preview(c *gin.Context) {
 	defer span.End()
 	var req PreviewPromptInput
 	if err := c.ShouldBindJSON(&req); err != nil {
-		span.RecordError(err)
+		telemetry.RecordSpanError(span, err)
 		response.JSONBindError(c, err, "invalid prompt preview request")
 		return
 	}
 	item, err := h.service.Preview(c.GetString("userID"), c.GetString("orgID"), req)
 	if err != nil {
-		span.RecordError(err)
+		telemetry.RecordSpanError(span, err)
 		moduleutil.WritePlatformError(c, err, "Failed to preview ecommerce prompt")
 		return
 	}
@@ -37,7 +37,7 @@ func (h *Handler) Get(c *gin.Context) {
 	defer span.End()
 	item, err := h.service.Get(c.GetString("orgID"), c.Param("promptId"))
 	if err != nil {
-		span.RecordError(err)
+		telemetry.RecordSpanError(span, err)
 		response.JSONErrorSemantic(c, response.CodeNotFound, "Prompt not found", "ECOMMERCE_PROMPT_NOT_FOUND", "Refresh and try again.")
 		return
 	}

@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"ecommerce-service/internal/config"
 	accessmodule "ecommerce-service/internal/modules/access"
@@ -45,6 +46,9 @@ func New(configFile string) (*App, error) {
 	cfg, err := config.Load(configFile)
 	if err != nil {
 		return nil, fmt.Errorf("load config: %w", err)
+	}
+	if err := validateProductionSecrets(*cfg); err != nil {
+		return nil, err
 	}
 	logger.Init(cfg.LogLevel, cfg.Monitoring.Tracing.ServiceName)
 	shutdownTracing, err := telemetry.InitTracing(cfg.Monitoring.Tracing)
@@ -115,4 +119,32 @@ func New(configFile string) (*App, error) {
 		return nil
 	}
 	return app, nil
+}
+
+func validateProductionSecrets(cfg config.Config) error {
+	if !strings.EqualFold(cfg.GinMode, gin.ReleaseMode) {
+		return nil
+	}
+	weak := map[string]struct{}{
+		"":                                   {},
+		"ecommerce-dev-secret":               {},
+		"ecommerce-encryption-key-change-me": {},
+		"ecommerce-service-secret":           {},
+		"platform-internal-secret":           {},
+		"platform-dev-secret":                {},
+	}
+	checks := map[string]string{
+		"security.jwt_secret":              cfg.Security.JWTSecret,
+		"security.encryption_key":          cfg.Security.EncryptionKey,
+		"security.service_secret_key":      cfg.Security.ServiceSecretKey,
+		"platform.internal_service_secret": cfg.Platform.InternalServiceSecret,
+		"platform.jwt_secret":              cfg.Platform.JWTSecret,
+	}
+	for name, value := range checks {
+		trimmed := strings.TrimSpace(value)
+		if _, ok := weak[trimmed]; ok || len(trimmed) < 16 {
+			return fmt.Errorf("production config rejected weak/default secret: %s", name)
+		}
+	}
+	return nil
 }

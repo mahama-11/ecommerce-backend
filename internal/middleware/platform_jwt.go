@@ -14,7 +14,7 @@ func PlatformJWTAuth(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		claims, ok := parseClaims(c.GetHeader("Authorization"), jwtSecret)
 		if !ok {
-			response.JSONErrorSemantic(c, 401, "Invalid or missing token", "TOKEN_INVALID", "Sign in again to continue.")
+			response.JSONErrorSemantic(c, response.CodeUnauthorized, "Invalid or missing token", "TOKEN_INVALID", "Sign in again to continue.")
 			c.Abort()
 			return
 		}
@@ -41,7 +41,7 @@ func parseClaims(authHeader, jwtSecret string) (jwt.MapClaims, bool) {
 	if len(parts) != 2 || parts[0] != "Bearer" {
 		return nil, false
 	}
-	token, err := jwt.Parse(parts[1], func(token *jwt.Token) (any, error) { return []byte(jwtSecret), nil })
+	token, err := jwt.Parse(parts[1], func(token *jwt.Token) (any, error) { return []byte(jwtSecret), nil }, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 	if err != nil || !token.Valid {
 		return nil, false
 	}
@@ -50,6 +50,11 @@ func parseClaims(authHeader, jwtSecret string) (jwt.MapClaims, bool) {
 		return nil, false
 	}
 	if exp, ok := claims["exp"].(float64); ok && time.Now().Unix() > int64(exp) {
+		return nil, false
+	}
+	userID, _ := claims["user_id"].(string)
+	orgID, _ := claims["org_id"].(string)
+	if strings.TrimSpace(userID) == "" || strings.TrimSpace(orgID) == "" {
 		return nil, false
 	}
 	return claims, true

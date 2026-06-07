@@ -1,6 +1,7 @@
 bin/
 dist/
 coverage/
+reports/
 data/
 .env
 .DS_Store

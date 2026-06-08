@@ -1,7 +1,7 @@
 APP_NAME=ecommerce-service
 CONFIG?=config.local
 
-.PHONY: tidy test test-quick run build guardrails coverage-gate route-inventory-gate platform-contract-gate commercial-wallet-gate infra-crosscut-gate observability-gate security-redaction-gate quality-gate release-quality-gate
+.PHONY: tidy test test-quick run build guardrails coverage-gate route-inventory-gate platform-contract-gate openapi-drift-gate frontend-consumer-sweep platform-contract-matrix contract-gate evidence-semantic-validator commercial-wallet-gate infra-crosscut-gate observability-gate security-redaction-gate quality-gate pr-quality-gate core-business-pr-gate release-quality-gate
 
 tidy:
 	go mod tidy
@@ -24,6 +24,20 @@ route-inventory-gate:
 platform-contract-gate:
 	./scripts/platform-contract-gate.sh
 
+openapi-drift-gate:
+	./scripts/openapi-drift-gate.sh
+
+frontend-consumer-sweep:
+	./scripts/frontend-consumer-sweep.sh
+
+platform-contract-matrix:
+	./scripts/platform-contract-matrix.sh
+
+contract-gate: openapi-drift-gate frontend-consumer-sweep platform-contract-matrix
+
+evidence-semantic-validator:
+	./scripts/evidence-semantic-validator.py
+
 commercial-wallet-gate:
 	./scripts/commercial-wallet-gate.sh
 
@@ -38,9 +52,15 @@ security-redaction-gate:
 
 quality-gate: guardrails test-quick coverage-gate route-inventory-gate platform-contract-gate commercial-wallet-gate infra-crosscut-gate observability-gate security-redaction-gate
 
-release-quality-gate: quality-gate
-	./scripts/ecommerce-backend-critical-journey-smoke.py --env local --dry-run
-	./scripts/ecommerce-backend-api-contract-smoke.py --env local --dry-run
+pr-quality-gate: test quality-gate
+
+core-business-pr-gate: release-quality-gate
+
+release-quality-gate: quality-gate openapi-drift-gate frontend-consumer-sweep platform-contract-gate
+	./scripts/ecommerce-backend-critical-journey-smoke.py --env local --execute --fixture isolated --cleanup
+	./scripts/ecommerce-backend-api-contract-smoke.py --env local --execute --fixture isolated --cleanup
+	./scripts/platform-contract-matrix.sh
+	./scripts/evidence-semantic-validator.py
 
 run:
 	go run ./cmd/server -config $(CONFIG)

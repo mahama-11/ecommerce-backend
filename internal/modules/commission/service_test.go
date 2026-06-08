@@ -119,3 +119,99 @@ func TestHandlerRedeemEnvelope(t *testing.T) {
 		t.Fatalf("unexpected redeem response: status=%d body=%s", w.Code, w.Body.String())
 	}
 }
+
+func TestChannelCommissionsAndSettlementsAreFilteredToBoundOrgPartners(t *testing.T) {
+	now := time.Date(2026, 6, 7, 12, 0, 0, 0, time.UTC).Format(time.RFC3339)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/internal/v1/incentives/channel-bindings":
+			if r.URL.Query().Get("product_code") != "ecommerce" || r.URL.Query().Get("org_id") != "org-settlement" {
+				t.Fatalf("unexpected binding query: %s", r.URL.RawQuery)
+			}
+			writeCommissionEnvelope(t, w, http.StatusOK, 0, map[string]any{"items": []map[string]any{{"id": "bind-bound", "product_code": "ecommerce", "org_id": "org-settlement", "channel_partner_id": "partner-bound", "channel_program_id": "program-1", "status": "active", "created_at": now}}})
+		case "/internal/v1/incentives/channel-partners":
+			writeCommissionEnvelope(t, w, http.StatusOK, 0, map[string]any{"items": []map[string]any{{"id": "partner-bound", "code": "BOUND", "name": "Bound", "status": "active", "created_at": now}, {"id": "partner-other", "code": "OTHER", "name": "Other", "status": "active", "created_at": now}}})
+		case "/internal/v1/incentives/channel-programs":
+			writeCommissionEnvelope(t, w, http.StatusOK, 0, map[string]any{"items": []map[string]any{{"id": "program-1", "product_code": "ecommerce", "program_code": "ecom-channel", "name": "Channel", "status": "active", "created_at": now}}})
+		case "/internal/v1/incentives/channel-commissions":
+			if r.URL.Query().Get("channel_partner_id") != "partner-bound" {
+				t.Fatalf("unexpected commission partner query: %s", r.URL.RawQuery)
+			}
+			writeCommissionEnvelope(t, w, http.StatusOK, 0, map[string]any{"items": []map[string]any{{"id": "ledger-bound", "product_code": "ecommerce", "channel_partner_id": "partner-bound", "channel_program_id": "program-1", "commission_amount": 33, "status": "earned", "created_at": now}}})
+		case "/internal/v1/incentives/channel-settlement-batches":
+			writeCommissionEnvelope(t, w, http.StatusOK, 0, map[string]any{"items": []map[string]any{{"id": "batch-1", "product_code": "ecommerce", "channel_program_id": "program-1", "currency": "CNY", "status": "generated", "created_at": now}}})
+		case "/internal/v1/incentives/channel-settlement-batches/batch-1":
+			writeCommissionEnvelope(t, w, http.StatusOK, 0, map[string]any{"batch": map[string]any{"id": "batch-1", "product_code": "ecommerce", "channel_program_id": "program-1", "currency": "CNY", "status": "generated", "created_at": now}, "items": []map[string]any{{"item": map[string]any{"id": "settle-bound", "settlement_batch_id": "batch-1", "channel_partner_id": "partner-bound", "currency": "CNY", "commission_amount": 33, "net_amount": 30, "status": "pending", "created_at": now}}, {"item": map[string]any{"id": "settle-other", "settlement_batch_id": "batch-1", "channel_partner_id": "partner-other", "currency": "CNY", "commission_amount": 99, "net_amount": 90, "status": "pending", "created_at": now}}}})
+		default:
+			t.Fatalf("unexpected channel request: %s", r.URL.String())
+		}
+	}))
+	defer server.Close()
+	client := platform.New(config.PlatformConfig{BaseURL: server.URL, Timeout: time.Second, ServiceName: "commission-channel-test", InternalServiceSecret: "secret"})
+	svc := NewService(client, config.AppConfig{ProductCode: "ecommerce"})
+	commissions, err := svc.ListChannelCommissions("org-settlement", "earned")
+	if err != nil {
+		t.Fatalf("ListChannelCommissions: %v", err)
+	}
+	if len(commissions) != 1 || commissions[0].Partner.ID != "partner-bound" || commissions[0].Ledger.ID != "ledger-bound" || commissions[0].Program.ProgramCode != "ecom-channel" {
+		t.Fatalf("unexpected channel commissions: %+v", commissions)
+	}
+	settlements, err := svc.ListChannelSettlements("org-settlement", "generated")
+	if err != nil {
+		t.Fatalf("ListChannelSettlements: %v", err)
+	}
+	if len(settlements) != 1 || settlements[0].Partner.ID != "partner-bound" || settlements[0].Item.ID != "settle-bound" || settlements[0].Batch.ID != "batch-1" {
+		t.Fatalf("settlement crossed org/partner scope: %+v", settlements)
+	}
+}
+
+func TestHandlersExposeCommissionReadModelsWithEnvelope(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	now := time.Now().UTC().Format(time.RFC3339)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/internal/v1/incentives/commissions":
+			writeCommissionEnvelope(t, w, http.StatusOK, 0, map[string]any{"items": []map[string]any{{"id": "commission-earned", "product_code": "ecommerce", "currency": "ECOMMERCE_CREDIT", "amount": 8, "status": "earned", "created_at": now}}})
+		case "/internal/v1/incentives/channel-bindings":
+			writeCommissionEnvelope(t, w, http.StatusOK, 0, map[string]any{"items": []map[string]any{{"id": "binding-1", "product_code": "ecommerce", "org_id": "org-handler", "channel_partner_id": "partner-1", "channel_program_id": "program-1", "status": "active", "created_at": now}}})
+		case "/internal/v1/incentives/channel-partners":
+			writeCommissionEnvelope(t, w, http.StatusOK, 0, map[string]any{"items": []map[string]any{{"id": "partner-1", "code": "P1", "name": "Partner", "status": "active", "created_at": now}}})
+		case "/internal/v1/incentives/channel-programs":
+			writeCommissionEnvelope(t, w, http.StatusOK, 0, map[string]any{"items": []map[string]any{{"id": "program-1", "product_code": "ecommerce", "program_code": "ecom-channel", "name": "Channel", "status": "active", "created_at": now}}})
+		case "/internal/v1/incentives/channel-commissions":
+			writeCommissionEnvelope(t, w, http.StatusOK, 0, map[string]any{"items": []map[string]any{{"id": "channel-ledger", "product_code": "ecommerce", "channel_partner_id": "partner-1", "channel_program_id": "program-1", "commission_amount": 12, "status": "settled", "created_at": now}}})
+		case "/internal/v1/incentives/channel-settlement-batches":
+			writeCommissionEnvelope(t, w, http.StatusOK, 0, map[string]any{"items": []map[string]any{}})
+		default:
+			t.Fatalf("unexpected handler request: %s", r.URL.String())
+		}
+	}))
+	defer server.Close()
+	client := platform.New(config.PlatformConfig{BaseURL: server.URL, Timeout: time.Second, ServiceName: "commission-handler-read-test", InternalServiceSecret: "secret"})
+	h := NewHandler(NewService(client, config.AppConfig{ProductCode: "ecommerce"}), nil)
+	r := gin.New()
+	r.Use(middleware.RequestContext())
+	r.GET("/overview", func(c *gin.Context) { c.Set("orgID", "org-handler"); h.Overview(c) })
+	r.GET("/referrals", func(c *gin.Context) { c.Set("orgID", "org-handler"); h.ListReferralCommissions(c) })
+	r.GET("/channel/overview", func(c *gin.Context) { c.Set("orgID", "org-handler"); h.ChannelOverview(c) })
+	r.GET("/channel/bindings", func(c *gin.Context) { c.Set("orgID", "org-handler"); h.ChannelBindings(c) })
+	r.GET("/channel/commissions", func(c *gin.Context) { c.Set("orgID", "org-handler"); h.ChannelCommissions(c) })
+	r.GET("/channel/settlements", func(c *gin.Context) { c.Set("orgID", "org-handler"); h.ChannelSettlements(c) })
+
+	for _, tc := range []struct{ path, needle string }{
+		{"/overview", `"redeemable_commission":8`},
+		{"/referrals", `"id":"commission-earned"`},
+		{"/channel/overview", `"total_commission":12`},
+		{"/channel/bindings", `"id":"binding-1"`},
+		{"/channel/commissions", `"id":"channel-ledger"`},
+		{"/channel/settlements", `[]`},
+	} {
+		req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+		req.Header.Set("X-Request-ID", "req-commission-read-handler")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), tc.needle) || !strings.Contains(w.Body.String(), `"request_id":"req-commission-read-handler"`) {
+			t.Fatalf("GET %s status=%d body=%s", tc.path, w.Code, w.Body.String())
+		}
+	}
+}

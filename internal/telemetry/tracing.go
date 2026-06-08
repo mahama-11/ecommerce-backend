@@ -77,8 +77,8 @@ func SafeError(err error) string {
 
 var sensitiveValuePatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)(bearer\s+)[A-Za-z0-9._~+/-]+=*`),
-	regexp.MustCompile(`(?i)((?:token|secret|password|provider_key|storage_key)=)[^\s,;]+`),
-	regexp.MustCompile(`(?i)((?:token|secret|password|provider_key|storage_key)":")[^"]+`),
+	regexp.MustCompile(`(?i)((?:token|secret|password|provider_key|provider_payload|storage_key)=)[^\s,;]+`),
+	regexp.MustCompile(`(?i)((?:token|secret|password|provider_key|provider_payload|storage_key)":")[^"]+`),
 	regexp.MustCompile(`(?i)((?:postgres|postgresql|mysql)://[^:]+:)[^@\s]+(@)`),
 }
 

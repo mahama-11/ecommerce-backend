@@ -44,6 +44,15 @@ func clampProgress(progress int, status string) int {
 	return progress
 }
 
+func isImageJobTerminalStatus(status string) bool {
+	switch strings.TrimSpace(status) {
+	case "completed", "failed", "canceled":
+		return true
+	default:
+		return false
+	}
+}
+
 func mapResultStatusToStage(status string) string {
 	switch status {
 	case "completed":

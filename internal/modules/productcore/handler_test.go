@@ -3,9 +3,12 @@ package productcore
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/csv"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -238,12 +241,38 @@ func TestCreateExportPackagePartialSuccessListsAndDownloadsBundle(t *testing.T) 
 	if err != nil {
 		t.Fatalf("read bundle zip: %v", err)
 	}
-	files := map[string]bool{}
+	files := map[string]string{}
 	for _, file := range zipReader.File {
-		files[file.Name] = true
+		rc, openErr := file.Open()
+		if openErr != nil {
+			t.Fatalf("open bundle file %s: %v", file.Name, openErr)
+		}
+		content, readErr := io.ReadAll(rc)
+		_ = rc.Close()
+		if readErr != nil {
+			t.Fatalf("read bundle file %s: %v", file.Name, readErr)
+		}
+		files[file.Name] = string(content)
 	}
-	if !files["manifest.json"] || !files["listing.csv"] {
+	if files["manifest.json"] == "" || files["listing.csv"] == "" {
 		t.Fatalf("bundle missing expected files: %+v", files)
+	}
+	var zippedManifest ExportPackageManifest
+	if err := json.Unmarshal([]byte(files["manifest.json"]), &zippedManifest); err != nil {
+		t.Fatalf("decode zipped manifest.json: %v content=%s", err, files["manifest.json"])
+	}
+	if zippedManifest.PackageID != created.Data.PackageID || zippedManifest.ManifestVersion != "ecommerce.export.package.v1" || zippedManifest.Succeeded != 1 || zippedManifest.Failed != 1 || len(zippedManifest.Products) != 1 || len(zippedManifest.Blockers) != 1 {
+		t.Fatalf("unexpected zipped manifest.json: %+v", zippedManifest)
+	}
+	csvRows, err := csv.NewReader(strings.NewReader(files["listing.csv"])).ReadAll()
+	if err != nil {
+		t.Fatalf("parse listing.csv: %v content=%s", err, files["listing.csv"])
+	}
+	if len(csvRows) != 2 {
+		t.Fatalf("listing.csv row count = %d, want header + 1 data row: %+v", len(csvRows), csvRows)
+	}
+	if csvRows[0][0] != "marketplace" || csvRows[0][4] != "sku" || csvRows[1][0] != "amazon" || csvRows[1][4] != "SKU-PKG-READY" || csvRows[1][5] != "Package Ready" || csvRows[1][8] != "1" || csvRows[1][9] != models.AssetRoleHero || csvRows[1][11] != created.Data.PackageID {
+		t.Fatalf("unexpected listing.csv rows: %+v", csvRows)
 	}
 }
 
@@ -304,6 +333,54 @@ func TestDownloadContentDoesNotRedirectToPackageURL(t *testing.T) {
 	}
 	if resp.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want %d", resp.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestDownloadContentOrgAuthAndPackageURLFallbackDoNotBypassPermission(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	db := newProductCoreTestDB(t)
+	records := []any{
+		&models.EcomProductSKU{ID: "product-private", OrganizationID: "org-private", SKUCode: "SKU-PRIVATE", Title: "Private Product", Status: models.ProductStatusExportReady, AssetStatus: models.AssetStatusReady, ListingStatus: models.ListingStatusReady, ExportStatus: models.ExportStatusReady, CreatedBy: "user-private", UpdatedBy: "user-private"},
+		&models.EcomExportTask{ID: "export-private-url", OrganizationID: "org-private", ProductID: "product-private", Status: models.ExportTaskStatusSucceeded, Platform: "amazon", Site: "US", Locale: "en_US", Format: "zip", PackageURL: "https://example.com/private-export.zip", CreatedBy: "user-private"},
+		&models.EcomExportPackage{ID: "package-private", OrganizationID: "org-private", Status: models.ExportPackageStatusSucceeded, Platform: "amazon", Site: "US", Locale: "en_US", Format: "zip", Schema: "amazon/us/zip/v1", TotalCount: 1, SucceededCount: 1, FailedCount: 0, PackageManifest: `{"manifest_version":"ecommerce.export.package.v1","package_id":"package-private","status":"succeeded","total":1,"succeeded":1,"failed":0}`},
+	}
+	for _, record := range records {
+		if err := db.Create(record).Error; err != nil {
+			t.Fatalf("seed private download record: %v", err)
+		}
+	}
+
+	service := NewService(repository.NewProductCenterRepository(db), repository.NewImageRuntimeRepository(db), nil)
+	handler := NewHandler(service)
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("userID", "user-other")
+		c.Set("orgID", "org-other")
+		c.Next()
+	})
+	router.GET("/api/v1/ecommerce/downloads", handler.ListDownloads)
+	router.GET("/api/v1/ecommerce/downloads/:download_id/content", handler.DownloadContent)
+
+	listResp := httptest.NewRecorder()
+	router.ServeHTTP(listResp, httptest.NewRequest(http.MethodGet, "/api/v1/ecommerce/downloads", nil))
+	if listResp.Code != http.StatusOK {
+		t.Fatalf("cross-org list downloads status = %d body=%s", listResp.Code, listResp.Body.String())
+	}
+	var downloads productEnvelope[[]DownloadListItem]
+	if err := json.Unmarshal(listResp.Body.Bytes(), &downloads); err != nil {
+		t.Fatalf("decode cross-org downloads: %v", err)
+	}
+	if len(downloads.Data) != 0 {
+		t.Fatalf("cross-org list leaked private downloads: %+v", downloads.Data)
+	}
+
+	for _, downloadID := range []string{"export-private-url", "package-private"} {
+		resp := httptest.NewRecorder()
+		router.ServeHTTP(resp, httptest.NewRequest(http.MethodGet, "/api/v1/ecommerce/downloads/"+downloadID+"/content", nil))
+		if resp.Code == http.StatusOK || resp.Code == http.StatusTemporaryRedirect || resp.Header().Get("Location") != "" || strings.Contains(resp.Body.String(), "private-export.zip") {
+			t.Fatalf("cross-org download %s bypassed permission: status=%d location=%q body=%s", downloadID, resp.Code, resp.Header().Get("Location"), resp.Body.String())
+		}
 	}
 }
 

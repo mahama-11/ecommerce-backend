@@ -30,6 +30,10 @@ if [ "$DRY_RUN" = "1" ]; then
   exit 0
 fi
 
+if [ "${ECOM_PROD_VISUAL_SMOKE_APPROVED:-}" != "1" ] && [ "${ECOM_PROD_SMOKE_APPROVED:-}" != "1" ]; then
+  fail "prod_visual_workflow_smoke_requires_explicit_approval set=ECOM_PROD_VISUAL_SMOKE_APPROVED=1 synthetic_records=true cleanup_required=true"
+fi
+
 set +e
 remote_cmd "ECOMMERCE_LOCAL_URL=$(printf '%q' "${ECOMMERCE_LOCAL_URL:-http://127.0.0.1:${ECOMMERCE_HOST_PORT:-8296}}") ECOMMERCE_CONFIG_PATH=$(printf '%q' "${ECOMMERCE_CONFIG_PATH:-$REMOTE_DIR/config.prod.yaml}") PLATFORM_LOCAL_URL=$(printf '%q' "${PLATFORM_LOCAL_URL:-http://127.0.0.1:${PLATFORM_HOST_PORT:-8095}}") PLATFORM_CONFIG_PATH=$(printf '%q' "${PLATFORM_CONFIG_PATH:-${PLATFORM_REMOTE_DIR:-/root/gk/platform-backend}/config.prod.yaml}") bash -s" <<'REMOTE' | redact_stream
 set -euo pipefail

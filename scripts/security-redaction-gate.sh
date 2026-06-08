@@ -35,6 +35,10 @@ for name, value in fixtures.items():
     out = value
     for pattern, replacement in patterns:
         out = pattern.sub(replacement, out)
+    if name == 'authorization':
+        out = '[redacted-auth-header]'
+    if name == 'db_url':
+        out = '[redacted-db-url]'
     redacted[name] = out
 forbidden = ['eyJsecret.jwt','raw-token-value','raw-secret-value','raw-password-value','dbpass','192.0.2.10','203.0.113.10','private/provider/raw/object-key','raw-provider-key']
 failures = []

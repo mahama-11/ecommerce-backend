@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
-"""Safe Ecommerce backend API-contract smoke scaffold.
+"""Ecommerce backend API-contract smoke.
 
-Default dry-run validates route contracts and existing quality evidence without network
-or mutations. Active HTTP mode is local/dev read-only only. Prod is hard blocked unless
-ECOM_PROD_SMOKE_APPROVED=1 is set; even then this scaffold performs no writes.
+Default is dry-run. Phase 2 live execution is opt-in via --execute --fixture isolated
+--cleanup and reuses the isolated local HTTP harness, then validates the API-contract
+route set against the executed evidence.
 """
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
-import re
-import sys
 import time
 import urllib.error
 import urllib.request
@@ -22,9 +21,11 @@ ROOT = Path(__file__).resolve().parents[1]
 REPORT_DIR = ROOT / "reports" / "quality" / "business-journeys"
 LATEST_REPORT = REPORT_DIR / "api-contract-latest.json"
 
-SECRET_RE = re.compile(
-    r"(?i)(bearer\s+[a-z0-9._~+/=-]+|authorization\s*[:=]\s*[^\s,}]+|access[_-]?token\s*[:=]\s*[^\s,}]+|refresh[_-]?token\s*[:=]\s*[^\s,}]+|password\s*[:=]\s*[^\s,}]+|secret\s*[:=]\s*[^\s,}]+|service[_-]?secret\s*[:=]\s*[^\s,}]+|postgres://[^\s]+|mysql://[^\s]+|redis://[^\s]+)"
-)
+_CRITICAL_PATH = ROOT / "scripts" / "ecommerce-backend-critical-journey-smoke.py"
+_SPEC = importlib.util.spec_from_file_location("critical_smoke", _CRITICAL_PATH)
+critical_smoke = importlib.util.module_from_spec(_SPEC)  # type: ignore[arg-type]
+assert _SPEC and _SPEC.loader
+_SPEC.loader.exec_module(critical_smoke)  # type: ignore[union-attr]
 
 CONTRACT_ROUTES: list[dict[str, str]] = [
     {"method": "GET", "path": "/healthz", "auth": "public", "literal": '"/healthz"'},
@@ -56,22 +57,11 @@ CONTRACT_ROUTES: list[dict[str, str]] = [
 ]
 
 
-def redact(value: Any) -> Any:
-    if isinstance(value, str):
-        return SECRET_RE.sub("[REDACTED]", value)
-    if isinstance(value, list):
-        return [redact(v) for v in value]
-    if isinstance(value, dict):
-        return {k: redact(v) for k, v in value.items() if "token" not in k.lower() and "secret" not in k.lower() and "password" not in k.lower()}
-    return value
-
-
-def write_report(payload: dict[str, Any]) -> None:
+def write_report(payload: dict[str, Any]) -> dict[str, Any]:
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
-    sanitized = redact(payload)
-    text = json.dumps(sanitized, ensure_ascii=False, indent=2) + "\n"
-    LATEST_REPORT.write_text(text, encoding="utf-8")
-    print(json.dumps({"status": sanitized["status"], "report": str(LATEST_REPORT), "mode": sanitized["mode"]}, ensure_ascii=False))
+    sanitized = critical_smoke.redact(payload)
+    LATEST_REPORT.write_text(json.dumps(sanitized, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return sanitized
 
 
 def route_contract_check() -> dict[str, Any]:
@@ -80,18 +70,8 @@ def route_contract_check() -> dict[str, Any]:
         return {"status": "FAIL", "missing_file": str(router_path), "missing_routes": CONTRACT_ROUTES}
     text = router_path.read_text(encoding="utf-8", errors="ignore")
     missing = [route for route in CONTRACT_ROUTES if route["literal"] not in text]
-    auth_guards = {
-        "platform_jwt_middleware": "PlatformJWTAuth" in text,
-        "internal_service_middleware": "RequireInternalService" in text,
-        "optional_platform_jwt_middleware": "OptionalPlatformJWTAuth" in text,
-    }
-    return {
-        "status": "PASS" if not missing and all(auth_guards.values()) else "FAIL",
-        "router_path": str(router_path),
-        "routes_checked": len(CONTRACT_ROUTES),
-        "missing_routes": missing,
-        "auth_guards": auth_guards,
-    }
+    auth_guards = {"platform_jwt_middleware": "PlatformJWTAuth" in text, "internal_service_middleware": "RequireInternalService" in text, "optional_platform_jwt_middleware": "OptionalPlatformJWTAuth" in text}
+    return {"status": "PASS" if not missing and all(auth_guards.values()) else "FAIL", "router_path": str(router_path), "routes_checked": len(CONTRACT_ROUTES), "missing_routes": missing, "auth_guards": auth_guards}
 
 
 def load_quality_routes_report() -> dict[str, Any]:
@@ -107,64 +87,98 @@ def load_quality_routes_report() -> dict[str, Any]:
 
 def swagger_check() -> dict[str, Any]:
     script = ROOT / "scripts" / "gen-swagger.sh"
-    candidates = [ROOT / "docs" / "swagger.json", ROOT / "docs" / "swagger.yaml", ROOT / "docs" / "openapi.json", ROOT / "docs" / "openapi.yaml"]
+    candidates = [ROOT / "docs" / "swagger.json", ROOT / "docs" / "swagger.yaml", ROOT / "docs" / "openapi.json", ROOT / "docs" / "openapi.yaml", ROOT / "docs" / "openapi" / "openapi.json", ROOT / "docs" / "openapi" / "swagger.json"]
     existing = [str(p) for p in candidates if p.exists()]
-    return {
-        "status": "PASS_WITH_NOTES" if script.exists() else "NOT_RUN",
-        "generator": str(script) if script.exists() else None,
-        "generated_specs_found": existing,
-        "dry_run_note": "Swagger generation/drift is not run by this smoke scaffold; generator presence is recorded.",
-    }
+    return {"status": "PASS_WITH_NOTES" if script.exists() else "NOT_RUN", "generator": str(script) if script.exists() else None, "generated_specs_found": existing, "dry_run_note": "Swagger generation/drift is not run by this smoke."}
 
 
-def http_probe(base_url: str, path: str, method: str = "GET") -> dict[str, Any]:
-    url = base_url.rstrip("/") + path
-    started = time.time()
-    try:
-        with urllib.request.urlopen(urllib.request.Request(url, method=method), timeout=10) as resp:
-            body = resp.read(2048).decode("utf-8", "replace")
-            return {"method": method, "path": path, "status_code": resp.status, "elapsed_ms": int((time.time() - started) * 1000), "body_sample": body[:200]}
-    except urllib.error.HTTPError as exc:
-        body = exc.read(2048).decode("utf-8", "replace")
-        return {"method": method, "path": path, "status_code": exc.code, "elapsed_ms": int((time.time() - started) * 1000), "body_sample": body[:200]}
-    except Exception as exc:
-        return {"method": method, "path": path, "status": "ERROR", "error_type": type(exc).__name__, "elapsed_ms": int((time.time() - started) * 1000)}
+def flatten_executed_paths(harness: dict[str, Any]) -> set[tuple[str, str]]:
+    paths: set[tuple[str, str]] = set()
+    for journey in harness.get("journeys", []):
+        for step in journey.get("steps", []):
+            if step.get("status") == "PASS":
+                paths.add((str(step.get("method")), str(step.get("path"))))
+    for route in harness.get("http_routes", []):
+        if route.get("status") == "PASS":
+            paths.add((str(route.get("method")), str(route.get("path"))))
+    return paths
+
+
+def normalize_contract_path(path: str) -> str:
+    return path.replace(":product_id", "").replace(":orderID", "")
+
+
+def live_contract_evidence(harness: dict[str, Any]) -> dict[str, Any]:
+    executed = flatten_executed_paths(harness)
+    required_live = [
+        ("POST", "/api/v1/ecommerce/auth/register"),
+        ("POST", "/api/v1/ecommerce/auth/login"),
+        ("GET", "/api/v1/ecommerce/auth/session"),
+        ("GET", "/api/v1/ecommerce/access/me"),
+        ("POST", "/api/v1/ecommerce/products"),
+        ("GET", "/api/v1/ecommerce/products/"),
+        ("POST", "/api/v1/ecommerce/assets/source"),
+        ("POST", "/api/v1/ecommerce/prompts/preview"),
+        ("GET", "/api/v1/ecommerce/wallet/summary"),
+        ("GET", "/api/v1/ecommerce/wallet/history"),
+        ("GET", "/api/v1/ecommerce/commercial/offerings"),
+        ("POST", "/api/v1/ecommerce/commercial/orders"),
+        ("POST", "/api/v1/ecommerce/commercial/orders/"),
+        ("GET", "/api/v1/ecommerce/billing/charges"),
+    ]
+    matched: list[str] = []
+    missing: list[str] = []
+    for method, prefix in required_live:
+        ok = any(m == method and p.startswith(prefix) for m, p in executed)
+        (matched if ok else missing).append(f"{method} {prefix}")
+    return {"status": "PASS" if not missing else "FAIL", "fixture": "isolated/local_harness", "executed_route_count": len(executed), "matched_required_live_routes": matched, "missing_required_live_routes": missing}
+
+
+def execute_local(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    failures: list[dict[str, Any]] = []
+    if args.env != "local":
+        failures.append({"type": "execute_env", "message": "--execute is currently restricted to --env local for the isolated fixture"})
+    if args.fixture != "isolated":
+        failures.append({"type": "fixture", "message": "--execute requires --fixture isolated"})
+    if not args.cleanup:
+        failures.append({"type": "cleanup", "message": "--execute requires explicit --cleanup; no PASS without cleanup evidence"})
+    if failures:
+        return {"generated_at_unix": int(time.time()), "status": "BLOCKED", "mode": "execute-precondition-blocked", "env": args.env, "failures": failures, "report_path": str(LATEST_REPORT)}, 2
+
+    harness = critical_smoke.run_isolated_harness()
+    route_contract = route_contract_check()
+    live_evidence = live_contract_evidence(harness)
+    cleanup_pass = harness.get("cleanup", {}).get("status") == "PASS"
+    status = "PASS" if harness.get("status") == "PASS" and route_contract.get("status") == "PASS" and live_evidence.get("status") == "PASS" and cleanup_pass else "FAIL"
+    payload = {**harness, "status": status, "script": "ecommerce-backend-api-contract-smoke.py", "env": args.env, "prod_live_smoke": "NOT_RUN", "prod_policy": {"status": "NOT_RUN", "reason": "prod live API contract smoke is not executed by local isolated release-quality-gate; use the approved prod runbook separately."}, "fixture_arg": args.fixture, "cleanup_arg": args.cleanup, "cleanup_status": harness.get("cleanup", {}).get("status"), "contract_routes": CONTRACT_ROUTES, "route_contract": route_contract, "route_inventory_evidence": load_quality_routes_report(), "swagger_evidence": swagger_check(), "live_contract_evidence": live_evidence, "report_path": str(LATEST_REPORT)}
+    if status != "PASS":
+        payload.setdefault("failures", [])
+        payload["failures"].append({"type": "api_contract_acceptance", "cleanup_pass": cleanup_pass, "route_contract": route_contract.get("status"), "live_contract": live_evidence.get("status")})
+    return payload, 0 if status == "PASS" else 1
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Ecommerce backend API contract smoke scaffold (safe dry-run default).")
+    parser = argparse.ArgumentParser(description="Ecommerce backend API contract smoke (dry-run default; explicit local isolated execute supported).")
     parser.add_argument("--env", choices=["local", "dev", "prod"], default="local")
-    parser.add_argument("--dry-run", action="store_true", default=True, help="Validate static contract only; no network and no writes (default).")
-    parser.add_argument("--execute-live", action="store_true", help="Opt into read-only HTTP probes for local/dev. Never enables writes.")
+    parser.add_argument("--dry-run", action="store_true", help="Validate static contract only; no network and no writes (default unless --execute/--execute-live).")
+    parser.add_argument("--execute", action="store_true", help="Run live local isolated fixture over real HTTP. Requires --fixture isolated --cleanup.")
+    parser.add_argument("--execute-live", action="store_true", help="Backward-compatible read-only HTTP probes for local/dev. Does not write.")
+    parser.add_argument("--fixture", choices=["isolated"], default="isolated")
+    parser.add_argument("--cleanup", action="store_true", help="Required with --execute; verifies temp fixture cleanup evidence before PASS.")
     parser.add_argument("--base-url", default=os.environ.get("ECOM_BACKEND_BASE_URL", "http://127.0.0.1:8080"))
     args = parser.parse_args()
 
-    approved = os.environ.get("ECOM_PROD_SMOKE_APPROVED") == "1"
-    if args.env == "prod" and not approved:
-        payload = {
-            "generated_at_unix": int(time.time()),
-            "status": "BLOCKED",
-            "mode": "prod-refusal",
-            "env": args.env,
-            "prod_live_smoke": "NOT_RUN",
-            "reason": "prod smoke requires ECOM_PROD_SMOKE_APPROVED=1; no network calls or mutations attempted",
-            "report_path": str(LATEST_REPORT),
-        }
-        write_report(payload)
+    if args.env == "prod":
+        payload = {"generated_at_unix": int(time.time()), "status": "BLOCKED", "mode": "prod-refusal", "env": args.env, "prod_live_smoke": "NOT_RUN", "reason": "prod smoke is hard-refused by this script; use a separate approved prod runbook", "report_path": str(LATEST_REPORT)}
+        sanitized = write_report(payload)
+        print(json.dumps({"status": sanitized["status"], "report": str(LATEST_REPORT), "mode": sanitized["mode"], "reason": sanitized["reason"]}, ensure_ascii=False))
         return 3
 
-    if args.env == "prod" and args.execute_live:
-        payload = {
-            "generated_at_unix": int(time.time()),
-            "status": "BLOCKED",
-            "mode": "prod-live-not-implemented",
-            "env": args.env,
-            "prod_live_smoke": "NOT_RUN",
-            "reason": "prod read-only/live probes are intentionally not implemented in this safe scaffold; do not imply approved prod execution without real probes",
-            "report_path": str(LATEST_REPORT),
-        }
-        write_report(payload)
-        return 3
+    if args.execute:
+        payload, code = execute_local(args)
+        sanitized = write_report(payload)
+        print(json.dumps({"status": sanitized["status"], "report": str(LATEST_REPORT), "mode": sanitized["mode"], "live_contract": sanitized.get("live_contract_evidence", {}).get("status"), "cleanup_status": sanitized.get("cleanup", {}).get("status")}, ensure_ascii=False))
+        return code
 
     mode = "read-only-live" if args.execute_live and args.env in {"local", "dev"} else "dry-run"
     route_contract = route_contract_check()
@@ -172,52 +186,23 @@ def main() -> int:
     swagger = swagger_check()
     probes: list[dict[str, Any]] = []
     if mode == "read-only-live":
-        probes = [
-            http_probe(args.base_url, "/healthz"),
-            http_probe(args.base_url, "/api/v1/ecommerce/health"),
-            http_probe(args.base_url, "/api/v1/ecommerce/commercial/offerings"),
-            http_probe(args.base_url, "/api/v1/ecommerce/access/me"),
-            http_probe(args.base_url, "/internal/v1/ecommerce/health"),
-        ]
-
+        probes = [critical_smoke.http_probe(args.base_url, p) for p in ("/healthz", "/api/v1/ecommerce/health", "/api/v1/ecommerce/commercial/offerings", "/api/v1/ecommerce/access/me", "/internal/v1/ecommerce/health")]
     failures: list[dict[str, Any]] = []
     if route_contract["status"] != "PASS":
         failures.append({"type": "route_contract", "details": route_contract})
     if route_inventory.get("status") not in {"PASS", "NOT_RUN"}:
         failures.append({"type": "route_inventory_report", "details": route_inventory})
-    if mode == "read-only-live":
-        public_failures = [p for p in probes[:3] if p.get("status_code") not in (200, 204)]
-        access_negative = probes[3]
-        internal_negative = probes[4]
-        if public_failures:
-            failures.append({"type": "public_read_only_probe", "probes": public_failures})
-        if access_negative.get("status_code") not in (401, 403):
-            failures.append({"type": "access_missing_token_negative", "probe": access_negative})
-        if internal_negative.get("status_code") not in (401, 403):
-            failures.append({"type": "internal_missing_secret_negative", "probe": internal_negative})
-
+    if mode == "read-only-live" and len(probes) >= 5:
+        if any(p.get("status_code") not in (200, 204) for p in probes[:3]):
+            failures.append({"type": "public_read_only_probe", "probes": probes[:3]})
+        if probes[3].get("status_code") not in (401, 403):
+            failures.append({"type": "access_missing_token_negative", "probe": probes[3]})
+        if probes[4].get("status_code") not in (401, 403):
+            failures.append({"type": "internal_missing_secret_negative", "probe": probes[4]})
     status = "FAIL" if failures else "PASS_WITH_NOTES"
-    payload = {
-        "generated_at_unix": int(time.time()),
-        "status": status,
-        "mode": mode,
-        "env": args.env,
-        "base_url": args.base_url if mode != "dry-run" else "NOT_USED_DRY_RUN",
-        "prod_live_smoke": "NOT_RUN" if mode != "read-only-live" or args.env == "prod" else "READ_ONLY_LOCAL_OR_DEV",
-        "contract_routes": CONTRACT_ROUTES,
-        "route_contract": route_contract,
-        "route_inventory_evidence": route_inventory,
-        "swagger_evidence": swagger,
-        "http_probes": probes,
-        "fixture_policy": {"writes_performed": False, "cleanup_evidence": "NOT_RUN_NO_MUTATION"},
-        "notes": [
-            "Dry-run validates route/API contract scaffolding only and cannot claim full live API closure.",
-            "PASS_WITH_NOTES is the maximum status when live API evidence is NOT_RUN.",
-        ],
-        "failures": failures,
-        "report_path": str(LATEST_REPORT),
-    }
-    write_report(payload)
+    payload = {"generated_at_unix": int(time.time()), "status": status, "mode": mode, "env": args.env, "base_url": args.base_url if mode != "dry-run" else "NOT_USED_DRY_RUN", "prod_live_smoke": "NOT_RUN", "contract_routes": CONTRACT_ROUTES, "route_contract": route_contract, "route_inventory_evidence": route_inventory, "swagger_evidence": swagger, "http_probes": probes, "fixture_policy": {"dry_run_default": True, "writes_performed": False, "cleanup_evidence": "NOT_RUN_NO_MUTATION"}, "notes": ["PASS_WITH_NOTES is the maximum status when live API evidence is NOT_RUN."], "failures": failures, "report_path": str(LATEST_REPORT)}
+    sanitized = write_report(payload)
+    print(json.dumps({"status": sanitized["status"], "report": str(LATEST_REPORT), "mode": sanitized["mode"]}, ensure_ascii=False))
     return 0 if status == "PASS_WITH_NOTES" else 1
 
 

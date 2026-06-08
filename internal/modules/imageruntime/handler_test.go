@@ -285,12 +285,24 @@ func TestRegisterSourceAssetAndCreateImageJob(t *testing.T) {
 	if resp.Code != http.StatusCreated {
 		t.Fatalf("create image job status = %d, want %d", resp.Code, http.StatusCreated)
 	}
+	if strings.Contains(resp.Body.String(), "storage_key") || strings.Contains(resp.Body.String(), "ecommerce-assets/source-1.png") {
+		t.Fatalf("create image job user response leaked storage key: %s", resp.Body.String())
+	}
 	var job models.EcommerceImageJob
 	if err := db.Where("organization_id = ? AND scene_type = ?", "org-1", "ai_posture").First(&job).Error; err != nil {
 		t.Fatalf("query image job: %v", err)
 	}
 	if job.RuntimeJobID != "runtime-job-1" || job.SourceAssetID != sourceAsset.ID {
 		t.Fatalf("unexpected image job data: %+v", job)
+	}
+	if job.Status != "queued" || job.Stage != "queued" {
+		t.Fatalf("runtime accepted job should stay queued until callbacks arrive: %+v", job)
+	}
+	if runtimeCreate.ChargeSessionID != "charge-session-1" {
+		t.Fatalf("runtime create charge_session_id = %q, want charge-session-1", runtimeCreate.ChargeSessionID)
+	}
+	if !strings.Contains(job.Metadata, `"charge_session_id":"charge-session-1"`) || !strings.Contains(job.Metadata, `"reservation_id":"reservation-1"`) {
+		t.Fatalf("job metadata missing billing/session linkage: %s", job.Metadata)
 	}
 	if runtimeCreate.InputManifest == "" {
 		t.Fatalf("runtime create request input_manifest is empty")

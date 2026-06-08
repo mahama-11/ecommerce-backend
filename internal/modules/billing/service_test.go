@@ -131,3 +131,90 @@ func TestHandlerRecordChargeEnvelope(t *testing.T) {
 		t.Fatalf("unexpected record charge response: status=%d body=%s", w.Code, w.Body.String())
 	}
 }
+
+func TestHandlersSummaryListRefundAndReplayOutbox(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	repo := newBillingRepo(t)
+	now := time.Date(2026, 6, 7, 12, 0, 0, 0, time.UTC)
+	charge, err := NewService(platform.New(config.PlatformConfig{BaseURL: "http://127.0.0.1:1", Timeout: time.Millisecond, InternalServiceSecret: "secret"}), repo, config.AppConfig{ProductCode: "ecommerce"}).RecordCharge(RecordChargeInput{OrganizationID: "org-handler", EventID: "event-handler-list", BusinessType: "runtime", NetAmount: 42, WalletDebited: 40, CreditsConsumed: 2, Status: "settled", OccurredAt: now.Format(time.RFC3339)})
+	if err != nil {
+		t.Fatalf("seed charge: %v", err)
+	}
+	refundCalls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/internal/v1/incentives/channel-events/refunds" {
+			t.Fatalf("unexpected platform request: %s %s", r.Method, r.URL.String())
+		}
+		refundCalls++
+		var req platform.RecordChannelRefundInput
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatalf("decode refund payload: %v", err)
+		}
+		if req.ProductCode != "ecommerce" || req.OrgID != "org-handler" || req.SourceChargeID != charge.ID || req.RefundAmount != 42 {
+			t.Fatalf("unexpected refund payload: %+v", req)
+		}
+		writeBillingEnvelope(t, w, http.StatusOK, 0, map[string]any{"matched": true, "status": "reversed", "ledger": map[string]any{"id": "refund-ledger", "status": "reversed", "created_at": now.Format(time.RFC3339)}})
+	}))
+	defer server.Close()
+	h := NewHandler(NewService(platform.New(config.PlatformConfig{BaseURL: server.URL, Timeout: time.Second, ServiceName: "billing-handler-test", InternalServiceSecret: "secret"}), repo, config.AppConfig{ProductCode: "ecommerce"}))
+	r := gin.New()
+	r.Use(middleware.RequestContext())
+	r.GET("/summary", func(c *gin.Context) { c.Set("orgID", "org-handler"); h.Summary(c) })
+	r.GET("/charges", func(c *gin.Context) { c.Set("orgID", "org-handler"); h.ListCharges(c) })
+	r.POST("/charges/:recordID/refunds", h.RefundCharge)
+	r.POST("/outbox/replay", h.ReplayOutbox)
+
+	for _, tc := range []struct {
+		method string
+		path   string
+		body   string
+		want   int
+		needle string
+	}{
+		{http.MethodGet, "/summary", "", http.StatusOK, `"charge_count":1`},
+		{http.MethodGet, "/charges?limit=1", "", http.StatusOK, `"event-handler-list"`},
+		{http.MethodPost, "/charges/" + charge.ID + "/refunds", `{"refund_event_id":"refund-handler","refund_amount":42,"refund_type":"full","occurred_at":"2026-06-07T12:01:00Z"}`, http.StatusOK, `"Status":"refunded"`},
+		{http.MethodPost, "/outbox/replay", `{}`, http.StatusOK, `"processed":0`},
+	} {
+		req := httptest.NewRequest(tc.method, tc.path, strings.NewReader(tc.body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != tc.want || !strings.Contains(w.Body.String(), tc.needle) {
+			t.Fatalf("%s %s status=%d body=%s", tc.method, tc.path, w.Code, w.Body.String())
+		}
+	}
+	if refundCalls != 1 {
+		t.Fatalf("refund platform calls = %d, want 1", refundCalls)
+	}
+}
+
+func TestRefundOutboxFailureAndReplayUnknownEventAreObservable(t *testing.T) {
+	repo := newBillingRepo(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeBillingEnvelope(t, w, http.StatusBadGateway, 2001, nil)
+	}))
+	defer server.Close()
+	svc := NewService(platform.New(config.PlatformConfig{BaseURL: server.URL, Timeout: time.Second, ServiceName: "billing-test", InternalServiceSecret: "secret"}), repo, config.AppConfig{ProductCode: "ecommerce"})
+	charge, err := svc.RecordCharge(RecordChargeInput{OrganizationID: "org-refund", EventID: "event-refund-fail", BusinessType: "runtime", NetAmount: 20, Status: "settled"})
+	if err != nil {
+		t.Fatalf("RecordCharge: %v", err)
+	}
+	if _, err := svc.RefundCharge(charge.ID, RefundChargeInput{RefundEventID: "refund-fail", RefundAmount: 20, RefundType: "full"}); err != nil {
+		t.Fatalf("RefundCharge should persist refund even when platform refund callback fails: %v", err)
+	}
+	refreshed, err := repo.GetBillingChargeRecord(charge.ID)
+	if err != nil || refreshed.ChannelStatus != "failed" || refreshed.ChannelError == "" {
+		t.Fatalf("refund failure not recorded on charge: record=%+v err=%v", refreshed, err)
+	}
+	if err := repo.CreateOutboxEvent(&models.CommercialEventOutbox{ProductCode: "ecommerce", OrganizationID: "org-refund", EventType: "unknown_event", AggregateType: "billing_charge_record", AggregateID: charge.ID, Status: "pending", PayloadJSON: `{}`, AvailableAt: time.Now().Add(-time.Minute)}); err != nil {
+		t.Fatalf("seed unknown outbox: %v", err)
+	}
+	replay, err := svc.ReplayOutbox(10)
+	if err != nil {
+		t.Fatalf("ReplayOutbox returns aggregate result, not first failure: %v", err)
+	}
+	if replay.Processed != 2 || replay.Failed != 2 {
+		t.Fatalf("unexpected replay failure accounting: %+v", replay)
+	}
+}

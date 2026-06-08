@@ -1,0 +1,30 @@
+{
+  "schema_version": "frontend-consumer-waivers.v1",
+  "waivers": [
+    {
+      "method": "GET",
+      "path": "/api/v1/ecommerce/access/me",
+      "reason": "no frontend surface: browser session/access state is loaded through GET /api/v1/ecommerce/auth/session; /access/me remains a backend/platform entitlement probe covered by local smoke."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/ecommerce/prompts/preview",
+      "reason": "no direct frontend surface: current UI uses visual-workflow prompt planner/template-center preview flows; this endpoint remains covered by backend smoke for future direct prompt preview UI."
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/ecommerce/v2/visual-workflows/sessions",
+      "reason": "no direct frontend surface: product UI creates visual sessions through POST /api/v1/ecommerce/products/:product_id/v2/visual-sessions so SKU/product context is mandatory; generic session creation is retained for backend/internal orchestration and covered by smoke."
+    },
+    {
+      "method": "POST",
+      "path": "/internal/v1/ecommerce/jobs/:jobID/runtime",
+      "reason": "internal-only runtime callback; never called from browser frontend."
+    },
+    {
+      "method": "POST",
+      "path": "/internal/v1/ecommerce/jobs/:jobID/results",
+      "reason": "internal-only runtime result callback; never called from browser frontend."
+    }
+  ]
+}

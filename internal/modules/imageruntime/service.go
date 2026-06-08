@@ -307,6 +307,10 @@ func (s *Service) UpdateJobRuntime(jobID string, input UpdateJobRuntimeInput) (*
 	if err != nil {
 		return nil, err
 	}
+	incomingStatus := strings.TrimSpace(input.Status)
+	if isImageJobTerminalStatus(item.Status) && (incomingStatus == "" || incomingStatus != item.Status) {
+		return item, nil
+	}
 	if input.Status != "" {
 		item.Status = input.Status
 	}

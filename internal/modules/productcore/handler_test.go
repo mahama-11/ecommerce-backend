@@ -25,6 +25,48 @@ type productEnvelope[T any] struct {
 	Data T   `json:"data"`
 }
 
+type productErrorEnvelope struct {
+	Code      int    `json:"code"`
+	Message   string `json:"message"`
+	ErrorCode string `json:"error_code"`
+}
+
+func TestGetProductReturnsNotFoundForMissingProduct(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	db := newProductCoreTestDB(t)
+	productRepo := repository.NewProductCenterRepository(db)
+	assetRepo := repository.NewImageRuntimeRepository(db)
+	service := newProductCoreTestService(t, productRepo, assetRepo)
+	handler := NewHandler(service)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("userID", "user-1")
+		c.Set("orgID", "org-1")
+		c.Next()
+	})
+	router.GET("/api/v1/ecommerce/products/:product_id", handler.GetProduct)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/ecommerce/products/missing-product", nil)
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusNotFound {
+		t.Fatalf("get missing product status=%d body=%s", resp.Code, resp.Body.String())
+	}
+	var payload productErrorEnvelope
+	if err := json.Unmarshal(resp.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode missing product response: %v", err)
+	}
+	if payload.ErrorCode != "ECOMMERCE_PRODUCT_NOT_FOUND" {
+		t.Fatalf("error_code=%q, want ECOMMERCE_PRODUCT_NOT_FOUND", payload.ErrorCode)
+	}
+	if payload.Message == "Upstream platform request failed" {
+		t.Fatalf("missing product should not be labeled as upstream platform failure: %+v", payload)
+	}
+}
+
 func newProductCoreBillingPlatform(t *testing.T) (*platform.Client, func()) {
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

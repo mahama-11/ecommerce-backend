@@ -7,6 +7,7 @@ import (
 	"ecommerce-service/internal/telemetry"
 	"ecommerce-service/pkg/logger"
 	"ecommerce-service/pkg/response"
+	"errors"
 	"io"
 	"net/http"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"gorm.io/gorm"
 )
 
 type Handler struct {
@@ -117,6 +119,11 @@ func (h *Handler) GetProduct(c *gin.Context) {
 	observability.Event("ecommerce.product_center.product.detail.started", "product_center", "product.detail", observability.Fields{"product_id": c.Param("product_id"), "org_id": orgID})
 	detail, err := h.service.GetProductDetail(orgID, c.Param("product_id"))
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			observability.Event("ecommerce.product_center.product.detail.not_found", "product_center", "product.detail", observability.Fields{"product_id": c.Param("product_id"), "org_id": orgID, "status": "not_found"})
+			response.JSONErrorSemantic(c, response.CodeNotFound, "Product not found", "ECOMMERCE_PRODUCT_NOT_FOUND", "Choose another product or refresh Product Center.")
+			return
+		}
 		observability.ErrorEvent("ecommerce.product_center.product.detail.failed", "product_center", "product.detail", err, "product_detail_failed", observability.Fields{"product_id": c.Param("product_id"), "org_id": orgID})
 		telemetry.RecordSpanError(span, err)
 		moduleutil.WritePlatformError(c, err, "get product failed")

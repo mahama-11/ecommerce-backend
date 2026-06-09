@@ -1,9 +1,11 @@
 package middleware
 
 import (
+	"regexp"
 	"time"
 
 	"ecommerce-service/pkg/logger"
+	"ecommerce-service/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,10 +30,37 @@ func AccessLog() gin.HandlerFunc {
 			"user_id", c.GetString("userID"),
 			"org_id", c.GetString("orgID"),
 		)
+		responseCode, responseErrorCode, responseErrorHint, responseErrorMessage := response.ResponseMeta(c)
+		if responseCode != 0 {
+			log = log.With("response_code", responseCode)
+		}
+		if responseErrorCode != "" {
+			log = log.With("response_error_code", responseErrorCode)
+		}
+		if responseErrorHint != "" {
+			log = log.With("response_error_hint", responseErrorHint)
+		}
+		if responseErrorMessage != "" {
+			log = log.With("response_error_message", responseErrorMessage)
+		}
 		if len(c.Errors) > 0 {
-			log.Error("request.finished", "errors", c.Errors.String())
+			log.Error("request.finished", "errors", redactLogError(c.Errors.String()))
 			return
 		}
 		log.Info("request.finished")
 	}
+}
+
+var accessLogSensitivePatterns = []*regexp.Regexp{
+	regexp.MustCompile(`(?i)(bearer\s+)[A-Za-z0-9._~+/-]+=*`),
+	regexp.MustCompile(`(?i)((?:token|secret|password|provider_key|provider_payload|storage_key)=)[^\s,;]+`),
+	regexp.MustCompile(`(?i)((?:token|secret|password|provider_key|provider_payload|storage_key)":")[^"]+`),
+	regexp.MustCompile(`(?i)((?:postgres|postgresql|mysql)://[^:]+:)[^@\s]+(@)`),
+}
+
+func redactLogError(message string) string {
+	for _, pattern := range accessLogSensitivePatterns {
+		message = pattern.ReplaceAllString(message, `${1}[redacted]${2}`)
+	}
+	return message
 }

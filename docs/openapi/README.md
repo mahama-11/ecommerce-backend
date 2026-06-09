@@ -24,23 +24,32 @@ The first Swagger / OpenAPI scope focuses on frontend integration for the curren
 
 ## Generate OpenAPI
 
-Install `swag` first:
-
-```bash
-go install github.com/swaggo/swag/cmd/swag@latest
-```
-
-Then run:
+Run:
 
 ```bash
 ./scripts/gen-swagger.sh
 ```
 
-Generated output will be written to:
+The generator runs `swag` when it is available, but always falls back to a deterministic router extractor so contract generation does not depend on local tool installation.
+Generated contract files are written to:
 
 ```bash
-docs/openapi/
+docs/openapi/openapi.json
+docs/openapi/swagger.json
+docs/swagger.json
 ```
+
+## Drift and release gates
+
+```bash
+./scripts/openapi-drift-gate.sh
+./scripts/frontend-consumer-sweep.sh
+./scripts/platform-contract-matrix.sh
+make contract-gate
+```
+
+`openapi-drift-gate` compares the generated spec against `docs/openapi/baseline.openapi.json`. If no baseline exists, the current generated spec is promoted to that baseline and the gate passes so future route/method/envelope removals are protected.
+Evidence JSON is written under `reports/quality/contracts/`.
 
 ## Notes
 

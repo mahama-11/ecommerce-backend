@@ -1,6 +1,7 @@
 package commercial
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -68,6 +69,15 @@ const (
 
 func NewService(platformClient *platform.Client, repo *repository.CommercialRepository, appCfg config.AppConfig) *Service {
 	return &Service{platform: platformClient, repo: repo, productCode: defaultString(appCfg.ProductCode, "ecommerce")}
+}
+
+func (s *Service) WithContext(ctx context.Context) *Service {
+	if s == nil {
+		return s
+	}
+	clone := *s
+	clone.platform = s.platform.WithContext(ctx)
+	return &clone
 }
 
 func (s *Service) Offerings(orgID string) (*OfferingsResult, error) {

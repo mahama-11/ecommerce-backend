@@ -129,6 +129,90 @@ func TestCreateImageJobDoesNotOverwriteRuntimeCallbackRace(t *testing.T) {
 	}
 }
 
+func TestProviderProgressDoesNotOverwriteTerminalResultAssetCallback(t *testing.T) {
+	t.Helper()
+
+	db := newImageRuntimeTestDB(t)
+	repo := repository.NewImageRuntimeRepository(db)
+	productRepo := repository.NewProductCenterRepository(db)
+	if err := db.Create(&models.EcomProductSKU{ID: "product-terminal", OrganizationID: "org-terminal", SKUCode: "SKU-TERMINAL", Title: "Terminal Product", Status: models.ProductStatusDraft, AssetStatus: models.AssetStatusReady, ListingStatus: models.ListingStatusMissing, ExportStatus: models.ExportStatusPending}).Error; err != nil {
+		t.Fatalf("create product: %v", err)
+	}
+	service := NewService(repo, repository.NewCommercialRepository(db), nil, productRepo, nil, nil, testImageRuntimeAppConfig())
+	job := &models.EcommerceImageJob{
+		ID:             "job-terminal",
+		OrganizationID: "org-terminal",
+		UserID:         "user-terminal",
+		SceneType:      "ai_posture",
+		InputMode:      "image_to_image",
+		Status:         "processing",
+		Stage:          "provider_running",
+		Progress:       80,
+		Metadata:       `{"product_id":"product-terminal","sku_code":"SKU-TERMINAL"}`,
+	}
+	if err := repo.CreateJob(job); err != nil {
+		t.Fatalf("create job: %v", err)
+	}
+
+	result, err := service.RecordJobResults(job.ID, RecordJobResultsInput{
+		Status:       "completed",
+		Progress:     100,
+		StageMessage: "done",
+		Variants: []RecordResultVariantInput{{
+			Index:      0,
+			Status:     "ready",
+			IsSelected: true,
+			Asset:      RecordResultAssetInput{AssetType: "generated", SourceType: "generated", StorageKey: "result-assets/job-terminal/0.png", MimeType: "image/png", FileName: "terminal.png", Width: 1024, Height: 1024},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("record results: %v", err)
+	}
+	if result.Status != "completed" || result.Progress != 100 || result.SelectedResultAssetID == "" {
+		t.Fatalf("result callback did not reach terminal state: %+v", result)
+	}
+	selectedAssetID := result.SelectedResultAssetID
+
+	_, err = service.RecordJobResults(job.ID, RecordJobResultsInput{Status: "completed", Progress: 100, StageMessage: "duplicate done", Variants: []RecordResultVariantInput{{Index: 0, Status: "ready", IsSelected: true, Asset: RecordResultAssetInput{StorageKey: "result-assets/job-terminal/0-replay.png", MimeType: "image/png"}}}})
+	if err != nil {
+		t.Fatalf("duplicate record results: %v", err)
+	}
+	var assetCount int64
+	if err := db.Model(&models.EcommerceAsset{}).Where("organization_id = ?", "org-terminal").Count(&assetCount).Error; err != nil {
+		t.Fatalf("count generated assets: %v", err)
+	}
+	if assetCount != 1 {
+		t.Fatalf("duplicate callback created %d generated assets, want 1", assetCount)
+	}
+	var relationCount int64
+	if err := db.Model(&models.EcomAssetRelation{}).Where("organization_id = ? AND owner_id = ?", "org-terminal", "product-terminal").Count(&relationCount).Error; err != nil {
+		t.Fatalf("count archived product relations: %v", err)
+	}
+	if relationCount != 1 {
+		t.Fatalf("result asset archive count = %d, want 1", relationCount)
+	}
+
+	progress := 40
+	updated, err := service.UpdateJobRuntime(job.ID, UpdateJobRuntimeInput{Status: "processing", Stage: "provider_running", StageMessage: "late provider progress", Progress: &progress, ProviderJobID: "provider-late"})
+	if err != nil {
+		t.Fatalf("late runtime update: %v", err)
+	}
+	if updated.Status != "completed" || updated.Progress != 100 || updated.SelectedResultAssetID != selectedAssetID || updated.ProviderJobID == "provider-late" {
+		t.Fatalf("late provider progress overwrote terminal result: %+v", updated)
+	}
+	publicSummary, err := service.GetJob("org-terminal", job.ID)
+	if err != nil {
+		t.Fatalf("get public job summary: %v", err)
+	}
+	publicBody, err := json.Marshal(publicSummary)
+	if err != nil {
+		t.Fatalf("marshal public summary: %v", err)
+	}
+	if strings.Contains(string(publicBody), "storage_key") || strings.Contains(string(publicBody), "result-assets/job-terminal") {
+		t.Fatalf("public job response leaked storage key: %s", string(publicBody))
+	}
+}
+
 func TestRegisterSourceAssetPropagatesPlatformUploadBadRequest(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

@@ -34,6 +34,7 @@ It should not host:
 - [Workspace Cloud Dev Deploy Runbook](../tools/dev/README.md) — Cloud dev 部署固定入口；不要用本 repo 旧 `build.sh dev` 或 prod deploy script 伪装 dev 部署。
 - [OpenAPI Guide](docs/openapi/README.md)
 - [Template Center Data Model](docs/architecture/TEMPLATE_CENTER_DATA_MODEL.md)
+- [Backend Full Business Quality Closure Plan](docs/plans/2026-06-07-ecommerce-backend-quality-closure.md)
 
 ## 3. Commands
 

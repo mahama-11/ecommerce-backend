@@ -1,12 +1,15 @@
 package observability
 
 import (
+	"errors"
 	"log/slog"
+	"regexp"
 	"strings"
 	"time"
 
 	"ecommerce-service/internal/telemetry"
 	"ecommerce-service/pkg/logger"
+	"ecommerce-service/pkg/metrics"
 
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/otel/attribute"
@@ -22,6 +25,7 @@ type Lifecycle struct {
 	span      trace.Span
 	log       *slog.Logger
 	eventBase string
+	module    string
 	startedAt time.Time
 }
 
@@ -50,8 +54,12 @@ func StartGin(c *gin.Context, tracerName, spanName, eventBase, module, operation
 	}
 	span.SetAttributes(attrs...)
 	log := logger.With(slogArgs(baseFields)...)
+	metrics.IncBusinessCounter(eventBase + ".started")
+	if module == "visual_workflow" {
+		metrics.IncVisualWorkflowRun("started")
+	}
 	log.Info(eventBase+".started", "status", "started")
-	return &Lifecycle{span: span, log: log, eventBase: eventBase, startedAt: startedAt}
+	return &Lifecycle{span: span, log: log, eventBase: eventBase, module: module, startedAt: startedAt}
 }
 
 func (l *Lifecycle) Finish(fields Fields) {
@@ -64,6 +72,10 @@ func (l *Lifecycle) Finish(fields Fields) {
 		attrs = append(attrs, attr(key, value))
 	}
 	l.span.SetAttributes(attrs...)
+	metrics.IncBusinessCounter(l.eventBase + ".finished")
+	if l.module == "visual_workflow" {
+		metrics.IncVisualWorkflowRun("finished")
+	}
 	l.log.Info(l.eventBase+".finished", append(slogArgs(fields), "status", "finished", "latency_ms", latency)...)
 	l.span.End()
 }
@@ -75,14 +87,19 @@ func (l *Lifecycle) Fail(err error, errorCode string, fields Fields) {
 	latency := time.Since(l.startedAt).Milliseconds()
 	attrs := []attribute.KeyValue{attribute.String("status", "failed"), attribute.String("error_code", errorCode), attribute.Int64("latency_ms", latency)}
 	if err != nil {
-		l.span.RecordError(err)
-		l.span.SetStatus(codes.Error, err.Error())
-		attrs = append(attrs, attribute.String("error_message", safeError(err)))
+		sanitizedErr := errors.New(safeError(err))
+		l.span.RecordError(sanitizedErr)
+		l.span.SetStatus(codes.Error, sanitizedErr.Error())
+		attrs = append(attrs, attribute.String("error_message", sanitizedErr.Error()))
 	}
 	for key, value := range fields {
 		attrs = append(attrs, attr(key, value))
 	}
 	l.span.SetAttributes(attrs...)
+	metrics.IncBusinessCounter(l.eventBase + ".failed")
+	if l.module == "visual_workflow" {
+		metrics.IncVisualWorkflowRun("failed")
+	}
 	args := append(slogArgs(fields), "status", "failed", "latency_ms", latency, "error_code", errorCode)
 	if err != nil {
 		args = append(args, "error", safeError(err))
@@ -92,7 +109,8 @@ func (l *Lifecycle) Fail(err error, errorCode string, fields Fields) {
 }
 
 func Event(eventName string, module string, operation string, fields Fields) {
-	baseFields := Fields{"service": ServiceEcommerce, "module": module, "operation": operation}
+	metrics.IncBusinessCounter(eventName)
+	baseFields := Fields{"module": module, "operation": operation}
 	for key, value := range fields {
 		baseFields[key] = value
 	}
@@ -100,7 +118,8 @@ func Event(eventName string, module string, operation string, fields Fields) {
 }
 
 func ErrorEvent(eventName string, module string, operation string, err error, errorCode string, fields Fields) {
-	baseFields := Fields{"service": ServiceEcommerce, "module": module, "operation": operation, "status": "failed", "error_code": errorCode}
+	metrics.IncBusinessCounter(eventName)
+	baseFields := Fields{"module": module, "operation": operation, "status": "failed", "error_code": errorCode}
 	if err != nil {
 		baseFields["error"] = safeError(err)
 	}
@@ -127,7 +146,7 @@ func attr(key string, value any) attribute.KeyValue {
 	}
 	switch v := value.(type) {
 	case string:
-		return attribute.String(key, v)
+		return attribute.String(key, redactSensitive(v))
 	case int:
 		return attribute.Int(key, v)
 	case int64:
@@ -141,7 +160,7 @@ func attr(key string, value any) attribute.KeyValue {
 
 func forbiddenField(key string) bool {
 	k := strings.ToLower(key)
-	for _, part := range []string{"token", "secret", "raw_prompt", "prompt_text", "provider_key", "storage_key", "image_url", "url", "privacy"} {
+	for _, part := range []string{"token", "secret", "password", "raw_prompt", "prompt_text", "provider_key", "provider_payload", "storage_key", "image_url", "url", "privacy"} {
 		if strings.Contains(k, part) {
 			return true
 		}
@@ -153,9 +172,23 @@ func safeError(err error) string {
 	if err == nil {
 		return ""
 	}
-	msg := err.Error()
+	msg := redactSensitive(err.Error())
 	if len(msg) > 300 {
 		return msg[:300]
+	}
+	return msg
+}
+
+var sensitiveValuePatterns = []*regexp.Regexp{
+	regexp.MustCompile(`(?i)(bearer\s+)[A-Za-z0-9._~+/-]+=*`),
+	regexp.MustCompile(`(?i)((?:token|secret|password|provider_key|provider_payload|storage_key)=)[^\s,;]+`),
+	regexp.MustCompile(`(?i)((?:token|secret|password|provider_key|provider_payload|storage_key)":")[^"]+`),
+	regexp.MustCompile(`(?i)((?:postgres|postgresql|mysql)://[^:]+:)[^@\s]+(@)`),
+}
+
+func redactSensitive(msg string) string {
+	for _, pattern := range sensitiveValuePatterns {
+		msg = pattern.ReplaceAllString(msg, `${1}[redacted]${2}`)
 	}
 	return msg
 }

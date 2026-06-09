@@ -285,12 +285,24 @@ func TestRegisterSourceAssetAndCreateImageJob(t *testing.T) {
 	if resp.Code != http.StatusCreated {
 		t.Fatalf("create image job status = %d, want %d", resp.Code, http.StatusCreated)
 	}
+	if strings.Contains(resp.Body.String(), "storage_key") || strings.Contains(resp.Body.String(), "ecommerce-assets/source-1.png") {
+		t.Fatalf("create image job user response leaked storage key: %s", resp.Body.String())
+	}
 	var job models.EcommerceImageJob
 	if err := db.Where("organization_id = ? AND scene_type = ?", "org-1", "ai_posture").First(&job).Error; err != nil {
 		t.Fatalf("query image job: %v", err)
 	}
 	if job.RuntimeJobID != "runtime-job-1" || job.SourceAssetID != sourceAsset.ID {
 		t.Fatalf("unexpected image job data: %+v", job)
+	}
+	if job.Status != "queued" || job.Stage != "queued" {
+		t.Fatalf("runtime accepted job should stay queued until callbacks arrive: %+v", job)
+	}
+	if runtimeCreate.ChargeSessionID != "" {
+		t.Fatalf("runtime create must not receive charge_session_id before product result finalization, got %q", runtimeCreate.ChargeSessionID)
+	}
+	if !strings.Contains(job.Metadata, `"charge_session_id":"charge-session-1"`) || !strings.Contains(job.Metadata, `"reservation_id":"reservation-1"`) {
+		t.Fatalf("job metadata missing billing/session linkage: %s", job.Metadata)
 	}
 	if runtimeCreate.InputManifest == "" {
 		t.Fatalf("runtime create request input_manifest is empty")
@@ -501,11 +513,14 @@ func TestRecordJobResultsFailsClosedWhenMeteringFinalizeFails(t *testing.T) {
 	if item.LastErrorCode != "METERING_FINALIZATION_FAILED" {
 		t.Fatalf("expected metering finalization error code, got %s", item.LastErrorCode)
 	}
+	if item.SelectedResultAssetID != "" {
+		t.Fatalf("failed metering job must not expose a selected usable result asset, got %s", item.SelectedResultAssetID)
+	}
 	if !strings.Contains(item.LastErrorMessage, "invalid finalize request") {
 		t.Fatalf("expected sanitized metering failure message, got %s", item.LastErrorMessage)
 	}
-	if !strings.Contains(item.Metadata, `"metering_status":"failed"`) {
-		t.Fatalf("expected metering failure metadata, got %s", item.Metadata)
+	if !strings.Contains(item.Metadata, `"metering_status":"failed"`) || !strings.Contains(item.Metadata, `"metering_quarantined_result_asset_id"`) {
+		t.Fatalf("expected metering failure metadata with quarantined asset lineage, got %s", item.Metadata)
 	}
 	var count int64
 	if err := db.Model(&models.EcommerceAsset{}).Where("organization_id = ?", "org-1").Count(&count).Error; err != nil {

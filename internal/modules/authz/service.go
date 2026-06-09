@@ -1,6 +1,10 @@
 package authz
 
-import "ecommerce-service/internal/platform"
+import (
+	"context"
+
+	"ecommerce-service/internal/platform"
+)
 
 type Service struct{ platform *platform.Client }
 
@@ -21,6 +25,15 @@ func (s *Service) Resolve(userID, orgID string) (*AccessSummary, error) {
 	}
 	roles, permissions := defaultAccessByOrgRole(ctx.OrgRole)
 	return &AccessSummary{ActiveOrgID: ctx.OrgID, HasAccess: true, ProductRoles: roles, ProductPermissions: permissions, PlatformPermissions: ctx.Permissions}, nil
+}
+
+func (s *Service) WithContext(ctx context.Context) *Service {
+	if s == nil {
+		return s
+	}
+	clone := *s
+	clone.platform = s.platform.WithContext(ctx)
+	return &clone
 }
 
 func defaultAccessByOrgRole(orgRole string) ([]string, []string) {

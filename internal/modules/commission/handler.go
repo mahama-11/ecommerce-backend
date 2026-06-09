@@ -25,7 +25,7 @@ func (h *Handler) Overview(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/commission-handler", "ecommerce.commission.overview")
 	defer span.End()
 
-	result, err := h.service.Overview(c.GetString("orgID"), c.Query("status"))
+	result, err := h.service.WithContext(c.Request.Context()).Overview(c.GetString("orgID"), c.Query("status"))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "load commission overview failed")
 		return
@@ -37,7 +37,7 @@ func (h *Handler) ListReferralCommissions(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/commission-handler", "ecommerce.commission.referrals.list")
 	defer span.End()
 
-	result, err := h.service.ListCommissions(c.GetString("orgID"), c.Query("status"))
+	result, err := h.service.WithContext(c.Request.Context()).ListCommissions(c.GetString("orgID"), c.Query("status"))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "list referral commissions failed")
 		return
@@ -54,7 +54,7 @@ func (h *Handler) Redeem(c *gin.Context) {
 		response.JSONBindError(c, err, "invalid redeem commission request")
 		return
 	}
-	result, err := h.service.Redeem(c.GetString("orgID"), req)
+	result, err := h.service.WithContext(c.Request.Context()).Redeem(c.GetString("orgID"), req)
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "redeem commission failed")
 		return
@@ -77,7 +77,7 @@ func (h *Handler) ChannelOverview(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/commission-handler", "ecommerce.commission.channel_overview")
 	defer span.End()
 
-	result, err := h.service.ChannelOverview(c.GetString("orgID"))
+	result, err := h.service.WithContext(c.Request.Context()).ChannelOverview(c.GetString("orgID"))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "load channel commission overview failed")
 		return
@@ -89,7 +89,7 @@ func (h *Handler) ChannelBindings(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/commission-handler", "ecommerce.commission.channel_bindings")
 	defer span.End()
 
-	result, err := h.service.CurrentBindings(c.GetString("orgID"))
+	result, err := h.service.WithContext(c.Request.Context()).CurrentBindings(c.GetString("orgID"))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "load channel bindings failed")
 		return
@@ -101,7 +101,7 @@ func (h *Handler) ChannelCommissions(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/commission-handler", "ecommerce.commission.channel_commissions")
 	defer span.End()
 
-	result, err := h.service.ListChannelCommissions(c.GetString("orgID"), c.Query("status"))
+	result, err := h.service.WithContext(c.Request.Context()).ListChannelCommissions(c.GetString("orgID"), c.Query("status"))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "list channel commissions failed")
 		return
@@ -113,7 +113,7 @@ func (h *Handler) ChannelSettlements(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/commission-handler", "ecommerce.commission.channel_settlements")
 	defer span.End()
 
-	result, err := h.service.ListChannelSettlements(c.GetString("orgID"), c.Query("status"))
+	result, err := h.service.WithContext(c.Request.Context()).ListChannelSettlements(c.GetString("orgID"), c.Query("status"))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "list channel settlements failed")
 		return

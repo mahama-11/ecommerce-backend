@@ -46,7 +46,7 @@ func chargeContextFromJob(item *models.EcommerceImageJob) *chargeContext {
 	}
 }
 
-func (s *Service) bindChargeContext(item *models.EcommerceImageJob, chargeCtx *chargeContext, _ *platform.RuntimeJob) error {
+func (s *Service) bindChargeContext(item *models.EcommerceImageJob, chargeCtx *chargeContext, runtimeJob *platform.RuntimeJob) error {
 	if chargeCtx == nil || item == nil {
 		return nil
 	}
@@ -56,6 +56,9 @@ func (s *Service) bindChargeContext(item *models.EcommerceImageJob, chargeCtx *c
 		"billable_item_code": chargeCtx.BillableItemCode,
 		"resource_type":      chargeCtx.ResourceType,
 		"usage_units":        chargeCtx.UsageUnits,
+	}
+	if runtimeJob != nil && strings.TrimSpace(runtimeJob.ProviderCode) != "" {
+		metadata["provider_code"] = strings.TrimSpace(runtimeJob.ProviderCode)
 	}
 	item.Metadata = mergeJSON(item.Metadata, metadata)
 	if chargeCtx.ChargeSessionID != "" {

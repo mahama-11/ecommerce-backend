@@ -252,7 +252,7 @@ func cors(allowedOrigin string) gin.HandlerFunc {
 	allowedOrigin = strings.TrimSpace(allowedOrigin)
 	return func(c *gin.Context) {
 		origin := c.GetHeader("Origin")
-		if origin != "" && (allowedOrigin == "" || origin == allowedOrigin) {
+		if origin != "" && allowedOrigin != "" && origin == allowedOrigin {
 			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
 			c.Writer.Header().Set("Vary", "Origin")
 		}

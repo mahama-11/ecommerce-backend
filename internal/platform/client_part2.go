@@ -2,6 +2,7 @@ package platform
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -15,6 +16,10 @@ import (
 	"time"
 
 	"ecommerce-service/internal/observability"
+	"ecommerce-service/pkg/metrics"
+
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func (c *Client) PostWalletLedger(input PostWalletLedgerInput) (*WalletAccount, *WalletBucket, *WalletLedger, error) {
@@ -154,13 +159,15 @@ func (c *Client) ResolveAssets(items []ResolveAssetInput) ([]AssetRecord, error)
 }
 func (c *Client) DownloadAsset(storageKey string) (io.ReadCloser, http.Header, error) {
 	path := withQuery("/storage/assets/content", map[string]string{"storage_key": storageKey})
-	req, err := http.NewRequest(http.MethodGet, c.baseURL+"/internal/v1"+path, nil)
+	ctx := c.requestContext()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/internal/v1"+path, nil)
 	if err != nil {
 		return nil, nil, err
 	}
-	for key, value := range c.buildHeaders(http.MethodGet, path, nil) {
+	for key, value := range c.buildHeaders(ctx, http.MethodGet, path, nil) {
 		req.Header.Set(key, value)
 	}
+	propagation.TraceContext{}.Inject(ctx, propagation.HeaderCarrier(req.Header))
 	resp, err := c.http.Do(req)
 	if err != nil {
 		return nil, nil, err
@@ -217,11 +224,13 @@ func (c *Client) InternalTemplateCatalogDetail(templateRef string) (*PlatformTem
 }
 
 func doRequest[T any](c *Client, method, url, path string, payload any, internal bool) (*T, error) {
+	startedAt := time.Now()
 	body, err := encodePayload(payload)
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest(method, url, bytes.NewReader(body))
+	ctx := c.requestContext()
+	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -229,30 +238,89 @@ func doRequest[T any](c *Client, method, url, path string, payload any, internal
 	if len(body) > 0 {
 		req.Header.Set("Content-Type", "application/json")
 	}
+	endpoint := lowCardinalityEndpoint(path)
 	if internal {
-		for key, value := range c.buildHeaders(method, path, body) {
+		for key, value := range c.buildHeaders(ctx, method, path, body) {
 			req.Header.Set(key, value)
 		}
+		propagation.TraceContext{}.Inject(ctx, propagation.HeaderCarrier(req.Header))
+		observability.Event("ecommerce.platform.call.started", "platform_client", "platform.call", observability.Fields{"request_id": req.Header.Get("X-Request-ID"), "trace_id": req.Header.Get("X-Trace-ID"), "endpoint": endpoint, "method": method, "status": "started"})
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {
+		if internal {
+			duration := time.Since(startedAt)
+			metrics.RecordPlatformCall(endpoint, "transport_error", "TRANSPORT_ERROR", duration)
+			observability.ErrorEvent("ecommerce.platform.call.failed", "platform_client", "platform.call", err, "TRANSPORT_ERROR", observability.Fields{"request_id": req.Header.Get("X-Request-ID"), "trace_id": req.Header.Get("X-Trace-ID"), "endpoint": endpoint, "method": method, "status": "failed", "duration_ms": duration.Milliseconds()})
+		}
 		return nil, err
 	}
 	defer resp.Body.Close()
 	var out envelope[T]
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		if internal {
+			duration := time.Since(startedAt)
+			metrics.RecordPlatformCall(endpoint, "decode_error", "DECODE_ERROR", duration)
+			observability.ErrorEvent("ecommerce.platform.call.failed", "platform_client", "platform.call", err, "DECODE_ERROR", observability.Fields{"request_id": req.Header.Get("X-Request-ID"), "trace_id": req.Header.Get("X-Trace-ID"), "endpoint": endpoint, "method": method, "status": "failed", "duration_ms": duration.Milliseconds()})
+		}
 		return nil, err
 	}
 	if resp.StatusCode >= 400 || out.Code != 0 {
+		if internal {
+			duration := time.Since(startedAt)
+			errorCode := out.ErrorCode
+			if errorCode == "" {
+				errorCode = "PLATFORM_ERROR"
+			}
+			metrics.RecordPlatformCall(endpoint, strconv.Itoa(resp.StatusCode), errorCode, duration)
+			observability.Event("ecommerce.platform.call.failed", "platform_client", "platform.call", observability.Fields{"request_id": req.Header.Get("X-Request-ID"), "trace_id": req.Header.Get("X-Trace-ID"), "platform_request_id": out.RequestID, "platform_trace_id": out.TraceID, "endpoint": endpoint, "method": method, "status": "failed", "http_status": resp.StatusCode, "error_code": errorCode, "error_hint": out.ErrorHint, "duration_ms": duration.Milliseconds()})
+		}
 		return nil, &platformError{Status: resp.StatusCode, Code: out.Code, Message: out.Message, ErrorCode: out.ErrorCode, ErrorHint: out.ErrorHint, Err: out.Error}
+	}
+	if internal {
+		duration := time.Since(startedAt)
+		metrics.RecordPlatformCall(endpoint, strconv.Itoa(resp.StatusCode), "", duration)
+		observability.Event("ecommerce.platform.call.finished", "platform_client", "platform.call", observability.Fields{"request_id": req.Header.Get("X-Request-ID"), "trace_id": req.Header.Get("X-Trace-ID"), "platform_request_id": out.RequestID, "platform_trace_id": out.TraceID, "endpoint": endpoint, "method": method, "status": "finished", "http_status": resp.StatusCode, "duration_ms": duration.Milliseconds()})
 	}
 	return &out.Data, nil
 }
 
-func (c *Client) buildHeaders(method, path string, body []byte) map[string]string {
+func (c *Client) buildHeaders(ctx context.Context, method, path string, body []byte) map[string]string {
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 	signature := sign(c.secret, c.serviceName, method, path, timestamp, body)
-	return map[string]string{"X-Internal-Service": c.serviceName, "X-Internal-Timestamp": timestamp, "X-Internal-Signature": signature, "X-Internal-Service-Secret": c.secret, "X-Request-ID": buildRequestID(c.serviceName), "X-Trace-ID": buildRequestID("trace")}
+	requestID := stringContextValue(ctx, "request_id")
+	if requestID == "" {
+		requestID = stringContextValue(ctx, "requestID")
+	}
+	if requestID == "" {
+		requestID = buildRequestID(c.serviceName)
+	}
+	traceID := stringContextValue(ctx, "trace_id")
+	if traceID == "" {
+		traceID = stringContextValue(ctx, "traceID")
+	}
+	if spanCtx := trace.SpanContextFromContext(ctx); spanCtx.IsValid() {
+		traceID = spanCtx.TraceID().String()
+	}
+	if traceID == "" {
+		traceID = buildRequestID("trace")
+	}
+	return map[string]string{"X-Internal-Service": c.serviceName, "X-Internal-Timestamp": timestamp, "X-Internal-Signature": signature, "X-Internal-Service-Secret": c.secret, "X-Request-ID": requestID, "X-Trace-ID": traceID}
+}
+
+func (c *Client) requestContext() context.Context {
+	if c != nil && c.ctx != nil {
+		return c.ctx
+	}
+	return context.Background()
+}
+
+func stringContextValue(ctx context.Context, key string) string {
+	if ctx == nil {
+		return ""
+	}
+	value, _ := ctx.Value(key).(string)
+	return value
 }
 
 func encodePayload(payload any) ([]byte, error) {
@@ -290,6 +358,16 @@ func withQuery(path string, values map[string]string) string {
 		return path
 	}
 	return path + "?" + q.Encode()
+}
+
+func lowCardinalityEndpoint(path string) string {
+	if idx := strings.Index(path, "?"); idx >= 0 {
+		path = path[:idx]
+	}
+	if strings.TrimSpace(path) == "" {
+		return "unknown"
+	}
+	return path
 }
 
 func defaultString(value, fallback string) string {

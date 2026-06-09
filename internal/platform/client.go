@@ -1,6 +1,7 @@
 package platform
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -15,6 +16,7 @@ type Client struct {
 	secret      string
 	serviceName string
 	http        *http.Client
+	ctx         context.Context
 }
 
 func New(cfg config.PlatformConfig) *Client {
@@ -23,12 +25,22 @@ func New(cfg config.PlatformConfig) *Client {
 
 func (c *Client) BaseURL() string { return c.baseURL }
 
+func (c *Client) WithContext(ctx context.Context) *Client {
+	if c == nil || ctx == nil {
+		return c
+	}
+	clone := *c
+	clone.ctx = ctx
+	return &clone
+}
+
 type envelope[T any] struct {
 	Code      int    `json:"code"`
 	Message   string `json:"message"`
 	ErrorCode string `json:"error_code"`
 	ErrorHint string `json:"error_hint"`
 	RequestID string `json:"request_id"`
+	TraceID   string `json:"trace_id"`
 	Timestamp int64  `json:"timestamp"`
 	Data      T      `json:"data"`
 	Error     string `json:"error"`

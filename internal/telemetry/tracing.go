@@ -2,18 +2,22 @@ package telemetry
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"ecommerce-service/internal/config"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
@@ -49,6 +53,40 @@ func InitTracing(cfg config.TracingConfig) (func(context.Context) error, error) 
 
 	otel.SetTracerProvider(tp)
 	return tp.Shutdown, nil
+}
+
+func RecordSpanError(span trace.Span, err error) {
+	if span == nil || err == nil {
+		return
+	}
+	sanitized := errors.New(SafeError(err))
+	span.RecordError(sanitized)
+	span.SetStatus(codes.Error, sanitized.Error())
+}
+
+func SafeError(err error) string {
+	if err == nil {
+		return ""
+	}
+	msg := redactSensitive(err.Error())
+	if len(msg) > 300 {
+		return msg[:300]
+	}
+	return msg
+}
+
+var sensitiveValuePatterns = []*regexp.Regexp{
+	regexp.MustCompile(`(?i)(bearer\s+)[A-Za-z0-9._~+/-]+=*`),
+	regexp.MustCompile(`(?i)((?:token|secret|password|provider_key|provider_payload|storage_key)=)[^\s,;]+`),
+	regexp.MustCompile(`(?i)((?:token|secret|password|provider_key|provider_payload|storage_key)":")[^"]+`),
+	regexp.MustCompile(`(?i)((?:postgres|postgresql|mysql)://[^:]+:)[^@\s]+(@)`),
+}
+
+func redactSensitive(msg string) string {
+	for _, pattern := range sensitiveValuePatterns {
+		msg = pattern.ReplaceAllString(msg, `${1}[redacted]${2}`)
+	}
+	return msg
 }
 
 func newTraceExporter(ctx context.Context, cfg config.TracingConfig) (sdktrace.SpanExporter, error) {

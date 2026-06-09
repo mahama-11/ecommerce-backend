@@ -36,13 +36,13 @@ func (h *Handler) RegisterSourceAsset(c *gin.Context) {
 	defer span.End()
 	var req RegisterSourceAssetInput
 	if err := c.ShouldBindJSON(&req); err != nil {
-		span.RecordError(err)
+		telemetry.RecordSpanError(span, err)
 		response.JSONBindError(c, err, "invalid source asset payload")
 		return
 	}
-	item, err := h.service.RegisterSourceAsset(c.GetString("userID"), c.GetString("orgID"), req)
+	item, err := h.service.WithContext(c.Request.Context()).RegisterSourceAsset(c.GetString("userID"), c.GetString("orgID"), req)
 	if err != nil {
-		span.RecordError(err)
+		telemetry.RecordSpanError(span, err)
 		moduleutil.WritePlatformError(c, err, "Failed to register source asset")
 		return
 	}
@@ -54,13 +54,13 @@ func (h *Handler) CreateImageJob(c *gin.Context) {
 	defer span.End()
 	var req CreateImageJobInput
 	if err := c.ShouldBindJSON(&req); err != nil {
-		span.RecordError(err)
+		telemetry.RecordSpanError(span, err)
 		response.JSONBindError(c, err, "invalid create image job request")
 		return
 	}
-	item, err := h.service.CreateImageJob(c.GetString("userID"), c.GetString("orgID"), req)
+	item, err := h.service.WithContext(c.Request.Context()).CreateImageJob(c.GetString("userID"), c.GetString("orgID"), req)
 	if err != nil {
-		span.RecordError(err)
+		telemetry.RecordSpanError(span, err)
 		moduleutil.WritePlatformError(c, err, "Failed to create ecommerce image job")
 		return
 	}
@@ -70,9 +70,9 @@ func (h *Handler) CreateImageJob(c *gin.Context) {
 func (h *Handler) GetJob(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/image-runtime-handler", "ecommerce.image_runtime.job.get")
 	defer span.End()
-	item, err := h.service.GetJob(c.GetString("orgID"), c.Param("jobID"))
+	item, err := h.service.WithContext(c.Request.Context()).GetJob(c.GetString("orgID"), c.Param("jobID"))
 	if err != nil {
-		span.RecordError(err)
+		telemetry.RecordSpanError(span, err)
 		response.JSONErrorSemantic(c, response.CodeNotFound, "Image job not found", "ECOMMERCE_IMAGE_JOB_NOT_FOUND", "Refresh and try again.")
 		return
 	}
@@ -82,9 +82,9 @@ func (h *Handler) GetJob(c *gin.Context) {
 func (h *Handler) CancelJob(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/image-runtime-handler", "ecommerce.image_runtime.job.cancel")
 	defer span.End()
-	item, err := h.service.CancelJob(c.GetString("orgID"), c.Param("jobID"))
+	item, err := h.service.WithContext(c.Request.Context()).CancelJob(c.GetString("orgID"), c.Param("jobID"))
 	if err != nil {
-		span.RecordError(err)
+		telemetry.RecordSpanError(span, err)
 		response.JSONErrorSemantic(c, response.CodeInternalError, "Failed to cancel ecommerce image job", "ECOMMERCE_IMAGE_JOB_CANCEL_FAILED", "Check current job state and try again.")
 		return
 	}
@@ -95,9 +95,9 @@ func (h *Handler) ListJobs(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/image-runtime-handler", "ecommerce.image_runtime.job.list")
 	defer span.End()
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "8"))
-	items, err := h.service.ListJobs(c.GetString("orgID"), c.GetString("userID"), c.Query("sceneType"), c.Query("productID"), limit)
+	items, err := h.service.WithContext(c.Request.Context()).ListJobs(c.GetString("orgID"), c.GetString("userID"), c.Query("sceneType"), c.Query("productID"), limit)
 	if err != nil {
-		span.RecordError(err)
+		telemetry.RecordSpanError(span, err)
 		response.JSONErrorSemantic(c, response.CodeInternalError, "Failed to list ecommerce image jobs", "ECOMMERCE_IMAGE_JOB_LIST_FAILED", "Refresh and try again.")
 		return
 	}
@@ -110,13 +110,13 @@ func (h *Handler) InternalUpdateJobRuntime(c *gin.Context) {
 	if h.shouldRouteVisualDeconstructionCallback(c) {
 		var req visualworkflowmodule.InternalRuntimeUpdateRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			span.RecordError(err)
+			telemetry.RecordSpanError(span, err)
 			response.JSONBindError(c, err, "invalid ecommerce visual workflow runtime update request")
 			return
 		}
 		item, err := h.visualWorkflow.InternalUpdateDeconstructionRuntime(c.Param("jobID"), req)
 		if err != nil {
-			span.RecordError(err)
+			telemetry.RecordSpanError(span, err)
 			h.writeVisualCallbackError(c, err, "Failed to update visual deconstruction runtime", "ECOMMERCE_VISUAL_DECONSTRUCTION_RUNTIME_UPDATE_FAILED")
 			return
 		}
@@ -126,13 +126,13 @@ func (h *Handler) InternalUpdateJobRuntime(c *gin.Context) {
 	if h.shouldRouteVisualIntentPlannerCallback(c) {
 		var req visualworkflowmodule.InternalRuntimeUpdateRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			span.RecordError(err)
+			telemetry.RecordSpanError(span, err)
 			response.JSONBindError(c, err, "invalid ecommerce visual intent planner runtime update request")
 			return
 		}
 		item, err := h.visualWorkflow.InternalUpdateIntentPlannerRuntime(c.Param("jobID"), req)
 		if err != nil {
-			span.RecordError(err)
+			telemetry.RecordSpanError(span, err)
 			h.writeVisualCallbackError(c, err, "Failed to update visual intent planner runtime", "ECOMMERCE_VISUAL_INTENT_PLANNER_RUNTIME_UPDATE_FAILED")
 			return
 		}
@@ -142,13 +142,13 @@ func (h *Handler) InternalUpdateJobRuntime(c *gin.Context) {
 	if h.shouldRouteVisualPromptPlannerCallback(c) {
 		var req visualworkflowmodule.InternalRuntimeUpdateRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			span.RecordError(err)
+			telemetry.RecordSpanError(span, err)
 			response.JSONBindError(c, err, "invalid ecommerce visual prompt planner runtime update request")
 			return
 		}
 		item, err := h.visualWorkflow.InternalUpdatePromptPlannerRuntime(c.Param("jobID"), req)
 		if err != nil {
-			span.RecordError(err)
+			telemetry.RecordSpanError(span, err)
 			h.writeVisualCallbackError(c, err, "Failed to update visual prompt planner runtime", "ECOMMERCE_VISUAL_PROMPT_PLANNER_RUNTIME_UPDATE_FAILED")
 			return
 		}
@@ -158,13 +158,13 @@ func (h *Handler) InternalUpdateJobRuntime(c *gin.Context) {
 	if h.shouldRouteVisualPromptPlannerCallback(c) {
 		var req visualworkflowmodule.InternalRecordResultsRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			span.RecordError(err)
+			telemetry.RecordSpanError(span, err)
 			response.JSONBindError(c, err, "invalid ecommerce visual prompt planner result callback request")
 			return
 		}
 		item, err := h.visualWorkflow.InternalRecordPromptPlannerResults(c.Param("jobID"), req)
 		if err != nil {
-			span.RecordError(err)
+			telemetry.RecordSpanError(span, err)
 			h.writeVisualCallbackError(c, err, "Failed to record visual prompt planner results", "ECOMMERCE_VISUAL_PROMPT_PLANNER_RESULT_RECORD_FAILED")
 			return
 		}
@@ -174,13 +174,13 @@ func (h *Handler) InternalUpdateJobRuntime(c *gin.Context) {
 	if h.shouldRouteVisualStrategyReportCallback(c) {
 		var req visualworkflowmodule.InternalRuntimeUpdateRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			span.RecordError(err)
+			telemetry.RecordSpanError(span, err)
 			response.JSONBindError(c, err, "invalid ecommerce visual strategy report runtime update request")
 			return
 		}
 		item, err := h.visualWorkflow.InternalUpdateStrategyReportRuntime(c.Param("jobID"), req)
 		if err != nil {
-			span.RecordError(err)
+			telemetry.RecordSpanError(span, err)
 			h.writeVisualCallbackError(c, err, "Failed to update visual strategy report runtime", "ECOMMERCE_VISUAL_STRATEGY_REPORT_RUNTIME_UPDATE_FAILED")
 			return
 		}
@@ -190,13 +190,13 @@ func (h *Handler) InternalUpdateJobRuntime(c *gin.Context) {
 	if h.shouldRouteVisualStrategyReportCallback(c) {
 		var req visualworkflowmodule.InternalRecordResultsRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			span.RecordError(err)
+			telemetry.RecordSpanError(span, err)
 			response.JSONBindError(c, err, "invalid ecommerce visual strategy report result callback request")
 			return
 		}
 		item, err := h.visualWorkflow.InternalRecordStrategyReportResults(c.Param("jobID"), req)
 		if err != nil {
-			span.RecordError(err)
+			telemetry.RecordSpanError(span, err)
 			h.writeVisualCallbackError(c, err, "Failed to record visual strategy report results", "ECOMMERCE_VISUAL_STRATEGY_REPORT_RESULT_RECORD_FAILED")
 			return
 		}
@@ -206,13 +206,13 @@ func (h *Handler) InternalUpdateJobRuntime(c *gin.Context) {
 	if h.shouldRouteVisualGenerationCallback(c) {
 		var req visualworkflowmodule.InternalRuntimeUpdateRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			span.RecordError(err)
+			telemetry.RecordSpanError(span, err)
 			response.JSONBindError(c, err, "invalid ecommerce visual generation runtime update request")
 			return
 		}
 		item, err := h.visualWorkflow.InternalUpdateGenerationRuntime(c.Param("jobID"), req)
 		if err != nil {
-			span.RecordError(err)
+			telemetry.RecordSpanError(span, err)
 			h.writeVisualCallbackError(c, err, "Failed to update visual generation runtime", "ECOMMERCE_VISUAL_GENERATION_RUNTIME_UPDATE_FAILED")
 			return
 		}
@@ -221,13 +221,13 @@ func (h *Handler) InternalUpdateJobRuntime(c *gin.Context) {
 	}
 	var req UpdateJobRuntimeInput
 	if err := c.ShouldBindJSON(&req); err != nil {
-		span.RecordError(err)
+		telemetry.RecordSpanError(span, err)
 		response.JSONBindError(c, err, "invalid ecommerce runtime update request")
 		return
 	}
-	item, err := h.service.UpdateJobRuntime(c.Param("jobID"), req)
+	item, err := h.service.WithContext(c.Request.Context()).UpdateJobRuntime(c.Param("jobID"), req)
 	if err != nil {
-		span.RecordError(err)
+		telemetry.RecordSpanError(span, err)
 		response.JSONErrorSemantic(c, response.CodeInternalError, "Failed to update ecommerce image job runtime", "ECOMMERCE_IMAGE_JOB_RUNTIME_UPDATE_FAILED", "Check internal runtime payload and job state.")
 		return
 	}
@@ -240,13 +240,13 @@ func (h *Handler) InternalRecordJobResults(c *gin.Context) {
 	if h.shouldRouteVisualDeconstructionCallback(c) {
 		var req visualworkflowmodule.InternalRecordResultsRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			span.RecordError(err)
+			telemetry.RecordSpanError(span, err)
 			response.JSONBindError(c, err, "invalid ecommerce visual workflow result callback request")
 			return
 		}
 		item, err := h.visualWorkflow.InternalRecordDeconstructionResults(c.Param("jobID"), req)
 		if err != nil {
-			span.RecordError(err)
+			telemetry.RecordSpanError(span, err)
 			h.writeVisualCallbackError(c, err, "Failed to record visual deconstruction results", "ECOMMERCE_VISUAL_DECONSTRUCTION_RESULT_RECORD_FAILED")
 			return
 		}
@@ -256,13 +256,13 @@ func (h *Handler) InternalRecordJobResults(c *gin.Context) {
 	if h.shouldRouteVisualIntentPlannerCallback(c) {
 		var req visualworkflowmodule.InternalRecordResultsRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			span.RecordError(err)
+			telemetry.RecordSpanError(span, err)
 			response.JSONBindError(c, err, "invalid ecommerce visual intent planner result callback request")
 			return
 		}
 		item, err := h.visualWorkflow.InternalRecordIntentPlannerResults(c.Param("jobID"), req)
 		if err != nil {
-			span.RecordError(err)
+			telemetry.RecordSpanError(span, err)
 			h.writeVisualCallbackError(c, err, "Failed to record visual intent planner results", "ECOMMERCE_VISUAL_INTENT_PLANNER_RESULT_RECORD_FAILED")
 			return
 		}
@@ -272,13 +272,13 @@ func (h *Handler) InternalRecordJobResults(c *gin.Context) {
 	if h.shouldRouteVisualPromptPlannerCallback(c) {
 		var req visualworkflowmodule.InternalRecordResultsRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			span.RecordError(err)
+			telemetry.RecordSpanError(span, err)
 			response.JSONBindError(c, err, "invalid ecommerce visual prompt planner result callback request")
 			return
 		}
 		item, err := h.visualWorkflow.InternalRecordPromptPlannerResults(c.Param("jobID"), req)
 		if err != nil {
-			span.RecordError(err)
+			telemetry.RecordSpanError(span, err)
 			h.writeVisualCallbackError(c, err, "Failed to record visual prompt planner results", "ECOMMERCE_VISUAL_PROMPT_PLANNER_RESULT_RECORD_FAILED")
 			return
 		}
@@ -288,13 +288,13 @@ func (h *Handler) InternalRecordJobResults(c *gin.Context) {
 	if h.shouldRouteVisualGenerationCallback(c) {
 		var req visualworkflowmodule.InternalRecordResultsRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			span.RecordError(err)
+			telemetry.RecordSpanError(span, err)
 			response.JSONBindError(c, err, "invalid ecommerce visual generation result callback request")
 			return
 		}
 		item, err := h.visualWorkflow.InternalRecordGenerationResults(c.Param("jobID"), req)
 		if err != nil {
-			span.RecordError(err)
+			telemetry.RecordSpanError(span, err)
 			h.writeVisualCallbackError(c, err, "Failed to record visual generation results", "ECOMMERCE_VISUAL_GENERATION_RESULT_RECORD_FAILED")
 			return
 		}
@@ -303,13 +303,13 @@ func (h *Handler) InternalRecordJobResults(c *gin.Context) {
 	}
 	var req RecordJobResultsInput
 	if err := c.ShouldBindJSON(&req); err != nil {
-		span.RecordError(err)
+		telemetry.RecordSpanError(span, err)
 		response.JSONBindError(c, err, "invalid ecommerce result callback request")
 		return
 	}
-	item, err := h.service.RecordJobResults(c.Param("jobID"), req)
+	item, err := h.service.WithContext(c.Request.Context()).RecordJobResults(c.Param("jobID"), req)
 	if err != nil {
-		span.RecordError(err)
+		telemetry.RecordSpanError(span, err)
 		response.JSONErrorSemantic(c, response.CodeInternalError, "Failed to record ecommerce image job results", "ECOMMERCE_IMAGE_JOB_RESULT_RECORD_FAILED", "Check internal result payload and asset metadata.")
 		return
 	}
@@ -319,9 +319,9 @@ func (h *Handler) InternalRecordJobResults(c *gin.Context) {
 func (h *Handler) GetAssetContent(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/image-runtime-handler", "ecommerce.image_runtime.asset.content")
 	defer span.End()
-	item, body, headers, err := h.service.GetAssetContent(c.GetString("orgID"), c.Param("assetID"))
+	item, body, headers, err := h.service.WithContext(c.Request.Context()).GetAssetContent(c.GetString("orgID"), c.Param("assetID"))
 	if err != nil {
-		span.RecordError(err)
+		telemetry.RecordSpanError(span, err)
 		response.JSONErrorSemantic(c, response.CodeNotFound, "Asset content not found", "ECOMMERCE_ASSET_CONTENT_NOT_FOUND", "Refresh and try again.")
 		return
 	}
@@ -333,7 +333,7 @@ func (h *Handler) GetAssetContent(c *gin.Context) {
 	}
 	c.Status(http.StatusOK)
 	if _, copyErr := io.Copy(c.Writer, body); copyErr != nil {
-		span.RecordError(copyErr)
+		telemetry.RecordSpanError(span, copyErr)
 	}
 }
 

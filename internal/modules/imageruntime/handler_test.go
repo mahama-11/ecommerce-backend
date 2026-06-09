@@ -298,8 +298,8 @@ func TestRegisterSourceAssetAndCreateImageJob(t *testing.T) {
 	if job.Status != "queued" || job.Stage != "queued" {
 		t.Fatalf("runtime accepted job should stay queued until callbacks arrive: %+v", job)
 	}
-	if runtimeCreate.ChargeSessionID != "charge-session-1" {
-		t.Fatalf("runtime create charge_session_id = %q, want charge-session-1", runtimeCreate.ChargeSessionID)
+	if runtimeCreate.ChargeSessionID != "" {
+		t.Fatalf("runtime create must not receive charge_session_id before product result finalization, got %q", runtimeCreate.ChargeSessionID)
 	}
 	if !strings.Contains(job.Metadata, `"charge_session_id":"charge-session-1"`) || !strings.Contains(job.Metadata, `"reservation_id":"reservation-1"`) {
 		t.Fatalf("job metadata missing billing/session linkage: %s", job.Metadata)
@@ -513,11 +513,14 @@ func TestRecordJobResultsFailsClosedWhenMeteringFinalizeFails(t *testing.T) {
 	if item.LastErrorCode != "METERING_FINALIZATION_FAILED" {
 		t.Fatalf("expected metering finalization error code, got %s", item.LastErrorCode)
 	}
+	if item.SelectedResultAssetID != "" {
+		t.Fatalf("failed metering job must not expose a selected usable result asset, got %s", item.SelectedResultAssetID)
+	}
 	if !strings.Contains(item.LastErrorMessage, "invalid finalize request") {
 		t.Fatalf("expected sanitized metering failure message, got %s", item.LastErrorMessage)
 	}
-	if !strings.Contains(item.Metadata, `"metering_status":"failed"`) {
-		t.Fatalf("expected metering failure metadata, got %s", item.Metadata)
+	if !strings.Contains(item.Metadata, `"metering_status":"failed"`) || !strings.Contains(item.Metadata, `"metering_quarantined_result_asset_id"`) {
+		t.Fatalf("expected metering failure metadata with quarantined asset lineage, got %s", item.Metadata)
 	}
 	var count int64
 	if err := db.Model(&models.EcommerceAsset{}).Where("organization_id = ?", "org-1").Count(&count).Error; err != nil {

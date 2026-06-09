@@ -18,7 +18,7 @@ func (h *Handler) ListAssetLibrary(c *gin.Context) {
 		return
 	}
 	orgID, _ := scopeFromGin(c)
-	result, err := h.service.ListAssetLibrary(orgID, input)
+	result, err := h.service.WithContext(c.Request.Context()).ListAssetLibrary(orgID, input)
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "list asset library failed")
 		return
@@ -36,7 +36,7 @@ func (h *Handler) AssetLibraryStats(c *gin.Context) {
 		return
 	}
 	orgID, _ := scopeFromGin(c)
-	result, err := h.service.AssetLibraryStats(orgID, input, c.Query("group_by"))
+	result, err := h.service.WithContext(c.Request.Context()).AssetLibraryStats(orgID, input, c.Query("group_by"))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "get asset library stats failed")
 		return
@@ -54,7 +54,7 @@ func (h *Handler) UpdateAssetLibraryGovernance(c *gin.Context) {
 		return
 	}
 	orgID, userID := scopeFromGin(c)
-	result, err := h.service.UpdateAssetLibraryGovernance(orgID, userID, c.Param("relationId"), input)
+	result, err := h.service.WithContext(c.Request.Context()).UpdateAssetLibraryGovernance(orgID, userID, c.Param("relationId"), input)
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "update asset governance failed")
 		return
@@ -72,7 +72,7 @@ func (h *Handler) BatchUpdateAssetLibraryGovernance(c *gin.Context) {
 		return
 	}
 	orgID, userID := scopeFromGin(c)
-	result, err := h.service.BatchUpdateAssetLibraryGovernance(orgID, userID, input)
+	result, err := h.service.WithContext(c.Request.Context()).BatchUpdateAssetLibraryGovernance(orgID, userID, input)
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "batch update asset governance failed")
 		return
@@ -85,7 +85,7 @@ func (h *Handler) GetAssetLibraryLineage(c *gin.Context) {
 	defer span.End()
 
 	orgID, _ := scopeFromGin(c)
-	result, err := h.service.GetAssetLibraryLineage(orgID, c.Param("relationId"))
+	result, err := h.service.WithContext(c.Request.Context()).GetAssetLibraryLineage(orgID, c.Param("relationId"))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "get asset lineage failed")
 		return

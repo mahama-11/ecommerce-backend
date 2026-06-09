@@ -58,6 +58,7 @@ type BaseResponse struct {
 	Message   string       `json:"message"`
 	Timestamp int64        `json:"timestamp"`
 	RequestID string       `json:"request_id,omitempty"`
+	TraceID   string       `json:"trace_id,omitempty"`
 }
 
 type SuccessResponse struct {
@@ -103,48 +104,83 @@ func NewErrorResponseWithFields(code ResponseCode, errMsg string, fieldErrors []
 func (r *BaseResponse) SetRequestInfo(c *gin.Context) {
 	r.Timestamp = time.Now().UnixMilli()
 	r.RequestID = c.GetString("requestID")
+	r.TraceID = c.GetString("traceID")
 }
 
 func JSONSuccess(c *gin.Context, data any) {
 	resp := NewSuccessResponse(data)
 	resp.SetRequestInfo(c)
+	setResponseMeta(c, resp.Code, "", "", "")
 	c.JSON(http.StatusOK, resp)
 }
 
 func JSONSuccessWithStatus(c *gin.Context, status int, data any) {
 	resp := NewSuccessResponse(data)
 	resp.SetRequestInfo(c)
+	setResponseMeta(c, resp.Code, "", "", "")
 	c.JSON(status, resp)
 }
 
 func JSONError(c *gin.Context, code ResponseCode, message string) {
 	resp := NewErrorResponse(code, message)
 	resp.SetRequestInfo(c)
+	setResponseMeta(c, resp.Code, resp.ErrorCode, resp.ErrorHint, resp.Error)
 	c.JSON(GetHTTPStatusCode(code), resp)
 }
 
 func JSONErrorSemantic(c *gin.Context, code ResponseCode, message, errorCode, errorHint string) {
 	resp := NewSemanticErrorResponse(code, message, errorCode, errorHint)
 	resp.SetRequestInfo(c)
+	setResponseMeta(c, resp.Code, resp.ErrorCode, resp.ErrorHint, resp.Error)
 	c.JSON(GetHTTPStatusCode(code), resp)
 }
 
 func JSONErrorWithStatus(c *gin.Context, code ResponseCode, message string, status int) {
 	resp := NewErrorResponse(code, message)
 	resp.SetRequestInfo(c)
+	setResponseMeta(c, resp.Code, resp.ErrorCode, resp.ErrorHint, resp.Error)
 	c.JSON(status, resp)
 }
 
 func JSONErrorWithStatusSemantic(c *gin.Context, code ResponseCode, message, errorCode, errorHint string, status int) {
 	resp := NewSemanticErrorResponse(code, message, errorCode, errorHint)
 	resp.SetRequestInfo(c)
+	setResponseMeta(c, resp.Code, resp.ErrorCode, resp.ErrorHint, resp.Error)
 	c.JSON(status, resp)
 }
 
 func JSONErrorWithFields(c *gin.Context, code ResponseCode, message string, fieldErrors []FieldError) {
 	resp := NewErrorResponseWithFields(code, message, fieldErrors)
 	resp.SetRequestInfo(c)
+	setResponseMeta(c, resp.Code, resp.ErrorCode, resp.ErrorHint, resp.Error)
 	c.JSON(GetHTTPStatusCode(code), resp)
+}
+
+func ResponseMeta(c *gin.Context) (ResponseCode, string, string, string) {
+	if c == nil {
+		return 0, "", "", ""
+	}
+	code, _ := c.Get("response_code")
+	errorCode, _ := c.Get("response_error_code")
+	errorHint, _ := c.Get("response_error_hint")
+	errorMessage, _ := c.Get("response_error_message")
+	respCode, _ := code.(ResponseCode)
+	return respCode, stringValue(errorCode), stringValue(errorHint), stringValue(errorMessage)
+}
+
+func setResponseMeta(c *gin.Context, code ResponseCode, errorCode, errorHint, errorMessage string) {
+	if c == nil {
+		return
+	}
+	c.Set("response_code", code)
+	c.Set("response_error_code", errorCode)
+	c.Set("response_error_hint", errorHint)
+	c.Set("response_error_message", errorMessage)
+}
+
+func stringValue(value any) string {
+	out, _ := value.(string)
+	return out
 }
 
 func JSONBindError(c *gin.Context, err error, fallback string) {

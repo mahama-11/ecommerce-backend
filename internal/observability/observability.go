@@ -9,6 +9,7 @@ import (
 
 	"ecommerce-service/internal/telemetry"
 	"ecommerce-service/pkg/logger"
+	"ecommerce-service/pkg/metrics"
 
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/otel/attribute"
@@ -24,6 +25,7 @@ type Lifecycle struct {
 	span      trace.Span
 	log       *slog.Logger
 	eventBase string
+	module    string
 	startedAt time.Time
 }
 
@@ -52,8 +54,12 @@ func StartGin(c *gin.Context, tracerName, spanName, eventBase, module, operation
 	}
 	span.SetAttributes(attrs...)
 	log := logger.With(slogArgs(baseFields)...)
+	metrics.IncBusinessCounter(eventBase + ".started")
+	if module == "visual_workflow" {
+		metrics.IncVisualWorkflowRun("started")
+	}
 	log.Info(eventBase+".started", "status", "started")
-	return &Lifecycle{span: span, log: log, eventBase: eventBase, startedAt: startedAt}
+	return &Lifecycle{span: span, log: log, eventBase: eventBase, module: module, startedAt: startedAt}
 }
 
 func (l *Lifecycle) Finish(fields Fields) {
@@ -66,6 +72,10 @@ func (l *Lifecycle) Finish(fields Fields) {
 		attrs = append(attrs, attr(key, value))
 	}
 	l.span.SetAttributes(attrs...)
+	metrics.IncBusinessCounter(l.eventBase + ".finished")
+	if l.module == "visual_workflow" {
+		metrics.IncVisualWorkflowRun("finished")
+	}
 	l.log.Info(l.eventBase+".finished", append(slogArgs(fields), "status", "finished", "latency_ms", latency)...)
 	l.span.End()
 }
@@ -86,6 +96,10 @@ func (l *Lifecycle) Fail(err error, errorCode string, fields Fields) {
 		attrs = append(attrs, attr(key, value))
 	}
 	l.span.SetAttributes(attrs...)
+	metrics.IncBusinessCounter(l.eventBase + ".failed")
+	if l.module == "visual_workflow" {
+		metrics.IncVisualWorkflowRun("failed")
+	}
 	args := append(slogArgs(fields), "status", "failed", "latency_ms", latency, "error_code", errorCode)
 	if err != nil {
 		args = append(args, "error", safeError(err))
@@ -95,7 +109,8 @@ func (l *Lifecycle) Fail(err error, errorCode string, fields Fields) {
 }
 
 func Event(eventName string, module string, operation string, fields Fields) {
-	baseFields := Fields{"service": ServiceEcommerce, "module": module, "operation": operation}
+	metrics.IncBusinessCounter(eventName)
+	baseFields := Fields{"module": module, "operation": operation}
 	for key, value := range fields {
 		baseFields[key] = value
 	}
@@ -103,7 +118,8 @@ func Event(eventName string, module string, operation string, fields Fields) {
 }
 
 func ErrorEvent(eventName string, module string, operation string, err error, errorCode string, fields Fields) {
-	baseFields := Fields{"service": ServiceEcommerce, "module": module, "operation": operation, "status": "failed", "error_code": errorCode}
+	metrics.IncBusinessCounter(eventName)
+	baseFields := Fields{"module": module, "operation": operation, "status": "failed", "error_code": errorCode}
 	if err != nil {
 		baseFields["error"] = safeError(err)
 	}

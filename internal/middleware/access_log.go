@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"ecommerce-service/pkg/logger"
+	"ecommerce-service/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
@@ -29,6 +30,19 @@ func AccessLog() gin.HandlerFunc {
 			"user_id", c.GetString("userID"),
 			"org_id", c.GetString("orgID"),
 		)
+		responseCode, responseErrorCode, responseErrorHint, responseErrorMessage := response.ResponseMeta(c)
+		if responseCode != 0 {
+			log = log.With("response_code", responseCode)
+		}
+		if responseErrorCode != "" {
+			log = log.With("response_error_code", responseErrorCode)
+		}
+		if responseErrorHint != "" {
+			log = log.With("response_error_hint", responseErrorHint)
+		}
+		if responseErrorMessage != "" {
+			log = log.With("response_error_message", responseErrorMessage)
+		}
 		if len(c.Errors) > 0 {
 			log.Error("request.finished", "errors", redactLogError(c.Errors.String()))
 			return

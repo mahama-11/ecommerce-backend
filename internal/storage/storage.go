@@ -39,7 +39,7 @@ func InitDB(cfg config.DatabaseConfig, ginMode string) (*gorm.DB, error) {
 func ConnectDB(cfg config.DatabaseConfig) (*gorm.DB, error) {
 	newLogger := gormlogger.New(
 		log.New(os.Stdout, "", log.LstdFlags),
-		gormlogger.Config{SlowThreshold: time.Second, LogLevel: gormlogger.Info, IgnoreRecordNotFoundError: true, Colorful: false},
+		gormlogger.Config{SlowThreshold: time.Second, LogLevel: gormlogger.Warn, IgnoreRecordNotFoundError: true, Colorful: false, ParameterizedQueries: true},
 	)
 	var (
 		db  *gorm.DB

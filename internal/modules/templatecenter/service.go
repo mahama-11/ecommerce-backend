@@ -1,9 +1,9 @@
 package templatecenter
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
@@ -27,6 +27,15 @@ type Service struct {
 
 func NewService(repo *repository.TemplateCenterRepository, audit *auditmodule.Service, platformClient *platform.Client) *Service {
 	return &Service{repo: repo, audit: audit, platform: platformClient}
+}
+
+func (s *Service) WithContext(ctx context.Context) *Service {
+	if s == nil {
+		return s
+	}
+	clone := *s
+	clone.platform = s.platform.WithContext(ctx)
+	return &clone
 }
 
 func (s *Service) SeedPresetCatalog() error {
@@ -771,25 +780,4 @@ func buildPlatformUseResponse(detail *repository.CatalogDetail) *repository.UseT
 		SupportsAsyncJob: boolMapValue(execution, "supportsAsyncJob"),
 		SupportsBatch:    boolMapValue(execution, "supportsBatch"),
 	}
-}
-
-func (s *Service) DownloadExampleAsset(storageKey string) (io.ReadCloser, map[string]string, error) {
-	if s.platform == nil {
-		return nil, nil, fmt.Errorf("platform client is not configured")
-	}
-	body, header, err := s.platform.DownloadAsset(storageKey)
-	if err != nil {
-		return nil, nil, err
-	}
-	out := map[string]string{}
-	if contentType := header.Get("Content-Type"); contentType != "" {
-		out["Content-Type"] = contentType
-	}
-	if cacheControl := header.Get("Cache-Control"); cacheControl != "" {
-		out["Cache-Control"] = cacheControl
-	}
-	if contentLength := header.Get("Content-Length"); contentLength != "" {
-		out["Content-Length"] = contentLength
-	}
-	return body, out, nil
 }

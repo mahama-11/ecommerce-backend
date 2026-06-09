@@ -1,6 +1,7 @@
 package imageruntime
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 	"ecommerce-service/internal/modules/promptcenter"
 	"ecommerce-service/internal/platform"
 	"ecommerce-service/internal/repository"
+	"ecommerce-service/pkg/metrics"
 
 	"gorm.io/gorm"
 )
@@ -32,6 +34,15 @@ type Service struct {
 
 func NewService(repo *repository.ImageRuntimeRepository, commercialRepo *repository.CommercialRepository, templateRepo *repository.TemplateCenterRepository, productRepo *repository.ProductCenterRepository, auditService *auditmodule.Service, platformClient *platform.Client, appCfg config.AppConfig) *Service {
 	return &Service{repo: repo, commercialRepo: commercialRepo, templateRepo: templateRepo, productRepo: productRepo, audit: auditService, platform: platformClient, appCfg: appCfg}
+}
+
+func (s *Service) WithContext(ctx context.Context) *Service {
+	if s == nil {
+		return s
+	}
+	clone := *s
+	clone.platform = s.platform.WithContext(ctx)
+	return &clone
 }
 
 func (s *Service) WithPromptRepository(promptRepo *repository.PromptCenterRepository) *Service {
@@ -154,6 +165,7 @@ func (s *Service) CreateImageJob(userID, orgID string, input CreateImageJobInput
 	if err != nil {
 		return nil, err
 	}
+	metrics.IncImageJob(item.Status, "pending", item.SceneType)
 
 	sourceAssetIDs, sourceAssetList, sourceAssetSlotMap := buildSourceAssetManifest(sourceAssets, product)
 	inputManifest := mustMarshal(map[string]any{
@@ -200,21 +212,24 @@ func (s *Service) CreateImageJob(userID, orgID string, input CreateImageJobInput
 		idempotencyKey = fmt.Sprintf("ecommerce:%s:create_runtime", item.ID)
 	}
 	runtimeJob, err := s.platform.CreateRuntimeJob(platform.CreateRuntimeJobInput{
-		ProductCode:     s.productCode(),
-		TaskType:        "image_generation",
-		ProviderMode:    "async",
-		OrganizationID:  orgID,
-		UserID:          userID,
-		SourceType:      "ecommerce_image_job",
-		SourceID:        item.ID,
-		IdempotencyKey:  idempotencyKey,
-		ChargeSessionID: chargeCtx.ChargeSessionID,
-		InputManifest:   inputManifest,
-		RouteSnapshot:   routeSnapshot,
-		Metadata:        metadata,
-		Priority:        100,
-		MaxAttempts:     3,
-		TimeoutSeconds:  600,
+		ProductCode:    s.productCode(),
+		TaskType:       "image_generation",
+		ProviderMode:   "async",
+		OrganizationID: orgID,
+		UserID:         userID,
+		SourceType:     "ecommerce_image_job",
+		SourceID:       item.ID,
+		IdempotencyKey: idempotencyKey,
+		// Ecommerce owns result attach-back and billing finalization after the
+		// product callback records selected assets. Do not bind the Platform runtime
+		// job to this charge session, otherwise Platform runtime terminal settlement
+		// can commit the reservation before Ecommerce calls metering finalization.
+		InputManifest:  inputManifest,
+		RouteSnapshot:  routeSnapshot,
+		Metadata:       metadata,
+		Priority:       100,
+		MaxAttempts:    3,
+		TimeoutSeconds: 600,
 	})
 	if err != nil {
 		_ = s.releaseChargeContext(chargeCtx, "runtime_create_failed")
@@ -354,6 +369,8 @@ func (s *Service) UpdateJobRuntime(jobID string, input UpdateJobRuntimeInput) (*
 	if err := s.repo.SaveJob(item); err != nil {
 		return nil, err
 	}
+	metrics.IncRuntimeCallback(firstNonEmpty(item.Status, "unknown"))
+	metrics.IncImageJob(firstNonEmpty(item.Status, "unknown"), imageJobMetricProvider(item), item.SceneType)
 	return item, nil
 }
 
@@ -398,18 +415,26 @@ func (s *Service) RecordJobResults(jobID string, input RecordJobResultsInput) (*
 	if err := s.repo.SaveJob(item); err != nil {
 		return nil, err
 	}
+	metrics.IncRuntimeCallback(firstNonEmpty(input.Status, "unknown"))
+	metrics.IncImageJob(firstNonEmpty(item.Status, "unknown"), imageJobMetricProvider(item), item.SceneType)
 	if err := s.finalizeChargeForJob(item, input.Status); err != nil {
+		quarantinedResultAssetID := item.SelectedResultAssetID
 		item.Status = "failed"
 		item.Stage = "metering_failed"
 		item.StageMessage = "Image generation could not be completed because billing settlement failed"
 		item.Progress = clampProgress(item.Progress, item.Status)
 		item.CompletedAt = nil
+		item.SelectedResultAssetID = ""
 		item.LastErrorCode = "METERING_FINALIZATION_FAILED"
 		item.LastErrorMessage = err.Error()
-		item.Metadata = mergeJSON(item.Metadata, map[string]any{
+		failureMetadata := map[string]any{
 			"metering_status": "failed",
 			"metering_error":  err.Error(),
-		})
+		}
+		if strings.TrimSpace(quarantinedResultAssetID) != "" {
+			failureMetadata["metering_quarantined_result_asset_id"] = quarantinedResultAssetID
+		}
+		item.Metadata = mergeJSON(item.Metadata, failureMetadata)
 		_ = s.repo.SaveJob(item)
 	}
 	return item, nil

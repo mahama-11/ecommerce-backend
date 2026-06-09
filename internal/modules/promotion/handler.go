@@ -25,7 +25,7 @@ func (h *Handler) ResolveCode(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/promotion-handler", "ecommerce.promotion.code.resolve")
 	defer span.End()
 
-	result, err := h.service.ResolveCode(c.Param("code"))
+	result, err := h.service.WithContext(c.Request.Context()).ResolveCode(c.Param("code"))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "resolve promotion code failed")
 		return
@@ -37,7 +37,7 @@ func (h *Handler) ListPrograms(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/promotion-handler", "ecommerce.promotion.programs.list")
 	defer span.End()
 
-	result, err := h.service.ListPrograms(c.Query("status"))
+	result, err := h.service.WithContext(c.Request.Context()).ListPrograms(c.Query("status"))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "list promotion programs failed")
 		return
@@ -49,7 +49,7 @@ func (h *Handler) Overview(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/promotion-handler", "ecommerce.promotion.overview")
 	defer span.End()
 
-	result, err := h.service.Overview(c.GetString("orgID"), c.Query("status"))
+	result, err := h.service.WithContext(c.Request.Context()).Overview(c.GetString("orgID"), c.Query("status"))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "load promotion overview failed")
 		return
@@ -61,7 +61,7 @@ func (h *Handler) ListCodes(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/promotion-handler", "ecommerce.promotion.codes.list")
 	defer span.End()
 
-	result, err := h.service.ListCodes(c.GetString("orgID"), c.Query("program_code"), c.Query("status"))
+	result, err := h.service.WithContext(c.Request.Context()).ListCodes(c.GetString("orgID"), c.Query("program_code"), c.Query("status"))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "list promotion codes failed")
 		return
@@ -78,7 +78,7 @@ func (h *Handler) CreateCode(c *gin.Context) {
 		response.JSONBindError(c, err, "invalid create promotion code request")
 		return
 	}
-	result, err := h.service.CreateCode(c.GetString("orgID"), req)
+	result, err := h.service.WithContext(c.Request.Context()).CreateCode(c.GetString("orgID"), req)
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "create promotion code failed")
 		return
@@ -106,7 +106,7 @@ func (h *Handler) EnsureCode(c *gin.Context) {
 		response.JSONBindError(c, err, "invalid ensure promotion code request")
 		return
 	}
-	result, err := h.service.EnsureCode(c.GetString("orgID"), req)
+	result, err := h.service.WithContext(c.Request.Context()).EnsureCode(c.GetString("orgID"), req)
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "ensure promotion code failed")
 		return
@@ -129,7 +129,7 @@ func (h *Handler) ListConversions(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/promotion-handler", "ecommerce.promotion.conversions.list")
 	defer span.End()
 
-	result, err := h.service.ListConversions(c.GetString("orgID"), c.Query("status"))
+	result, err := h.service.WithContext(c.Request.Context()).ListConversions(c.GetString("orgID"), c.Query("status"))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "list promotion conversions failed")
 		return

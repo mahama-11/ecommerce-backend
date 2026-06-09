@@ -94,6 +94,21 @@ func (s *Service) productCode() string {
 	return firstNonEmpty(s.appCfg.ProductCode, "ecommerce")
 }
 
+func imageJobMetricProvider(item *models.EcommerceImageJob) string {
+	if item == nil {
+		return "unknown"
+	}
+	provider := firstNonEmpty(
+		stringValueFromMeta(item.Metadata, "provider_code"),
+		stringValueFromMeta(item.Metadata, "runtime_provider_code"),
+		stringValueFromMeta(item.Metadata, "provider"),
+	)
+	if provider == "" {
+		return "unknown"
+	}
+	return strings.ToLower(strings.TrimSpace(provider))
+}
+
 func int64Value(value any) int64 {
 	switch typed := value.(type) {
 	case float64:

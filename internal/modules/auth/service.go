@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -71,6 +72,21 @@ type SessionResult struct {
 
 func NewService(platformClient *platform.Client, userRepo *repository.UserRepository, authzService *authz.Service, promotionService *promotionmodule.Service, appCfg config.AppConfig) *Service {
 	return &Service{platform: platformClient, users: userRepo, authz: authzService, promotion: promotionService, appCfg: appCfg}
+}
+
+func (s *Service) WithContext(ctx context.Context) *Service {
+	if s == nil {
+		return s
+	}
+	clone := *s
+	clone.platform = s.platform.WithContext(ctx)
+	if s.authz != nil {
+		clone.authz = s.authz.WithContext(ctx)
+	}
+	if s.promotion != nil {
+		clone.promotion = s.promotion.WithContext(ctx)
+	}
+	return &clone
 }
 
 func (s *Service) Register(input RegisterInput) (*AuthResult, error) {

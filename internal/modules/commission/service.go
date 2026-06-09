@@ -1,6 +1,7 @@
 package commission
 
 import (
+	"context"
 	"sort"
 	"strings"
 
@@ -84,6 +85,15 @@ func NewService(platformClient *platform.Client, appCfg config.AppConfig) *Servi
 		productCode: defaultString(appCfg.ProductCode, "ecommerce"),
 		redeemAsset: defaultString(appCfg.RewardAssetCode, "ECOMMERCE_PROMO_CREDIT"),
 	}
+}
+
+func (s *Service) WithContext(ctx context.Context) *Service {
+	if s == nil {
+		return s
+	}
+	clone := *s
+	clone.platform = s.platform.WithContext(ctx)
+	return &clone
 }
 
 func (s *Service) ListCommissions(orgID, status string) ([]platform.CommissionLedger, error) {

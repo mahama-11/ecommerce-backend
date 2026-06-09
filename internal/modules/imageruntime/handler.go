@@ -40,7 +40,7 @@ func (h *Handler) RegisterSourceAsset(c *gin.Context) {
 		response.JSONBindError(c, err, "invalid source asset payload")
 		return
 	}
-	item, err := h.service.RegisterSourceAsset(c.GetString("userID"), c.GetString("orgID"), req)
+	item, err := h.service.WithContext(c.Request.Context()).RegisterSourceAsset(c.GetString("userID"), c.GetString("orgID"), req)
 	if err != nil {
 		telemetry.RecordSpanError(span, err)
 		moduleutil.WritePlatformError(c, err, "Failed to register source asset")
@@ -58,7 +58,7 @@ func (h *Handler) CreateImageJob(c *gin.Context) {
 		response.JSONBindError(c, err, "invalid create image job request")
 		return
 	}
-	item, err := h.service.CreateImageJob(c.GetString("userID"), c.GetString("orgID"), req)
+	item, err := h.service.WithContext(c.Request.Context()).CreateImageJob(c.GetString("userID"), c.GetString("orgID"), req)
 	if err != nil {
 		telemetry.RecordSpanError(span, err)
 		moduleutil.WritePlatformError(c, err, "Failed to create ecommerce image job")
@@ -70,7 +70,7 @@ func (h *Handler) CreateImageJob(c *gin.Context) {
 func (h *Handler) GetJob(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/image-runtime-handler", "ecommerce.image_runtime.job.get")
 	defer span.End()
-	item, err := h.service.GetJob(c.GetString("orgID"), c.Param("jobID"))
+	item, err := h.service.WithContext(c.Request.Context()).GetJob(c.GetString("orgID"), c.Param("jobID"))
 	if err != nil {
 		telemetry.RecordSpanError(span, err)
 		response.JSONErrorSemantic(c, response.CodeNotFound, "Image job not found", "ECOMMERCE_IMAGE_JOB_NOT_FOUND", "Refresh and try again.")
@@ -82,7 +82,7 @@ func (h *Handler) GetJob(c *gin.Context) {
 func (h *Handler) CancelJob(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/image-runtime-handler", "ecommerce.image_runtime.job.cancel")
 	defer span.End()
-	item, err := h.service.CancelJob(c.GetString("orgID"), c.Param("jobID"))
+	item, err := h.service.WithContext(c.Request.Context()).CancelJob(c.GetString("orgID"), c.Param("jobID"))
 	if err != nil {
 		telemetry.RecordSpanError(span, err)
 		response.JSONErrorSemantic(c, response.CodeInternalError, "Failed to cancel ecommerce image job", "ECOMMERCE_IMAGE_JOB_CANCEL_FAILED", "Check current job state and try again.")
@@ -95,7 +95,7 @@ func (h *Handler) ListJobs(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/image-runtime-handler", "ecommerce.image_runtime.job.list")
 	defer span.End()
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "8"))
-	items, err := h.service.ListJobs(c.GetString("orgID"), c.GetString("userID"), c.Query("sceneType"), c.Query("productID"), limit)
+	items, err := h.service.WithContext(c.Request.Context()).ListJobs(c.GetString("orgID"), c.GetString("userID"), c.Query("sceneType"), c.Query("productID"), limit)
 	if err != nil {
 		telemetry.RecordSpanError(span, err)
 		response.JSONErrorSemantic(c, response.CodeInternalError, "Failed to list ecommerce image jobs", "ECOMMERCE_IMAGE_JOB_LIST_FAILED", "Refresh and try again.")
@@ -225,7 +225,7 @@ func (h *Handler) InternalUpdateJobRuntime(c *gin.Context) {
 		response.JSONBindError(c, err, "invalid ecommerce runtime update request")
 		return
 	}
-	item, err := h.service.UpdateJobRuntime(c.Param("jobID"), req)
+	item, err := h.service.WithContext(c.Request.Context()).UpdateJobRuntime(c.Param("jobID"), req)
 	if err != nil {
 		telemetry.RecordSpanError(span, err)
 		response.JSONErrorSemantic(c, response.CodeInternalError, "Failed to update ecommerce image job runtime", "ECOMMERCE_IMAGE_JOB_RUNTIME_UPDATE_FAILED", "Check internal runtime payload and job state.")
@@ -307,7 +307,7 @@ func (h *Handler) InternalRecordJobResults(c *gin.Context) {
 		response.JSONBindError(c, err, "invalid ecommerce result callback request")
 		return
 	}
-	item, err := h.service.RecordJobResults(c.Param("jobID"), req)
+	item, err := h.service.WithContext(c.Request.Context()).RecordJobResults(c.Param("jobID"), req)
 	if err != nil {
 		telemetry.RecordSpanError(span, err)
 		response.JSONErrorSemantic(c, response.CodeInternalError, "Failed to record ecommerce image job results", "ECOMMERCE_IMAGE_JOB_RESULT_RECORD_FAILED", "Check internal result payload and asset metadata.")
@@ -319,7 +319,7 @@ func (h *Handler) InternalRecordJobResults(c *gin.Context) {
 func (h *Handler) GetAssetContent(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/image-runtime-handler", "ecommerce.image_runtime.asset.content")
 	defer span.End()
-	item, body, headers, err := h.service.GetAssetContent(c.GetString("orgID"), c.Param("assetID"))
+	item, body, headers, err := h.service.WithContext(c.Request.Context()).GetAssetContent(c.GetString("orgID"), c.Param("assetID"))
 	if err != nil {
 		telemetry.RecordSpanError(span, err)
 		response.JSONErrorSemantic(c, response.CodeNotFound, "Asset content not found", "ECOMMERCE_ASSET_CONTENT_NOT_FOUND", "Refresh and try again.")

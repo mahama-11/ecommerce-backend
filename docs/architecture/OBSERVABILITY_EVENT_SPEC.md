@@ -97,10 +97,19 @@ product_id
 sku_code
 session_id
 job_id
+image_job_id
+workflow_id
+runtime_job_id
+charge_session_id
+reservation_id
+platform_request_id
+platform_trace_id
 provider
 status
 latency_ms
 error_code
+error_class
+error_hint
 ```
 
 Additional low-cardinality IDs are allowed when they directly support troubleshooting, for example `runtime_job_id`, `reservation_id`, `charge_session_id`, `source_reference_id`, `version_id`, `asset_id`.
@@ -136,11 +145,15 @@ Helpers in `internal/observability` redact obvious forbidden field names, but ca
 
 1. Incoming HTTP request:
    - accept `X-Request-ID` if present; otherwise generate one.
-   - accept `X-Trace-ID` if present; otherwise use active OTel trace ID or fall back to `request_id`.
-   - return both response headers.
+   - prefer standard W3C `traceparent` / active OTel trace ID over legacy `X-Trace-ID`.
+   - accept `X-Trace-ID` as a compatibility fallback when no valid trace context exists.
+   - return `X-Request-ID` and `X-Trace-ID` response headers.
+   - error response bodies must include `request_id`, `trace_id`, `error_code`, and `error_hint` when semantic error data is available.
 2. Product → Platform internal calls:
-   - current first slice logs typed client calls with local request context unavailable.
-   - follow-up work should add context-aware platform client methods so `X-Request-ID` / `X-Trace-ID` can propagate from the incoming request.
+   - handlers call request-scoped service clones and service clones call `platform.Client.WithContext(c.Request.Context())`.
+   - internal calls must propagate `X-Request-ID`, `X-Trace-ID`, W3C `traceparent`, and `X-Internal-Service`.
+   - outbound call logs use `ecommerce.platform.call.started|finished|failed` and include `endpoint`, `method`, `status`, `request_id`, `trace_id`, plus `platform_request_id` / `platform_trace_id` when the platform response provides them.
+   - outbound call metrics are recorded as `ecommerce_service_platform_calls_total{endpoint,status,error_code}` and `ecommerce_service_platform_call_duration_seconds{endpoint,status}`.
 3. Diagnostics:
    - use `request_id` to query logs first.
    - derive `trace_id` from matching logs if the caller did not provide one.
@@ -151,6 +164,23 @@ Helpers in `internal/observability` redact obvious forbidden field names, but ca
 - Ecommerce helper: `ecommerce-backend/internal/observability`
 - Platform helper: `platform-backend/internal/observability`
 - Request diagnostics API: `GET /api/v1/audit/diagnostics/requests/:requestID`
+
+## Business metrics baseline
+
+The metrics package exposes low-cardinality counters/histograms only. Do not put `user_id`, `org_id`, `product_id`, or `request_id` into Prometheus labels.
+
+```text
+ecommerce_service_http_requests_total{method,path,status}
+ecommerce_service_http_request_duration_seconds{method,path,status}
+ecommerce_service_business_events_total{name}
+ecommerce_service_platform_calls_total{endpoint,status,error_code}
+ecommerce_service_platform_call_duration_seconds{endpoint,status}
+ecommerce_service_image_jobs_total{status,provider,scene_type}
+ecommerce_service_visual_workflow_runs_total{status}
+ecommerce_service_billing_charge_sessions_total{status}
+ecommerce_service_runtime_callbacks_total{status}
+ecommerce_service_provider_calls_total{provider,task_type,status}
+```
 
 ## Query-side rule
 

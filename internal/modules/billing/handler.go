@@ -23,7 +23,7 @@ func (h *Handler) Summary(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/billing-handler", "ecommerce.billing.summary")
 	defer span.End()
 
-	result, err := h.service.Summary(c.GetString("orgID"))
+	result, err := h.service.WithContext(c.Request.Context()).Summary(c.GetString("orgID"))
 	if err != nil {
 		response.JSONErrorSemantic(c, response.CodeDatabaseError, "load billing summary failed", "BILLING_SUMMARY_LOAD_FAILED", "Refresh and try again.")
 		return
@@ -35,7 +35,7 @@ func (h *Handler) ListCharges(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/billing-handler", "ecommerce.billing.charges.list")
 	defer span.End()
 
-	result, err := h.service.ListCharges(c.GetString("orgID"), moduleutil.QueryInt(c, "limit", 100), moduleutil.QueryInt(c, "offset", 0))
+	result, err := h.service.WithContext(c.Request.Context()).ListCharges(c.GetString("orgID"), moduleutil.QueryInt(c, "limit", 100), moduleutil.QueryInt(c, "offset", 0))
 	if err != nil {
 		response.JSONErrorSemantic(c, response.CodeDatabaseError, "list billing charges failed", "BILLING_CHARGES_LIST_FAILED", "Refresh and try again.")
 		return
@@ -52,7 +52,7 @@ func (h *Handler) RecordCharge(c *gin.Context) {
 		response.JSONBindError(c, err, "invalid record charge request")
 		return
 	}
-	result, err := h.service.RecordCharge(req)
+	result, err := h.service.WithContext(c.Request.Context()).RecordCharge(req)
 	if err != nil {
 		response.JSONErrorSemantic(c, response.CodeDatabaseError, "record billing charge failed", "BILLING_CHARGE_RECORD_FAILED", "Check the payload and retry.")
 		return
@@ -70,7 +70,7 @@ func (h *Handler) RefundCharge(c *gin.Context) {
 		response.JSONBindError(c, err, "invalid refund charge request")
 		return
 	}
-	result, err := h.service.RefundCharge(c.Param("recordID"), req)
+	result, err := h.service.WithContext(c.Request.Context()).RefundCharge(c.Param("recordID"), req)
 	if err != nil {
 		response.JSONErrorSemantic(c, response.CodeDatabaseError, "refund billing charge failed", "BILLING_CHARGE_REFUND_FAILED", "Check the payload and retry.")
 		return
@@ -85,7 +85,7 @@ func (h *Handler) ReplayOutbox(c *gin.Context) {
 
 	var req ReplayOutboxInput
 	_ = c.ShouldBindJSON(&req)
-	result, err := h.service.ReplayOutbox(req.Limit)
+	result, err := h.service.WithContext(c.Request.Context()).ReplayOutbox(req.Limit)
 	if err != nil {
 		response.JSONErrorSemantic(c, response.CodeDatabaseError, "replay commercial outbox failed", "COMMERCIAL_OUTBOX_REPLAY_FAILED", "Retry later after checking platform connectivity.")
 		return

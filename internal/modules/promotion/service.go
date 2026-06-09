@@ -1,6 +1,7 @@
 package promotion
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -70,6 +71,15 @@ func NewService(platformClient *platform.Client, repo *repository.CommercialRepo
 		programCode:     defaultString(appCfg.PromotionProgramCode, "ecommerce_signup_default"),
 		programName:     defaultString(appCfg.PromotionProgramName, "Ecommerce Signup Promotion"),
 	}
+}
+
+func (s *Service) WithContext(ctx context.Context) *Service {
+	if s == nil {
+		return s
+	}
+	clone := *s
+	clone.platform = s.platform.WithContext(ctx)
+	return &clone
 }
 
 func (s *Service) Bootstrap() error {

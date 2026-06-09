@@ -39,7 +39,7 @@ func (h *Handler) ListCatalog(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/template-center-handler", "ecommerce.template_center.catalog.list")
 	defer span.End()
 	filter := repository.TemplateCatalogFilter{Locale: c.DefaultQuery("locale", "zh"), Keyword: c.Query("keyword"), Modality: c.Query("modality"), Series: c.Query("series"), Capability: c.Query("capability"), Platform: c.Query("platform"), ToolSlug: c.Query("tool_slug"), InputMode: c.Query("input_mode"), ProductCategory: c.Query("product_category"), Industry: c.Query("industry"), Scenario: c.Query("scenario"), ProviderCapability: c.Query("provider_capability"), SortBy: c.DefaultQuery("sortBy", "recommended"), Limit: clampTemplateCatalogInt(c.Query("limit"), 0, 100), Offset: clampTemplateCatalogInt(c.Query("offset"), 0, 10000)}
-	items, err := h.service.ListCatalog(scopeFromContext(c), filter)
+	items, err := h.service.WithContext(c.Request.Context()).ListCatalog(scopeFromContext(c), filter)
 	if err != nil {
 		response.JSONErrorSemantic(c, response.CodeInternalError, "failed to load template catalog", "TEMPLATE_CATALOG_LOAD_FAILED", "Please try again later.")
 		return
@@ -50,7 +50,7 @@ func (h *Handler) ListCatalog(c *gin.Context) {
 func (h *Handler) Facets(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/template-center-handler", "ecommerce.template_center.catalog.facets")
 	defer span.End()
-	items, err := h.service.Facets(repository.TemplateCatalogFilter{Locale: c.DefaultQuery("locale", "zh"), Keyword: c.Query("keyword"), Modality: c.Query("modality"), Series: c.Query("series"), Capability: c.Query("capability"), Platform: c.Query("platform"), ToolSlug: c.Query("tool_slug"), InputMode: c.Query("input_mode"), ProductCategory: c.Query("product_category"), Industry: c.Query("industry"), Scenario: c.Query("scenario"), ProviderCapability: c.Query("provider_capability")})
+	items, err := h.service.WithContext(c.Request.Context()).Facets(repository.TemplateCatalogFilter{Locale: c.DefaultQuery("locale", "zh"), Keyword: c.Query("keyword"), Modality: c.Query("modality"), Series: c.Query("series"), Capability: c.Query("capability"), Platform: c.Query("platform"), ToolSlug: c.Query("tool_slug"), InputMode: c.Query("input_mode"), ProductCategory: c.Query("product_category"), Industry: c.Query("industry"), Scenario: c.Query("scenario"), ProviderCapability: c.Query("provider_capability")})
 	if err != nil {
 		response.JSONErrorSemantic(c, response.CodeInternalError, "failed to load template facets", "TEMPLATE_FACETS_LOAD_FAILED", "Please try again later.")
 		return
@@ -61,7 +61,7 @@ func (h *Handler) Facets(c *gin.Context) {
 func (h *Handler) Recommendations(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/template-center-handler", "ecommerce.template_center.catalog.recommendations")
 	defer span.End()
-	items, err := h.service.Recommendations(scopeFromContext(c), c.DefaultQuery("locale", "zh"))
+	items, err := h.service.WithContext(c.Request.Context()).Recommendations(scopeFromContext(c), c.DefaultQuery("locale", "zh"))
 	if err != nil {
 		response.JSONErrorSemantic(c, response.CodeInternalError, "failed to load recommendations", "TEMPLATE_RECOMMENDATION_LOAD_FAILED", "Please try again later.")
 		return
@@ -72,7 +72,7 @@ func (h *Handler) Recommendations(c *gin.Context) {
 func (h *Handler) Detail(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/template-center-handler", "ecommerce.template_center.catalog.detail")
 	defer span.End()
-	item, err := h.service.Detail(scopeFromContext(c), c.Param("templateId"), c.DefaultQuery("locale", "zh"))
+	item, err := h.service.WithContext(c.Request.Context()).Detail(scopeFromContext(c), c.Param("templateId"), c.DefaultQuery("locale", "zh"))
 	if err != nil {
 		response.JSONErrorSemantic(c, response.CodeNotFound, "template not found", "TEMPLATE_NOT_FOUND", "Check the template id and try again.")
 		return
@@ -88,7 +88,8 @@ func (h *Handler) PreviewAsset(c *gin.Context) {
 		response.JSONErrorSemantic(c, response.CodeMissingParameter, "storage_key is required", "TEMPLATE_ASSET_STORAGE_KEY_REQUIRED", "Provide a storage_key and try again.")
 		return
 	}
-	body, headers, err := h.service.DownloadExampleAsset(storageKey)
+	service := h.service.WithContext(c.Request.Context())
+	body, headers, err := service.DownloadExampleAsset(storageKey)
 	if err != nil {
 		response.JSONErrorSemantic(c, response.CodeNotFound, "template asset not found", "TEMPLATE_ASSET_NOT_FOUND", "Check the storage key and try again.")
 		return
@@ -109,7 +110,7 @@ func (h *Handler) PreviewAsset(c *gin.Context) {
 func (h *Handler) Favorites(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/template-center-handler", "ecommerce.template_center.favorite.list")
 	defer span.End()
-	items, err := h.service.Favorites(scopeFromContext(c), c.DefaultQuery("locale", "zh"))
+	items, err := h.service.WithContext(c.Request.Context()).Favorites(scopeFromContext(c), c.DefaultQuery("locale", "zh"))
 	if err != nil {
 		response.JSONErrorSemantic(c, response.CodeInternalError, "failed to load favorites", "TEMPLATE_FAVORITES_LOAD_FAILED", "Please try again later.")
 		return
@@ -120,7 +121,7 @@ func (h *Handler) Favorites(c *gin.Context) {
 func (h *Handler) Instances(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/template-center-handler", "ecommerce.template_center.instance.list")
 	defer span.End()
-	items, err := h.service.Instances(scopeFromContext(c), c.DefaultQuery("locale", "zh"))
+	items, err := h.service.WithContext(c.Request.Context()).Instances(scopeFromContext(c), c.DefaultQuery("locale", "zh"))
 	if err != nil {
 		response.JSONErrorSemantic(c, response.CodeInternalError, "failed to load template instances", "TEMPLATE_INSTANCES_LOAD_FAILED", "Please try again later.")
 		return
@@ -131,7 +132,7 @@ func (h *Handler) Instances(c *gin.Context) {
 func (h *Handler) AddFavorite(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/template-center-handler", "ecommerce.template_center.favorite.add")
 	defer span.End()
-	if err := h.service.AddFavorite(c, scopeFromContext(c), c.Param("templateId")); err != nil {
+	if err := h.service.WithContext(c.Request.Context()).AddFavorite(c, scopeFromContext(c), c.Param("templateId")); err != nil {
 		response.JSONErrorSemantic(c, response.CodeInternalError, "failed to favorite template", "TEMPLATE_FAVORITE_FAILED", "Please try again later.")
 		return
 	}
@@ -141,7 +142,7 @@ func (h *Handler) AddFavorite(c *gin.Context) {
 func (h *Handler) RemoveFavorite(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/template-center-handler", "ecommerce.template_center.favorite.remove")
 	defer span.End()
-	if err := h.service.RemoveFavorite(c, scopeFromContext(c), c.Param("templateId")); err != nil {
+	if err := h.service.WithContext(c.Request.Context()).RemoveFavorite(c, scopeFromContext(c), c.Param("templateId")); err != nil {
 		response.JSONErrorSemantic(c, response.CodeInternalError, "failed to unfavorite template", "TEMPLATE_UNFAVORITE_FAILED", "Please try again later.")
 		return
 	}
@@ -151,7 +152,7 @@ func (h *Handler) RemoveFavorite(c *gin.Context) {
 func (h *Handler) CopyToMyTemplates(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/template-center-handler", "ecommerce.template_center.copy_to_my_templates")
 	defer span.End()
-	instance, err := h.service.CopyToMyTemplates(c, scopeFromContext(c), c.Param("templateId"))
+	instance, err := h.service.WithContext(c.Request.Context()).CopyToMyTemplates(c, scopeFromContext(c), c.Param("templateId"))
 	if err != nil {
 		response.JSONErrorSemantic(c, response.CodeInternalError, "failed to copy template", "TEMPLATE_COPY_FAILED", "Please try again later.")
 		return
@@ -162,7 +163,7 @@ func (h *Handler) CopyToMyTemplates(c *gin.Context) {
 func (h *Handler) Use(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/template-center-handler", "ecommerce.template_center.use")
 	defer span.End()
-	result, err := h.service.Use(c, scopeFromContext(c), c.Param("templateId"))
+	result, err := h.service.WithContext(c.Request.Context()).Use(c, scopeFromContext(c), c.Param("templateId"))
 	if err != nil {
 		response.JSONErrorSemantic(c, response.CodeInternalError, "failed to resolve template use route", "TEMPLATE_USE_FAILED", "Please try again later.")
 		return

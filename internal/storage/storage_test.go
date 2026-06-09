@@ -3,6 +3,8 @@ package storage
 import (
 	"context"
 	"errors"
+	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -22,6 +24,35 @@ func TestConnectSQLiteAndPingWithTablePrefix(t *testing.T) {
 	}
 	if got := db.NamingStrategy.TableName("billing_charge_records"); !strings.HasPrefix(got, "ecommerce_test_") {
 		t.Fatalf("table prefix not applied: %s", got)
+	}
+}
+
+func TestConnectDBDoesNotEmitInfoSQLByDefault(t *testing.T) {
+	oldStdout := os.Stdout
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe stdout: %v", err)
+	}
+	os.Stdout = writer
+	db, err := ConnectDB(config.DatabaseConfig{Driver: "sqlite", SQLitePath: filepath.Join(t.TempDir(), "storage-quiet.db"), TablePrefix: "ecommerce_test_", MaxOpenConns: 1, MaxIdleConns: 1})
+	if err != nil {
+		os.Stdout = oldStdout
+		_ = writer.Close()
+		_ = reader.Close()
+		t.Fatalf("ConnectDB sqlite: %v", err)
+	}
+	if err := db.Exec("CREATE TABLE quiet_probe (id TEXT PRIMARY KEY)").Error; err != nil {
+		os.Stdout = oldStdout
+		_ = writer.Close()
+		_ = reader.Close()
+		t.Fatalf("create quiet_probe: %v", err)
+	}
+	_ = writer.Close()
+	os.Stdout = oldStdout
+	out, _ := io.ReadAll(reader)
+	_ = reader.Close()
+	if strings.Contains(string(out), "CREATE TABLE quiet_probe") {
+		t.Fatalf("gorm info SQL should be quiet by default, got stdout: %s", string(out))
 	}
 }
 

@@ -22,7 +22,7 @@ func NewHandler(service *Service) *Handler {
 func (h *Handler) GetOfferings(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/commercial-handler", "ecommerce.commercial.offerings.get")
 	defer span.End()
-	result, err := h.service.Offerings(c.GetString("orgID"))
+	result, err := h.service.WithContext(c.Request.Context()).Offerings(c.GetString("orgID"))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "load commercial offerings failed")
 		return
@@ -38,7 +38,7 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 		response.JSONBindError(c, err, "invalid create commercial order request")
 		return
 	}
-	result, err := h.service.CreateOrder(c.GetString("userID"), c.GetString("orgID"), req)
+	result, err := h.service.WithContext(c.Request.Context()).CreateOrder(c.GetString("userID"), c.GetString("orgID"), req)
 	if err != nil {
 		if platform.IsNotFound(err) {
 			response.JSONErrorSemantic(c, response.CodeNotFound, "Commercial package not found", "COMMERCIAL_PACKAGE_NOT_FOUND", "Refresh pricing and try again.")
@@ -57,7 +57,7 @@ func (h *Handler) CreateOrder(c *gin.Context) {
 func (h *Handler) ListOrders(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/commercial-handler", "ecommerce.commercial.order.list")
 	defer span.End()
-	result, err := h.service.ListOrders(c.GetString("orgID"), moduleutil.QueryInt(c, "limit", 20), moduleutil.QueryInt(c, "offset", 0))
+	result, err := h.service.WithContext(c.Request.Context()).ListOrders(c.GetString("orgID"), moduleutil.QueryInt(c, "limit", 20), moduleutil.QueryInt(c, "offset", 0))
 	if err != nil {
 		response.JSONErrorSemantic(c, response.CodeDatabaseError, "list commercial orders failed", "COMMERCIAL_ORDER_LIST_FAILED", "Refresh and try again.")
 		return
@@ -68,7 +68,7 @@ func (h *Handler) ListOrders(c *gin.Context) {
 func (h *Handler) GetOrder(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/commercial-handler", "ecommerce.commercial.order.get")
 	defer span.End()
-	result, err := h.service.GetOrder(c.GetString("orgID"), c.Param("orderID"))
+	result, err := h.service.WithContext(c.Request.Context()).GetOrder(c.GetString("orgID"), c.Param("orderID"))
 	if err != nil {
 		response.JSONErrorSemantic(c, response.CodeDatabaseError, "load commercial order failed", "COMMERCIAL_ORDER_LOAD_FAILED", "Refresh and try again.")
 		return
@@ -84,7 +84,7 @@ func (h *Handler) ConfirmOrderPayment(c *gin.Context) {
 		response.JSONBindError(c, err, "invalid confirm order payment request")
 		return
 	}
-	result, err := h.service.ConfirmOrderPayment(c.GetString("userID"), c.GetString("orgID"), c.Param("orderID"), req)
+	result, err := h.service.WithContext(c.Request.Context()).ConfirmOrderPayment(c.GetString("userID"), c.GetString("orgID"), c.Param("orderID"), req)
 	if err != nil {
 		writeConfirmOrderPaymentError(c, err)
 		return

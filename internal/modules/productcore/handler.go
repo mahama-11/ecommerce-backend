@@ -98,7 +98,7 @@ func (h *Handler) ListProducts(c *gin.Context) {
 		attribute.String("ecommerce.org_id", orgID),
 	)
 	log.Info("ecommerce.product_center.products.list.started", "status", "started")
-	items, err := h.service.ListProducts(orgID)
+	items, err := h.service.WithContext(c.Request.Context()).ListProducts(orgID)
 	if err != nil {
 		telemetry.RecordSpanError(span, err)
 		span.SetStatus(codes.Error, "list products failed")
@@ -117,7 +117,7 @@ func (h *Handler) GetProduct(c *gin.Context) {
 
 	orgID, _ := scopeFromGin(c)
 	observability.Event("ecommerce.product_center.product.detail.started", "product_center", "product.detail", observability.Fields{"product_id": c.Param("product_id"), "org_id": orgID})
-	detail, err := h.service.GetProductDetail(orgID, c.Param("product_id"))
+	detail, err := h.service.WithContext(c.Request.Context()).GetProductDetail(orgID, c.Param("product_id"))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			observability.Event("ecommerce.product_center.product.detail.not_found", "product_center", "product.detail", observability.Fields{"product_id": c.Param("product_id"), "org_id": orgID, "status": "not_found"})
@@ -145,7 +145,7 @@ func (h *Handler) CreateProduct(c *gin.Context) {
 
 	orgID, userID := scopeFromGin(c)
 	observability.Event("ecommerce.product_center.product.create.started", "product_center", "product.create", observability.Fields{"sku_code": input.SKUCode, "org_id": orgID})
-	item, err := h.service.CreateProduct(orgID, userID, input)
+	item, err := h.service.WithContext(c.Request.Context()).CreateProduct(orgID, userID, input)
 	if err != nil {
 		observability.ErrorEvent("ecommerce.product_center.product.create.failed", "product_center", "product.create", err, "product_create_failed", observability.Fields{"sku_code": input.SKUCode, "org_id": orgID})
 		telemetry.RecordSpanError(span, err)
@@ -168,7 +168,7 @@ func (h *Handler) UpdateProduct(c *gin.Context) {
 
 	orgID, userID := scopeFromGin(c)
 	observability.Event("ecommerce.product_center.product.update.started", "product_center", "product.update", observability.Fields{"product_id": c.Param("product_id"), "org_id": orgID})
-	item, err := h.service.UpdateProduct(orgID, userID, c.Param("product_id"), input)
+	item, err := h.service.WithContext(c.Request.Context()).UpdateProduct(orgID, userID, c.Param("product_id"), input)
 	if err != nil {
 		observability.ErrorEvent("ecommerce.product_center.product.update.failed", "product_center", "product.update", err, "product_update_failed", observability.Fields{"product_id": c.Param("product_id"), "org_id": orgID})
 		telemetry.RecordSpanError(span, err)
@@ -192,7 +192,7 @@ func (h *Handler) UpdateProductStatus(c *gin.Context) {
 	}
 
 	orgID, userID := scopeFromGin(c)
-	item, err := h.service.UpdateProductStatus(orgID, userID, c.Param("product_id"), input.Status)
+	item, err := h.service.WithContext(c.Request.Context()).UpdateProductStatus(orgID, userID, c.Param("product_id"), input.Status)
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "update product status failed")
 		return
@@ -205,7 +205,7 @@ func (h *Handler) DeleteProduct(c *gin.Context) {
 	defer span.End()
 
 	orgID, userID := scopeFromGin(c)
-	err := h.service.DeleteProduct(orgID, userID, c.Param("product_id"))
+	err := h.service.WithContext(c.Request.Context()).DeleteProduct(orgID, userID, c.Param("product_id"))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "delete product failed")
 		return
@@ -220,7 +220,7 @@ func (h *Handler) ListProductAssets(c *gin.Context) {
 	defer span.End()
 
 	orgID, _ := scopeFromGin(c)
-	items, err := h.service.ListProductAssets(orgID, c.Param("product_id"))
+	items, err := h.service.WithContext(c.Request.Context()).ListProductAssets(orgID, c.Param("product_id"))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "list product assets failed")
 		return
@@ -239,7 +239,7 @@ func (h *Handler) AddProductAsset(c *gin.Context) {
 	}
 
 	orgID, userID := scopeFromGin(c)
-	item, err := h.service.AddProductAsset(orgID, userID, c.Param("product_id"), input)
+	item, err := h.service.WithContext(c.Request.Context()).AddProductAsset(orgID, userID, c.Param("product_id"), input)
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "add product asset failed")
 		return
@@ -252,7 +252,7 @@ func (h *Handler) DeleteProductAsset(c *gin.Context) {
 	defer span.End()
 
 	orgID, userID := scopeFromGin(c)
-	err := h.service.DeleteProductAsset(orgID, userID, c.Param("product_id"), c.Param("asset_relation_id"))
+	err := h.service.WithContext(c.Request.Context()).DeleteProductAsset(orgID, userID, c.Param("product_id"), c.Param("asset_relation_id"))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "delete product asset failed")
 		return
@@ -271,7 +271,7 @@ func (h *Handler) UpdateProductAsset(c *gin.Context) {
 	}
 
 	orgID, userID := scopeFromGin(c)
-	item, err := h.service.UpdateProductAsset(orgID, userID, c.Param("product_id"), c.Param("asset_relation_id"), input)
+	item, err := h.service.WithContext(c.Request.Context()).UpdateProductAsset(orgID, userID, c.Param("product_id"), c.Param("asset_relation_id"), input)
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "update product asset failed")
 		return
@@ -286,7 +286,7 @@ func (h *Handler) ListListingVersions(c *gin.Context) {
 	defer span.End()
 
 	orgID, _ := scopeFromGin(c)
-	items, err := h.service.ListListingVersions(orgID, c.Param("product_id"))
+	items, err := h.service.WithContext(c.Request.Context()).ListListingVersions(orgID, c.Param("product_id"))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "list listing versions failed")
 		return
@@ -305,7 +305,7 @@ func (h *Handler) CreateListingVersion(c *gin.Context) {
 	}
 
 	orgID, userID := scopeFromGin(c)
-	item, err := h.service.CreateListingVersion(orgID, userID, c.Param("product_id"), input)
+	item, err := h.service.WithContext(c.Request.Context()).CreateListingVersion(orgID, userID, c.Param("product_id"), input)
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "create listing version failed")
 		return
@@ -324,7 +324,7 @@ func (h *Handler) BatchCreateListingVersions(c *gin.Context) {
 	}
 
 	orgID, userID := scopeFromGin(c)
-	result, err := h.service.BatchCreateListingVersions(orgID, userID, input)
+	result, err := h.service.WithContext(c.Request.Context()).BatchCreateListingVersions(orgID, userID, input)
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "batch create listing versions failed")
 		return
@@ -345,7 +345,7 @@ func (h *Handler) AdoptListingVersion(c *gin.Context) {
 	}
 
 	orgID, userID := scopeFromGin(c)
-	item, err := h.service.AdoptListingVersion(orgID, userID, c.Param("product_id"), input.VersionID)
+	item, err := h.service.WithContext(c.Request.Context()).AdoptListingVersion(orgID, userID, c.Param("product_id"), input.VersionID)
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "adopt listing version failed")
 		return
@@ -364,7 +364,7 @@ func (h *Handler) BatchAdoptListingVersions(c *gin.Context) {
 	}
 
 	orgID, userID := scopeFromGin(c)
-	result, err := h.service.BatchAdoptListingVersions(orgID, userID, input)
+	result, err := h.service.WithContext(c.Request.Context()).BatchAdoptListingVersions(orgID, userID, input)
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "batch adopt listing versions failed")
 		return
@@ -383,7 +383,7 @@ func (h *Handler) UpdateListingVersion(c *gin.Context) {
 	}
 
 	orgID, userID := scopeFromGin(c)
-	item, err := h.service.UpdateListingVersion(orgID, userID, c.Param("product_id"), c.Param("version_id"), input)
+	item, err := h.service.WithContext(c.Request.Context()).UpdateListingVersion(orgID, userID, c.Param("product_id"), c.Param("version_id"), input)
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "update listing version failed")
 		return
@@ -396,7 +396,7 @@ func (h *Handler) DeleteListingVersion(c *gin.Context) {
 	defer span.End()
 
 	orgID, userID := scopeFromGin(c)
-	err := h.service.DeleteListingVersion(orgID, userID, c.Param("product_id"), c.Param("version_id"))
+	err := h.service.WithContext(c.Request.Context()).DeleteListingVersion(orgID, userID, c.Param("product_id"), c.Param("version_id"))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "delete listing version failed")
 		return
@@ -411,7 +411,7 @@ func (h *Handler) ListProfitSnapshots(c *gin.Context) {
 	defer span.End()
 
 	orgID, _ := scopeFromGin(c)
-	items, err := h.service.ListProfitSnapshots(orgID, c.Param("product_id"))
+	items, err := h.service.WithContext(c.Request.Context()).ListProfitSnapshots(orgID, c.Param("product_id"))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "list profit snapshots failed")
 		return
@@ -430,7 +430,7 @@ func (h *Handler) CalculateProfit(c *gin.Context) {
 	}
 
 	orgID, userID := scopeFromGin(c)
-	item, err := h.service.CalculateProfit(orgID, userID, c.Param("product_id"), input)
+	item, err := h.service.WithContext(c.Request.Context()).CalculateProfit(orgID, userID, c.Param("product_id"), input)
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "calculate profit failed")
 		return
@@ -445,7 +445,7 @@ func (h *Handler) ListExportTasks(c *gin.Context) {
 	defer span.End()
 
 	orgID, _ := scopeFromGin(c)
-	items, err := h.service.ListExportTasks(orgID, c.Param("product_id"))
+	items, err := h.service.WithContext(c.Request.Context()).ListExportTasks(orgID, c.Param("product_id"))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "list export tasks failed")
 		return
@@ -464,7 +464,7 @@ func (h *Handler) CreateExportTask(c *gin.Context) {
 	}
 
 	orgID, userID := scopeFromGin(c)
-	item, err := h.service.CreateExportTask(orgID, userID, c.Param("product_id"), input)
+	item, err := h.service.WithContext(c.Request.Context()).CreateExportTask(orgID, userID, c.Param("product_id"), input)
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "create export task failed")
 		return
@@ -483,7 +483,7 @@ func (h *Handler) CreateExportPackage(c *gin.Context) {
 	}
 
 	orgID, userID := scopeFromGin(c)
-	item, err := h.service.CreateExportPackage(orgID, userID, input)
+	item, err := h.service.WithContext(c.Request.Context()).CreateExportPackage(orgID, userID, input)
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "create export package failed")
 		return
@@ -496,7 +496,7 @@ func (h *Handler) GetExportPackage(c *gin.Context) {
 	defer span.End()
 
 	orgID, _ := scopeFromGin(c)
-	item, err := h.service.GetExportPackage(orgID, c.Param("package_id"))
+	item, err := h.service.WithContext(c.Request.Context()).GetExportPackage(orgID, c.Param("package_id"))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "get export package failed")
 		return
@@ -509,7 +509,7 @@ func (h *Handler) RetryExportPackage(c *gin.Context) {
 	defer span.End()
 
 	orgID, _ := scopeFromGin(c)
-	item, err := h.service.GetExportPackage(orgID, c.Param("package_id"))
+	item, err := h.service.WithContext(c.Request.Context()).GetExportPackage(orgID, c.Param("package_id"))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "retry export package failed")
 		return
@@ -542,7 +542,7 @@ func (h *Handler) UpdateExportTaskStatus(c *gin.Context) {
 	}
 
 	orgID, userID := scopeFromGin(c)
-	item, err := h.service.UpdateExportTaskStatus(
+	item, err := h.service.WithContext(c.Request.Context()).UpdateExportTaskStatus(
 		orgID, userID, c.Param("product_id"),
 		input.TaskID, input.Status, input.StorageKey, input.PackageURL, input.FileSize)
 	if err != nil {
@@ -557,7 +557,7 @@ func (h *Handler) ListDownloads(c *gin.Context) {
 	defer span.End()
 
 	orgID, _ := scopeFromGin(c)
-	items, err := h.service.ListDownloads(orgID)
+	items, err := h.service.WithContext(c.Request.Context()).ListDownloads(orgID)
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "list downloads failed")
 		return
@@ -570,7 +570,7 @@ func (h *Handler) DownloadContent(c *gin.Context) {
 	defer span.End()
 
 	orgID, _ := scopeFromGin(c)
-	_, body, headers, err := h.service.GetDownloadContent(orgID, c.Param("download_id"), c.Query("file"))
+	_, body, headers, err := h.service.WithContext(c.Request.Context()).GetDownloadContent(orgID, c.Param("download_id"), c.Query("file"))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "download content failed")
 		return

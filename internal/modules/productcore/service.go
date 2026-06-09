@@ -1,6 +1,7 @@
 package productcore
 
 import (
+	"context"
 	"ecommerce-service/internal/models"
 	"ecommerce-service/internal/platform"
 	"ecommerce-service/internal/repository"
@@ -34,6 +35,15 @@ var baselineSensitiveWords = []string{
 
 func NewService(repo *repository.ProductCenterRepository, assetRepo *repository.ImageRuntimeRepository, platformClient *platform.Client) *Service {
 	return &Service{repo: repo, assetRepo: assetRepo, platform: platformClient}
+}
+
+func (s *Service) WithContext(ctx context.Context) *Service {
+	if s == nil {
+		return s
+	}
+	clone := *s
+	clone.platform = s.platform.WithContext(ctx)
+	return &clone
 }
 
 // formatPercent 格式化百分比

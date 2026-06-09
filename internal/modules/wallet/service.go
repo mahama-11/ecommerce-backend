@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"context"
 	"encoding/json"
 	"sort"
 	"strings"
@@ -65,6 +66,15 @@ func NewService(platformClient *platform.Client, repo *repository.CommercialRepo
 		repo:        repo,
 		productCode: defaultString(appCfg.ProductCode, "ecommerce"),
 	}
+}
+
+func (s *Service) WithContext(ctx context.Context) *Service {
+	if s == nil {
+		return s
+	}
+	clone := *s
+	clone.platform = s.platform.WithContext(ctx)
+	return &clone
 }
 
 func (s *Service) Summary(orgID string) (*Summary, error) {

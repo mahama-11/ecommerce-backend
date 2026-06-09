@@ -20,7 +20,7 @@ func (h *Handler) Summary(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/wallet-handler", "ecommerce.wallet.summary")
 	defer span.End()
 
-	result, err := h.service.Summary(c.GetString("orgID"))
+	result, err := h.service.WithContext(c.Request.Context()).Summary(c.GetString("orgID"))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "load wallet summary failed")
 		return
@@ -32,7 +32,7 @@ func (h *Handler) History(c *gin.Context) {
 	span := telemetry.StartGinSpan(c, "ecommerce-service/wallet-handler", "ecommerce.wallet.history")
 	defer span.End()
 
-	result, err := h.service.History(c.GetString("orgID"), moduleutil.QueryInt(c, "limit", 100))
+	result, err := h.service.WithContext(c.Request.Context()).History(c.GetString("orgID"), moduleutil.QueryInt(c, "limit", 100))
 	if err != nil {
 		moduleutil.WritePlatformError(c, err, "load wallet history failed")
 		return

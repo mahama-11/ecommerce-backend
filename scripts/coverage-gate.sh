@@ -61,6 +61,33 @@ def package_coverages(profile_path: str):
             result[pkg] = round(covered * 100.0 / total, 1)
     return result
 
+def stable_package_coverages(profile_path: str, required_packages: list[str]):
+    # `go test -coverprofile` can leave the aggregate profile briefly truncated
+    # on this Go 1.25 auto-toolchain lane when no-test packages emit covdata
+    # diagnostics. Wait for the profile to settle before declaring package
+    # floors missing; otherwise the gate false-fails while the final profile
+    # already contains the required packages.
+    packages = {}
+    missing = set(required_packages)
+    last_size = -1
+    stable_reads = 0
+    path = Path(profile_path)
+    for _ in range(30):
+        packages = package_coverages(profile_path)
+        missing = {pkg for pkg in required_packages if pkg not in packages}
+        size = path.stat().st_size if path.exists() else -1
+        if not missing:
+            return packages
+        if size == last_size:
+            stable_reads += 1
+            if stable_reads >= 3:
+                return packages
+        else:
+            stable_reads = 0
+            last_size = size
+        time.sleep(0.1)
+    return packages
+
 def has_real_test_failure(log_path: str) -> bool:
     text = Path(log_path).read_text(errors="replace") if Path(log_path).exists() else ""
     return bool(re.search(r"(?m)^--- FAIL:|^FAIL\s+\S+", text))
@@ -80,7 +107,7 @@ def go_packages_without_tests():
 
 normal_total = cover_total(normal_profile) if Path(normal_profile).exists() else 0.0
 coverpkg_total = cover_total(coverpkg_profile) if Path(coverpkg_profile).exists() else 0.0
-packages = package_coverages(normal_profile)
+packages = stable_package_coverages(normal_profile, list(baseline.get("packages", {}).keys()))
 failures = []
 
 if normal_status != 0 and (not Path(normal_profile).exists() or has_real_test_failure(normal_log)):

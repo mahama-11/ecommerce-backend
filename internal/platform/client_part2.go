@@ -245,6 +245,9 @@ func doRequest[T any](c *Client, method, url, path string, payload any, internal
 		}
 		propagation.TraceContext{}.Inject(ctx, propagation.HeaderCarrier(req.Header))
 		observability.Event("ecommerce.platform.call.started", "platform_client", "platform.call", observability.Fields{"request_id": req.Header.Get("X-Request-ID"), "trace_id": req.Header.Get("X-Trace-ID"), "endpoint": endpoint, "method": method, "status": "started"})
+	} else {
+		setCorrelationHeaders(req.Header, ctx)
+		propagation.TraceContext{}.Inject(ctx, propagation.HeaderCarrier(req.Header))
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {
@@ -288,12 +291,23 @@ func doRequest[T any](c *Client, method, url, path string, payload any, internal
 func (c *Client) buildHeaders(ctx context.Context, method, path string, body []byte) map[string]string {
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 	signature := sign(c.secret, c.serviceName, method, path, timestamp, body)
+	requestID, traceID := correlationIDs(ctx, c.serviceName)
+	return map[string]string{"X-Internal-Service": c.serviceName, "X-Internal-Timestamp": timestamp, "X-Internal-Signature": signature, "X-Internal-Service-Secret": c.secret, "X-Request-ID": requestID, "X-Trace-ID": traceID}
+}
+
+func setCorrelationHeaders(header http.Header, ctx context.Context) {
+	requestID, traceID := correlationIDs(ctx, "v-ecommerce-backend")
+	header.Set("X-Request-ID", requestID)
+	header.Set("X-Trace-ID", traceID)
+}
+
+func correlationIDs(ctx context.Context, serviceName string) (string, string) {
 	requestID := stringContextValue(ctx, "request_id")
 	if requestID == "" {
 		requestID = stringContextValue(ctx, "requestID")
 	}
 	if requestID == "" {
-		requestID = buildRequestID(c.serviceName)
+		requestID = buildRequestID(serviceName)
 	}
 	traceID := stringContextValue(ctx, "trace_id")
 	if traceID == "" {
@@ -305,7 +319,7 @@ func (c *Client) buildHeaders(ctx context.Context, method, path string, body []b
 	if traceID == "" {
 		traceID = buildRequestID("trace")
 	}
-	return map[string]string{"X-Internal-Service": c.serviceName, "X-Internal-Timestamp": timestamp, "X-Internal-Signature": signature, "X-Internal-Service-Secret": c.secret, "X-Request-ID": requestID, "X-Trace-ID": traceID}
+	return requestID, traceID
 }
 
 func (c *Client) requestContext() context.Context {

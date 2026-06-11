@@ -57,7 +57,7 @@ func TestClientWithContextPropagatesRequestTraceAndTraceparentToPublicPlatformCa
 	defer server.Close()
 
 	ctx, traceID := outboundTraceContext("req-ecommerce-public")
-	_, err := newTestClient(server).WithContext(ctx).Register(AuthRegisterInput{FullName: "Owner", Email: "owner@example.test", Password: "secret123", Company: "Shop"})
+	_, err := newTestClient(server).WithContext(ctx).Register(AuthRegisterInput{FullName: "Owner", Email: "owner@example.test", Password: "change-me", Company: "Shop"})
 	if err != nil {
 		t.Fatalf("Register: %v", err)
 	}

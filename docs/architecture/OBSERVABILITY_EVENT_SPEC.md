@@ -149,8 +149,9 @@ Helpers in `internal/observability` redact obvious forbidden field names, but ca
    - accept `X-Trace-ID` as a compatibility fallback when no valid trace context exists.
    - return `X-Request-ID` and `X-Trace-ID` response headers.
    - error response bodies must include `request_id`, `trace_id`, `error_code`, and `error_hint` when semantic error data is available.
-2. Product → Platform internal calls:
+2. Product → Platform calls:
    - handlers call request-scoped service clones and service clones call `platform.Client.WithContext(c.Request.Context())`.
+   - public Platform calls such as auth register/login propagate `X-Request-ID`, compatibility `X-Trace-ID`, and W3C `traceparent` but do not attach internal service authentication headers.
    - internal calls must propagate `X-Request-ID`, `X-Trace-ID`, W3C `traceparent`, and `X-Internal-Service`.
    - outbound call logs use `ecommerce.platform.call.started|finished|failed` and include `endpoint`, `method`, `status`, `request_id`, `trace_id`, plus `platform_request_id` / `platform_trace_id` when the platform response provides them.
    - outbound call metrics are recorded as `ecommerce_service_platform_calls_total{endpoint,status,error_code}` and `ecommerce_service_platform_call_duration_seconds{endpoint,status}`.
